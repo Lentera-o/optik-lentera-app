@@ -1,0 +1,11 @@
+workflows:
+  optik-lentera-android:
+    name: OPTIK LENTERA Android
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      - name: Build APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
