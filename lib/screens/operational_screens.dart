@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 
@@ -297,6 +298,129 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   ]);
 }
 
+
+
+class WhatsAppCenterScreen extends StatefulWidget {
+  final List<Customer> customers;
+  final List<OptikOrder> orders;
+  const WhatsAppCenterScreen({super.key, required this.customers, required this.orders});
+  @override
+  State<WhatsAppCenterScreen> createState() => _WhatsAppCenterScreenState();
+}
+
+class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
+  Customer? selectedCustomer;
+  OptikOrder? selectedOrder;
+  String template = 'Konfirmasi pesanan';
+  final message = TextEditingController();
+
+  @override
+  void dispose() { message.dispose(); super.dispose(); }
+
+  String _rupiah(int value) => 'Rp ' + value.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+
+  String _phoneForWhatsApp(String raw) {
+    var digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.startsWith('0')) digits = '62' + digits.substring(1);
+    if (digits.startsWith('8')) digits = '62' + digits;
+    return digits;
+  }
+
+  void _chooseCustomer(Customer? customer) {
+    setState(() {
+      selectedCustomer = customer;
+      selectedOrder = null;
+      for (final order in widget.orders) {
+        if (order.customer.phone == customer?.phone) { selectedOrder = order; break; }
+      }
+      _buildMessage();
+    });
+  }
+
+  void _buildMessage() {
+    final customer = selectedCustomer;
+    final order = selectedOrder;
+    if (customer == null) { message.text = ''; return; }
+    final name = customer.name;
+    final invoice = order?.invoiceNumber ?? '-';
+    final total = order == null ? '-' : _rupiah(order.total);
+    final balance = order == null ? '-' : _rupiah(order.remaining);
+    if (template == 'Pesanan siap diambil') {
+      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
+    } else if (template == 'Pengingat pembayaran') {
+      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nInvoice: ' + invoice + '\nTotal: ' + total + '\nSisa tagihan: ' + balance + '\nJika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih 🙏';
+    } else if (template == 'Tindak lanjut pelanggan') {
+      message.text = 'Halo ' + name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏';
+    } else {
+      message.text = 'Halo ' + name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' + (order == null ? '' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\n') + 'Jika ada pertanyaan, silakan balas pesan ini. Terima kasih 🙏';
+    }
+  }
+
+  Future<void> _openWhatsApp() async {
+    final customer = selectedCustomer;
+    if (customer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih pelanggan terlebih dahulu.')));
+      return;
+    }
+    final phone = _phoneForWhatsApp(customer.phone);
+    if (phone.length < 10 || phone.length > 15) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor WhatsApp pelanggan tidak valid. Periksa nomor pada data pelanggan.')));
+      return;
+    }
+    final uri = Uri.https('wa.me', '/' + phone, {'text': message.text});
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('WhatsApp tidak dapat dibuka pada perangkat ini.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final customerOptions = <Customer>{...widget.customers, ...widget.orders.map((o) => o.customer)}.toList();
+    final orderOptions = widget.orders.where((o) => selectedCustomer == null || o.customer.phone == selectedCustomer!.phone).toList();
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const _Intro('WhatsApp Semi-Otomatis', 'Pilih pelanggan dan template. Chat dibuka dengan pesan siap ditinjau dan dikirim oleh petugas.', Icons.chat_outlined),
+        const SizedBox(height: 16),
+        _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          DropdownButtonFormField<Customer>(
+            value: customerOptions.contains(selectedCustomer) ? selectedCustomer : null,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
+            items: customerOptions.map((c) => DropdownMenuItem(value: c, child: Text(c.name + ' • ' + c.phone, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: _chooseCustomer,
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<OptikOrder>(
+            value: orderOptions.contains(selectedOrder) ? selectedOrder : null,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Pilih invoice (opsional)', border: OutlineInputBorder()),
+            items: orderOptions.map((o) => DropdownMenuItem(value: o, child: Text(o.invoiceNumber + ' • ' + o.customer.name, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: (value) => setState(() { selectedOrder = value; _buildMessage(); }),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: template,
+            decoration: const InputDecoration(labelText: 'Template pesan', border: OutlineInputBorder()),
+            items: const ['Konfirmasi pesanan', 'Pesanan siap diambil', 'Pengingat pembayaran', 'Tindak lanjut pelanggan'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+            onChanged: (value) => setState(() { template = value ?? 'Konfirmasi pesanan'; _buildMessage(); }),
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: message, minLines: 6, maxLines: 10,
+            decoration: const InputDecoration(labelText: 'Pesan (bisa diedit sebelum dikirim)', alignLabelWithHint: true, border: OutlineInputBorder())),
+          const SizedBox(height: 14),
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168C54), padding: const EdgeInsets.symmetric(vertical: 14)),
+            onPressed: _openWhatsApp, icon: const Icon(Icons.chat), label: const Text('Buka WhatsApp & Tinjau Pesan'))),
+          const SizedBox(height: 8),
+          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+        ])),
+      ],
+    );
+  }
+}
 
 class InvoiceReceiptScreen extends StatelessWidget {
   final List<OptikOrder> orders;
