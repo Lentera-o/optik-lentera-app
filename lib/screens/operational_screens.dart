@@ -61,9 +61,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
 }
 
 class TransactionScreen extends StatefulWidget {
+  final List<Customer> customers;
   final List<OptikOrder> orders;
   final ValueChanged<OptikOrder> onAdd;
-  const TransactionScreen({super.key, required this.orders, required this.onAdd});
+  const TransactionScreen({super.key, required this.customers, required this.orders, required this.onAdd});
   @override
   State<TransactionScreen> createState() => _TransactionScreenState();
 }
@@ -91,6 +92,19 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final osAdd = TextEditingController();
   final osPd = TextEditingController();
   String method = 'Tunai';
+  int? selectedCustomerIndex;
+
+  void selectSavedCustomer(int? index) {
+    setState(() {
+      selectedCustomerIndex = index;
+      if (index != null && index >= 0 && index < widget.customers.length) {
+        final selected = widget.customers[index];
+        customer.text = selected.name;
+        phone.text = selected.phone;
+        address.text = selected.address;
+      }
+    });
+  }
 
   int amount(TextEditingController c) => int.tryParse(c.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
@@ -122,7 +136,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       initialPaymentMethod: method,
     ));
     for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
-    setState(() {});
+    setState(() { selectedCustomerIndex = null; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
 
@@ -131,6 +145,27 @@ class _TransactionScreenState extends State<TransactionScreen> {
     const _Intro('Pemesanan & Pemeriksaan', 'Input pesanan dan resep mata OD/OS.', Icons.receipt_long_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (widget.customers.isNotEmpty) ...[
+        DropdownButtonFormField<int>(
+          value: selectedCustomerIndex,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: 'Pilih pelanggan tersimpan',
+            helperText: 'Pilih data yang sudah dicatat agar tidak mengetik ulang.',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          items: List.generate(widget.customers.length, (index) {
+            final item = widget.customers[index];
+            return DropdownMenuItem<int>(
+              value: index,
+              child: Text(item.name, overflow: TextOverflow.ellipsis),
+            );
+          }),
+          onChanged: selectSavedCustomer,
+        ),
+        const SizedBox(height: 12),
+      ] else
+        const Text('Belum ada pelanggan tersimpan. Isi data pelanggan secara manual atau tambahkan melalui menu Pelanggan.'),
       _field(customer, 'Nama pelanggan *'),
       _field(phone, 'Nomor WhatsApp / telepon', type: TextInputType.phone),
       _field(address, 'Alamat pelanggan'),
