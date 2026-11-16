@@ -101,7 +101,11 @@ class _MainScreenState extends State<MainScreen> {
       ),
       body: SafeArea(
         child: switch (selectedIndex) {
-          0 => DashboardContent(onOpenModule: (index) => setState(() => selectedIndex = index)),
+          0 => DashboardContent(
+            onOpenModule: (index) => setState(() => selectedIndex = index),
+            orderCount: orders.length,
+            paymentTotal: payments.fold<int>(0, (sum, item) => sum + item.amount),
+          ),
           1 => TransactionScreen(orders: orders, onAdd: (order) => setState(() => orders.add(order))),
           2 => CustomerScreen(customers: customers, onAdd: (customer) => setState(() => customers.add(customer))),
           3 => OtherContent(title: navigation[selectedIndex]),
@@ -150,7 +154,9 @@ class _MainScreenState extends State<MainScreen> {
 
 class DashboardContent extends StatelessWidget {
   final ValueChanged<int> onOpenModule;
-  const DashboardContent({super.key, required this.onOpenModule});
+  final int orderCount;
+  final int paymentTotal;
+  const DashboardContent({super.key, required this.onOpenModule, required this.orderCount, required this.paymentTotal});
 
   @override
   Widget build(BuildContext context) {
@@ -212,20 +218,20 @@ class DashboardContent extends StatelessWidget {
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ink),
           ),
           const SizedBox(height: 12),
-          const Row(
+          Row(
             children: [
               Expanded(
                 child: _SummaryCard(
-                  title: 'Pesanan',
-                  value: '—',
+                  title: 'Draft Pesanan',
+                  value: orderCount.toString(),
                   icon: Icons.shopping_bag_outlined,
                 ),
               ),
               SizedBox(width: 12),
               Expanded(
                 child: _SummaryCard(
-                  title: 'Pembayaran',
-                  value: '—',
+                  title: 'Pembayaran Sesi',
+                  value: 'Rp ' + paymentTotal.toString(),
                   icon: Icons.payments_outlined,
                 ),
               ),
