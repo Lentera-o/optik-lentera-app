@@ -131,8 +131,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
     // Snapshot invoice sebelum pengiriman agar hasil yang diverifikasi benar-benar baru.
     final beforeInvoices = <String>{};
+    var invoiceSnapshotAvailable = false;
     try {
       final existing = await SheetsReadService.readTable('DATA_PESANAN');
+      invoiceSnapshotAvailable = true;
       for (final row in existing) {
         for (final key in ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) {
           final value = row.entries.where((e) => e.key.trim().toLowerCase() == key.toLowerCase()).map((e) => e.value.trim()).firstWhere((v) => v.isNotEmpty, orElse: () => '');
@@ -173,7 +175,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     });
 
     String? verifiedInvoice;
-    if (accepted && beforeInvoices.isNotEmpty) {
+    if (accepted && invoiceSnapshotAvailable) {
       for (var attempt = 0; attempt < 6; attempt++) {
         await Future.delayed(const Duration(seconds: 2));
         try {
@@ -506,8 +508,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
 
     final beforeReceipts = <String>{};
+    var paymentSnapshotAvailable = false;
     try {
       final existing = await SheetsReadService.readTable('DATA_PEMBAYARAN');
+      paymentSnapshotAvailable = true;
       for (final row in existing) {
         final receipt = _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']);
         if (receipt.isNotEmpty) beforeReceipts.add(receipt);
@@ -527,7 +531,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     });
 
     String? verifiedReceipt;
-    if (accepted && beforeReceipts.isNotEmpty) {
+    if (accepted && paymentSnapshotAvailable) {
       for (var attempt = 0; attempt < 6; attempt++) {
         await Future.delayed(const Duration(seconds: 2));
         try {
