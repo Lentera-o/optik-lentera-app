@@ -69,27 +69,38 @@ class TransactionScreen extends StatefulWidget {
 
 class _TransactionScreenState extends State<TransactionScreen> {
   final customer = TextEditingController();
+  final phone = TextEditingController();
+  final address = TextEditingController();
+  final doctor = TextEditingController();
+  final lensType = TextEditingController();
+  final rxNote = TextEditingController();
   final frame = TextEditingController();
   final lens = TextEditingController();
+  final otherPrice = TextEditingController();
+  final otherDescription = TextEditingController();
   final dp = TextEditingController();
   final odSph = TextEditingController();
   final odCyl = TextEditingController();
   final odAxis = TextEditingController();
+  final odAdd = TextEditingController();
+  final odPd = TextEditingController();
   final osSph = TextEditingController();
   final osCyl = TextEditingController();
   final osAxis = TextEditingController();
+  final osAdd = TextEditingController();
+  final osPd = TextEditingController();
   String method = 'Tunai';
 
   int amount(TextEditingController c) => int.tryParse(c.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
   @override
   void dispose() {
-    for (final c in [customer, frame, lens, dp, odSph, odCyl, odAxis, osSph, osCyl, osAxis]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
   void save() {
-    final total = amount(frame) + amount(lens);
+    final total = amount(frame) + amount(lens) + amount(otherPrice);
     if (customer.text.trim().isEmpty || total <= 0 || amount(dp) > total) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
       return;
@@ -97,17 +108,19 @@ class _TransactionScreenState extends State<TransactionScreen> {
     widget.onAdd(OptikOrder(
       invoiceNumber: 'DRAFT-' + DateTime.now().millisecondsSinceEpoch.toString(),
       orderDate: DateTime.now(),
-      customer: Customer(name: customer.text.trim()),
+      customer: Customer(name: customer.text.trim(), phone: phone.text.trim(), address: address.text.trim()),
       prescription: EyePrescription(
-        odSph: odSph.text, odCyl: odCyl.text, odAxis: odAxis.text,
-        osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text,
+        doctor: doctor.text.trim(), lensType: lensType.text.trim(), note: rxNote.text.trim(),
+        odSph: odSph.text, odCyl: odCyl.text, odAxis: odAxis.text, odAdd: odAdd.text, odPd: odPd.text,
+        osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
       ),
       frame: OrderItem(description: 'Frame', price: amount(frame)),
-      lens: OrderItem(description: 'Lensa', price: amount(lens)),
+      lens: OrderItem(description: lensType.text.trim().isEmpty ? 'Lensa' : lensType.text.trim(), price: amount(lens)),
+      other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
       initialPaymentMethod: method,
     ));
-    for (final c in [customer, frame, lens, dp, odSph, odCyl, odAxis, osSph, osCyl, osAxis]) { c.clear(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
@@ -118,20 +131,29 @@ class _TransactionScreenState extends State<TransactionScreen> {
     const SizedBox(height: 16),
     _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _field(customer, 'Nama pelanggan *'),
+      _field(phone, 'Nomor WhatsApp / telepon', type: TextInputType.phone),
+      _field(address, 'Alamat pelanggan'),
+      _field(doctor, 'Dokter / optometris'),
       const Text('Resep OD — mata kanan', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
       Row(children: [
         Expanded(child: _field(odSph, 'SPH')), const SizedBox(width: 6),
         Expanded(child: _field(odCyl, 'CYL')), const SizedBox(width: 6),
         Expanded(child: _field(odAxis, 'AXIS')),
       ]),
+      Row(children: [Expanded(child: _field(odAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(odPd, 'PD'))]),
       const Text('Resep OS — mata kiri', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
       Row(children: [
         Expanded(child: _field(osSph, 'SPH')), const SizedBox(width: 6),
         Expanded(child: _field(osCyl, 'CYL')), const SizedBox(width: 6),
         Expanded(child: _field(osAxis, 'AXIS')),
       ]),
+      Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
+      _field(lensType, 'Jenis / model lensa'),
+      _field(rxNote, 'Catatan resep'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
+      _field(otherDescription, 'Keterangan biaya lain-lain'),
+      _field(otherPrice, 'Harga lain-lain (Rp)', type: TextInputType.number),
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
       DropdownButtonFormField<String>(
         value: method,
