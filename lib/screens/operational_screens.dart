@@ -452,18 +452,6 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     }
   }
 
-  Future<void> _shareInvoiceAndReceipt() async {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Invoice dan kuitansi resmi harus berasal dari PDF Apps Script di Drive. '
-          'Fitur berbagi PDF aplikasi menunggu sinkronisasi resmi agar nomor, QR, dan desain tidak keliru.',
-        ),
-        duration: Duration(seconds: 5),
-      ),
-    );
-  }
 
   Future<void> _openWhatsApp() async {
     final customer = selectedCustomer;
@@ -524,14 +512,14 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             onPressed: _openWhatsApp, icon: const Icon(Icons.chat), label: const Text('Buka WhatsApp & Tinjau Pesan'))),
           const SizedBox(height: 8),
           SizedBox(width: double.infinity, child: OutlinedButton.icon(
-            onPressed: selectedOrder == null ? null : _shareInvoiceAndReceipt,
+            onPressed: null,
             icon: const Icon(Icons.picture_as_pdf_outlined),
-            label: const Text('Bagikan Invoice + Kuitansi PDF'),
+            label: const Text('PDF resmi menunggu sinkronisasi Apps Script'),
           )),
           const SizedBox(height: 8),
-          const Text('PDF dibagikan melalui menu berbagi Android. Pilih WhatsApp dan penerima; petugas tetap menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const Text('PDF resmi tidak dibuat oleh aplikasi. Dokumen akan dibagikan dari tautan Drive Apps Script setelah integrasi transaksi tersedia.', style: TextStyle(fontSize: 11, color: Colors.black54)),
           const SizedBox(height: 8),
-          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa lalu menekan tombol Kirim sendiri. WhatsApp akan dibuka agar petugas memeriksa lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa pesan lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
         ])),
       ],
     );
