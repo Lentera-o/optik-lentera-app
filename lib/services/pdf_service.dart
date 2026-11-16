@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import '../assets/optik_brand_assets.dart';
 import '../models/optik_models.dart';
 
 class OptikPdfService {
@@ -11,8 +9,7 @@ class OptikPdfService {
   static const paper = PdfColor.fromInt(0xFFFFF8F7);
   static const line = PdfColor.fromInt(0xFFDDCBA8);
   static const ink = PdfColor.fromInt(0xFF51484A);
-  static pw.MemoryImage get logo => pw.MemoryImage(base64Decode(optikLogoBase64));
-  static pw.MemoryImage get stamp => pw.MemoryImage(base64Decode(optikStampBase64));
+  static pw.Widget qr(String value) => pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: value, width: 92, height: 92, drawText: false);
 
   static String money(int n) => 'Rp ' + n.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
   static String date(DateTime? d) {
@@ -25,7 +22,7 @@ class OptikPdfService {
     padding: const pw.EdgeInsets.only(bottom: 10),
     decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: gold, width: 2))),
     child: pw.Row(children: [
-      pw.SizedBox(width: 66, height: 66, child: pw.Image(logo, fit: pw.BoxFit.contain)),
+      pw.SizedBox(width: 66, height: 66, child: pw.Text('OPTIK\nLENTERA', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 12, bold: true, color: gold))),
       pw.SizedBox(width: 12),
       pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
         pw.Text('OPTIK LENTERA', style: pw.TextStyle(fontSize: 20, bold: true, color: gold, letterSpacing: 1)),
@@ -97,14 +94,14 @@ class OptikPdfService {
     pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4, margin: const pw.EdgeInsets.all(32), build: (_) => pw.Container(
       color: paper,
       child: pw.Column(children: [
-        brand(), pw.SizedBox(height: 30), pw.Text('PENGESAHAN TRANSAKSI', style: pw.TextStyle(fontSize: 16, bold: true, color: gold)),
+        brand(), pw.SizedBox(height: 30), pw.Text('KODE QR INVOICE', style: pw.TextStyle(fontSize: 16, bold: true, color: gold)),
         pw.SizedBox(height: 65),
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceAround, children: [
           pw.Column(children: [pw.Text('Pelanggan'), pw.SizedBox(height: 60), pw.Text('(____________________)')]),
           pw.Column(children: [pw.Text('Hormat kami,'), pw.SizedBox(height: 60), pw.Text('OPTIK LENTERA', style: pw.TextStyle(bold: true, color: gold))]),
         ]),
-        pw.SizedBox(height: 28), pw.SizedBox(width: 150, height: 150, child: pw.Image(stamp, fit: pw.BoxFit.contain)),
-        pw.Spacer(), pw.Text('OPTIK LENTERA • Jelas Melihat, Cerah Masa Depan', style: const pw.TextStyle(fontSize: 8, color: ink)),
+        pw.SizedBox(height: 28), pw.SizedBox(width: 150, height: 150, child: qr(o.invoiceNumber)),
+        pw.Spacer(), pw.Text('Pindai QR untuk membaca nomor invoice: ' + o.invoiceNumber, style: const pw.TextStyle(fontSize: 8, color: ink)),
       ]),
     )));
     await Printing.layoutPdf(name: 'Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => pdf.save());
@@ -130,7 +127,7 @@ class OptikPdfService {
             pair('Metode pembayaran', p.method), pair('Keterangan', p.note), pair('Total tagihan', money(o.total)),
             pair('Total dibayar', money(paid)), pair('Sisa tagihan', money(remaining)),
           ])),
-          pw.SizedBox(width: 25), pw.SizedBox(width: 105, height: 105, child: pw.Image(stamp, fit: pw.BoxFit.contain)),
+          pw.SizedBox(width: 25), pw.SizedBox(width: 105, height: 105, child: qr(o.invoiceNumber + '|' + receiptNumber)),
         ]),
         pw.Spacer(), pw.Center(child: pw.Text('Terima kasih atas pembayaran Anda. Simpan kuitansi ini sebagai bukti pembayaran.', style: const pw.TextStyle(fontSize: 8, color: ink))),
         pw.SizedBox(height: 5), pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
