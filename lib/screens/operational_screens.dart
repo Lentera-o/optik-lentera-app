@@ -128,8 +128,23 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
       return;
     }
+
+    // Snapshot invoice sebelum pengiriman agar hasil yang diverifikasi benar-benar baru.
+    final beforeInvoices = <String>{};
+    try {
+      final existing = await SheetsReadService.readTable('DATA_PESANAN');
+      for (final row in existing) {
+        for (final key in ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) {
+          final value = row.entries.where((e) => e.key.trim().toLowerCase() == key.toLowerCase()).map((e) => e.value.trim()).firstWhere((v) => v.isNotEmpty, orElse: () => '');
+          if (value.isNotEmpty) { beforeInvoices.add(value); break; }
+        }
+      }
+    } catch (_) {
+      // Form tetap dapat dikirim; status pemrosesan nanti tidak akan diklaim terverifikasi.
+    }
+
     setState(() => submitting = true);
-    final opened = await ApiService.openOrderForm({
+    final accepted = await ApiService.openOrderForm({
       '1324477027': customer.text,
       '539015243': phone.text,
       '1777754745': address.text,
@@ -156,13 +171,49 @@ class _TransactionScreenState extends State<TransactionScreen> {
       '1188539863': invoiceNote.text,
       '1492024415': method,
     });
+
+    String? verifiedInvoice;
+    if (accepted && beforeInvoices.isNotEmpty) {
+      for (var attempt = 0; attempt < 6; attempt++) {
+        await Future.delayed(const Duration(seconds: 2));
+        try {
+          final rows = await SheetsReadService.readTable('DATA_PESANAN');
+          for (final row in rows) {
+            String cell(List<String> aliases) {
+              for (final alias in aliases) {
+                for (final entry in row.entries) {
+                  if (entry.key.trim().toLowerCase() == alias.toLowerCase() && entry.value.trim().isNotEmpty) return entry.value.trim();
+                }
+              }
+              return '';
+            }
+            final number = cell(['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
+            final name = cell(['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+            final rowTotal = int.tryParse(cell(['Total', 'Total Harga', 'Total Tagihan', 'Total harga']).replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
+            if (number.isNotEmpty && !beforeInvoices.contains(number) &&
+                name.toLowerCase() == customer.text.trim().toLowerCase() &&
+                rowTotal == total) {
+              verifiedInvoice = number;
+              break;
+            }
+          }
+        } catch (_) {
+          // Coba lagi sampai batas polling tercapai.
+        }
+        if (verifiedInvoice != null) break;
+      }
+    }
+
     if (!mounted) return;
     setState(() => submitting = false);
+    final message = !accepted
+        ? 'Google Forms belum mengonfirmasi penerimaan pesanan. Periksa koneksi sebelum mencoba lagi.'
+        : verifiedInvoice != null
+            ? 'Pesanan terverifikasi di DATA_PESANAN. Invoice: $verifiedInvoice'
+            : 'Google Forms menerima jawaban, tetapi invoice baru belum terlihat di DATA_PESANAN. Jangan kirim ulang dulu; sinkronkan kembali beberapa saat lagi.';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(opened
-          ? 'Pesanan berhasil dikirim ke sistem resmi. Nomor invoice akan dibuat oleh Apps Script.'
-          : 'Pesanan belum terkonfirmasi terkirim. Periksa koneksi dan coba lagi.'),
-      duration: const Duration(seconds: 6),
+      content: Text(message),
+      duration: const Duration(seconds: 8),
     ));
   }
 
@@ -453,8 +504,20 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       return;
     }
     final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
+
+    final beforeReceipts = <String>{};
+    try {
+      final existing = await SheetsReadService.readTable('DATA_PEMBAYARAN');
+      for (final row in existing) {
+        final receipt = _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']);
+        if (receipt.isNotEmpty) beforeReceipts.add(receipt);
+      }
+    } catch (_) {
+      // Tanpa snapshot, tidak mungkin membuktikan bahwa kuitansi yang muncul adalah transaksi baru.
+    }
+
     setState(() => submitting = true);
-    final opened = await ApiService.openPaymentForm({
+    final accepted = await ApiService.openPaymentForm({
       '1667531169': invoice.text,
       '266758159': date,
       '448728880': value.toString(),
@@ -462,13 +525,45 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       '1651033565': category,
       '284716454': paymentNote.text,
     });
+
+    String? verifiedReceipt;
+    if (accepted && beforeReceipts.isNotEmpty) {
+      for (var attempt = 0; attempt < 6; attempt++) {
+        await Future.delayed(const Duration(seconds: 2));
+        try {
+          final rows = await SheetsReadService.readTable('DATA_PEMBAYARAN');
+          for (final row in rows) {
+            final rowInvoice = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
+            final receipt = _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']);
+            final amountText = _cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran']);
+            final rowAmount = _money(amountText);
+            if (rowInvoice == invoice.text.trim() && receipt.isNotEmpty &&
+                !beforeReceipts.contains(receipt) && rowAmount == value) {
+              verifiedReceipt = receipt;
+              break;
+            }
+          }
+        } catch (_) {
+          // Coba lagi sampai batas polling tercapai.
+        }
+        if (verifiedReceipt != null) break;
+      }
+    }
+
     if (!mounted) return;
     setState(() => submitting = false);
+    if (verifiedReceipt != null) {
+      await _loadOfficialInvoices();
+    }
+    if (!mounted) return;
+    final message = !accepted
+        ? 'Google Forms belum mengonfirmasi penerimaan pembayaran. Periksa koneksi sebelum mencoba lagi.'
+        : verifiedReceipt != null
+            ? 'Pembayaran terverifikasi di DATA_PEMBAYARAN. Kuitansi: $verifiedReceipt'
+            : 'Google Forms menerima jawaban, tetapi kuitansi baru belum terlihat di DATA_PEMBAYARAN. Jangan kirim ulang dulu; sinkronkan kembali beberapa saat lagi.';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(opened
-          ? 'Pembayaran berhasil dikirim ke sistem resmi. Apps Script akan memvalidasi sisa tagihan.'
-          : 'Pembayaran belum terkonfirmasi terkirim. Periksa koneksi dan coba lagi.'),
-      duration: const Duration(seconds: 6),
+      content: Text(message),
+      duration: const Duration(seconds: 8),
     ));
   }
 
