@@ -2,7 +2,7 @@ name: Flutter Android CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/read-only-sheet-sync]
   pull_request:
     branches: [main, test/pdf-qr-layout]
   workflow_dispatch:
