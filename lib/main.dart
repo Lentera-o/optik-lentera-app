@@ -48,12 +48,14 @@ class _MainScreenState extends State<MainScreen> {
   int selectedIndex = 0;
   final List<Customer> customers = [];
   final List<OptikOrder> orders = [];
+  final List<OptikPayment> payments = [];
 
   final List<String> navigation = [
     'Beranda',
     'Transaksi',
     'Pelanggan',
     'Lainnya',
+    'Pembayaran',
   ];
 
   @override
@@ -102,6 +104,8 @@ class _MainScreenState extends State<MainScreen> {
           0 => DashboardContent(onOpenModule: (index) => setState(() => selectedIndex = index)),
           1 => TransactionScreen(orders: orders, onAdd: (order) => setState(() => orders.add(order))),
           2 => CustomerScreen(customers: customers, onAdd: (customer) => setState(() => customers.add(customer))),
+          3 => OtherContent(title: navigation[selectedIndex]),
+          4 => PaymentEntryScreen(payments: payments, onAdd: (payment) => setState(() => payments.add(payment))),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
@@ -132,6 +136,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.grid_view_outlined),
             selectedIcon: Icon(Icons.grid_view, color: darkGold),
             label: 'Lainnya',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.payments_outlined),
+            selectedIcon: Icon(Icons.payments, color: darkGold),
+            label: 'Bayar',
           ),
         ],
       ),
@@ -247,6 +256,8 @@ class DashboardContent extends StatelessWidget {
                     onOpenModule(2);
                   } else if (module.title == 'Pemesanan' || module.title == 'Pemeriksaan Mata') {
                     onOpenModule(1);
+                  } else if (module.title == 'Pembayaran') {
+                    onOpenModule(4);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('${module.title} sedang disiapkan.')),
