@@ -129,7 +129,25 @@ class OptikPdfService {
     return pdf.save();
   }
 
-  static String terbilang(int value) {\n    const words = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];\n    String say(int n) {\n      if (n < 12) return words[n];\n      if (n < 20) return say(n - 10) + ' belas';\n      if (n < 100) return say(n ~/ 10) + ' puluh ' + say(n % 10);\n      if (n < 200) return 'seratus ' + say(n - 100);\n      if (n < 1000) return say(n ~/ 100) + ' ratus ' + say(n % 100);\n      if (n < 2000) return 'seribu ' + say(n - 1000);\n      if (n < 1000000) return say(n ~/ 1000) + ' ribu ' + say(n % 1000);\n      if (n < 1000000000) return say(n ~/ 1000000) + ' juta ' + say(n % 1000000);\n      if (n < 1000000000000) return say(n ~/ 1000000000) + ' miliar ' + say(n % 1000000000);\n      return say(n ~/ 1000000000000) + ' triliun ' + say(n % 1000000000000);\n    }\n    final n = value.abs();\n    return (n == 0 ? 'nol' : say(n)).replaceAll(RegExp(r'\\s+'), ' ').trim();\n  }\n\n  static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
+  static String terbilang(int value) {
+    const words = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+    String say(int n) {
+      if (n < 12) return words[n];
+      if (n < 20) return say(n - 10) + ' belas';
+      if (n < 100) return say(n ~/ 10) + ' puluh ' + say(n % 10);
+      if (n < 200) return 'seratus ' + say(n - 100);
+      if (n < 1000) return say(n ~/ 100) + ' ratus ' + say(n % 100);
+      if (n < 2000) return 'seribu ' + say(n - 1000);
+      if (n < 1000000) return say(n ~/ 1000) + ' ribu ' + say(n % 1000);
+      if (n < 1000000000) return say(n ~/ 1000000) + ' juta ' + say(n % 1000000);
+      if (n < 1000000000000) return say(n ~/ 1000000000) + ' miliar ' + say(n % 1000000000);
+      return say(n ~/ 1000000000000) + ' triliun ' + say(n % 1000000000000);
+    }
+    final n = value.abs();
+    return (n == 0 ? 'nol' : say(n)).replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
     final bytes = await invoiceBytes(o, paid: paid, remaining: remaining);
     await Printing.layoutPdf(name: 'UJI_Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => bytes);
   }
@@ -157,7 +175,7 @@ class OptikPdfService {
             pair('Total dibayar', money(paid)), pair('Sisa tagihan', money(remaining)),
           ])),
           pw.SizedBox(width: 25),
-          pw.Container(width: 110, padding: const pw.EdgeInsets.all(8), decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line)), child: pw.Text('OPTIK LENTERA\\nJernih Melihat, Nyaman Melangkah.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8, color: ink))),
+          pw.Container(width: 110, padding: const pw.EdgeInsets.all(8), decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line)), child: pw.Text('OPTIK LENTERA\nJernih Melihat, Nyaman Melangkah.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8, color: ink))),
         ]),
         pw.Spacer(), pw.Center(child: pw.Text('Terima kasih atas pembayaran Anda. Simpan kuitansi ini sebagai bukti pembayaran.', style: const pw.TextStyle(fontSize: 8, color: ink))),
         pw.SizedBox(height: 5), pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
