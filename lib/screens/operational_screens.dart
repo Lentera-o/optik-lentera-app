@@ -455,45 +455,16 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   }
 
   Future<void> _shareInvoiceAndReceipt() async {
-    final order = selectedOrder;
-    if (order == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih invoice terlebih dahulu.')));
-      return;
-    }
-    final related = widget.payments.where((p) => p.invoiceNumber == order.invoiceNumber).toList()
-      ..sort((a, b) => a.paymentDate.compareTo(b.paymentDate));
-    final receiptPayments = <OptikPayment>[
-      if (order.initialPayment > 0)
-        OptikPayment(invoiceNumber: order.invoiceNumber, paymentDate: order.orderDate ?? DateTime.now(),
-          amount: order.initialPayment, method: order.initialPaymentMethod, note: 'DP awal'),
-      ...related,
-    ];
-    if (receiptPayments.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belum ada pembayaran, jadi kuitansi belum dapat dibuat.')));
-      return;
-    }
-    final paid = order.initialPayment + related.fold<int>(0, (sum, p) => sum + p.amount);
-    final remaining = (order.total - paid).clamp(0, order.total);
-    final payment = receiptPayments.last;
-    final receiptNumber = _receiptNumber(payment.paymentDate, receiptPayments.length);
-    final paidAtReceipt = receiptPayments.fold<int>(0, (sum, item) => sum + item.amount);
-    try {
-      final invoiceBytes = await OptikPdfService.invoiceBytes(order, paid: paid, remaining: remaining);
-      final receiptBytes = await OptikPdfService.receiptBytes(order, payment,
-        receiptNumber: receiptNumber, paid: paidAtReceipt,
-        remaining: (order.total - paidAtReceipt).clamp(0, order.total));
-      await SharePlus.instance.share(ShareParams(
-        subject: 'Dokumen OPTIK LENTERA • ${order.invoiceNumber}',
-        text: message.text.trim().isEmpty ? 'Invoice dan kuitansi OPTIK LENTERA.' : message.text.trim(),
-        files: [
-          XFile.fromData(invoiceBytes, mimeType: 'application/pdf', name: 'Invoice_${order.invoiceNumber}.pdf'),
-          XFile.fromData(receiptBytes, mimeType: 'application/pdf', name: 'Kuitansi_${receiptNumber}.pdf'),
-        ],
-      ));
-    } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Dokumen belum berhasil disiapkan untuk dibagikan: $error')));
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Invoice dan kuitansi resmi harus berasal dari PDF Apps Script di Drive. '
+          'Fitur berbagi PDF aplikasi menunggu sinkronisasi resmi agar nomor, QR, dan desain tidak keliru.',
+        ),
+        duration: Duration(seconds: 5),
+      ),
+    );
   }
 
   Future<void> _openWhatsApp() async {
@@ -663,29 +634,19 @@ class InvoiceReceiptScreen extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(backgroundColor: _darkGold),
-                    onPressed: () => OptikPdfService.invoice(order, paid: paid, remaining: remaining < 0 ? 0 : remaining),
+                    onPressed: null,
                     icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: const Text('Cetak / Bagikan Invoice PDF'),
+                    label: const Text('Invoice PDF resmi — menunggu sinkronisasi Apps Script'),
                   ),
                 ),
                 const SizedBox(height: 6),
-                if (receiptPayments.isNotEmpty)
-                  ...receiptPayments.asMap().entries.map((entry) {
-                    final payment = entry.value;
-                    final receiptNo = _receiptNumber(payment.paymentDate, entry.key + 1);
-                    final paidAtReceipt = receiptPayments.take(entry.key + 1).fold<int>(0, (sum, item) => sum + item.amount);
-                    final balanceAtReceipt = order.total - paidAtReceipt;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: OutlinedButton.icon(
-                        onPressed: () => OptikPdfService.receipt(order, payment, receiptNumber: receiptNo, paid: paidAtReceipt, remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt),
-                        icon: const Icon(Icons.receipt_long_outlined),
-                        label: Text('Cetak / Bagikan Kuitansi $receiptNo'),
-                      ),
-                    );
-                  }),
                 const SizedBox(height: 8),
-                const Text('PDF ini dibuat dari draft sesi aplikasi. Untuk dokumen resmi tersimpan di Drive dan sinkronisasi database, transaksi tetap harus masuk melalui backend aktif.', style: TextStyle(color: Colors.black54, fontSize: 11)),
+                const Text(
+                  'Kuitansi resmi dan nomor kuitansi dibuat oleh Apps Script setelah pembayaran tercatat. '
+                  'PDF buatan lokal dan nomor sementara tidak digunakan.',
+                  style: TextStyle(color: Colors.black54, fontSize: 11),
+                ),
+
               ],
             ),
           );
