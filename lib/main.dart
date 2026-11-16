@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'services/api_service.dart';
 
 void main() {
   runApp(const OptikLenteraApp());
@@ -276,57 +275,11 @@ class DashboardContent extends StatelessWidget {
 }
 
 
-class BackendStatusCard extends StatefulWidget {
+class BackendStatusCard extends StatelessWidget {
   const BackendStatusCard({super.key});
 
   @override
-  State<BackendStatusCard> createState() => _BackendStatusCardState();
-}
-
-class _BackendStatusCardState extends State<BackendStatusCard> {
-  bool _checking = true;
-  bool _connected = false;
-  String _message = 'Memeriksa koneksi backend...';
-
-  @override
-  void initState() {
-    super.initState();
-    _checkConnection();
-  }
-
-  Future<void> _checkConnection() async {
-    if (mounted) {
-      setState(() {
-        _checking = true;
-        _message = 'Memeriksa koneksi backend...';
-      });
-    }
-    try {
-      final response = await ApiService.get();
-      if (!mounted) return;
-      setState(() {
-        _connected = response.isSuccessful;
-        _checking = false;
-        _message = response.isSuccessful
-            ? 'Backend Google Apps Script merespons.'
-            : 'Backend merespons dengan status ${response.statusCode}.';
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _connected = false;
-        _checking = false;
-        _message = 'Belum dapat menghubungi backend. Periksa koneksi internet.';
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final statusColor = _checking
-        ? gold
-        : (_connected ? const Color(0xFF38845B) : const Color(0xFFB65B55));
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
@@ -335,41 +288,30 @@ class _BackendStatusCardState extends State<BackendStatusCard> {
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: gold.withValues(alpha: 0.25)),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          Icon(
-            _checking
-                ? Icons.sync
-                : (_connected ? Icons.cloud_done_outlined : Icons.cloud_off_outlined),
-            color: statusColor,
-            size: 25,
-          ),
-          const SizedBox(width: 11),
+          Icon(Icons.info_outline, color: darkGold, size: 25),
+          SizedBox(width: 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _checking ? 'STATUS BACKEND' : (_connected ? 'BACKEND AKTIF' : 'BACKEND BELUM TERHUBUNG'),
+                  'INTEGRASI BACKEND',
                   style: TextStyle(
-                    color: statusColor,
+                    color: darkGold,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 3),
+                SizedBox(height: 3),
                 Text(
-                  _message,
-                  style: const TextStyle(color: ink, fontSize: 11),
+                  'Endpoint doGet digunakan untuk verifikasi invoice/kuitansi. API transaksi Flutter perlu kontrak terpisah yang sudah diverifikasi.',
+                  style: TextStyle(color: ink, fontSize: 11),
                 ),
               ],
             ),
-          ),
-          IconButton(
-            tooltip: 'Periksa ulang',
-            onPressed: _checking ? null : _checkConnection,
-            icon: const Icon(Icons.refresh, color: darkGold),
           ),
         ],
       ),
