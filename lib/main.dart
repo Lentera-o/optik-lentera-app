@@ -110,7 +110,7 @@ class _MainScreenState extends State<MainScreen> {
           1 => TransactionScreen(orders: orders, onAdd: (order) => setState(() => orders.add(order))),
           2 => CustomerScreen(customers: customers, onAdd: (customer) => setState(() => customers.add(customer))),
           3 => OtherContent(title: navigation[selectedIndex]),
-          4 => PaymentEntryScreen(payments: payments, onAdd: (payment) => setState(() => payments.add(payment))),
+          4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: (payment) => setState(() => payments.add(payment))),
           5 => InvoiceReceiptScreen(orders: orders, payments: payments),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
