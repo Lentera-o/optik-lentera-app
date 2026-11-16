@@ -111,6 +111,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
     });
   }
 
+  bool submitting = false;
+
   int amount(TextEditingController c) => int.tryParse(c.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
   @override
@@ -120,11 +122,13 @@ class _TransactionScreenState extends State<TransactionScreen> {
   }
 
   Future<void> save() async {
+    if (submitting) return;
     final total = amount(frame) + amount(lens) + amount(otherPrice);
     if (customer.text.trim().isEmpty || total <= 0 || amount(dp) > total) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
       return;
     }
+    setState(() => submitting = true);
     final opened = await ApiService.openOrderForm({
       '1324477027': customer.text,
       '539015243': phone.text,
@@ -153,10 +157,11 @@ class _TransactionScreenState extends State<TransactionScreen> {
       '1492024415': method,
     });
     if (!mounted) return;
+    setState(() => submitting = false);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(opened
-          ? 'Form Pesanan resmi terbuka. Periksa seluruh data lalu tekan Kirim. Nomor invoice resmi dibuat oleh sistem lama.'
-          : 'Google Form tidak dapat dibuka. Coba lagi.'),
+          ? 'Pesanan berhasil dikirim ke sistem resmi. Nomor invoice akan dibuat oleh Apps Script.'
+          : 'Pesanan belum terkonfirmasi terkirim. Periksa koneksi dan coba lagi.'),
       duration: const Duration(seconds: 6),
     ));
   }
@@ -226,7 +231,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Lanjutkan ke Form Pesanan resmi'),
+        onPressed: submitting ? null : save, icon: const Icon(Icons.save_outlined), label: Text(submitting ? 'Mengirim pesanan…' : 'Simpan Pesanan'),
       )),
     ])),
     const SizedBox(height: 18),
@@ -310,7 +315,7 @@ class _LocalNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.only(top: 14, bottom: 12),
-    child: Text('Data pelanggan manual tersimpan di perangkat. Invoice dan kuitansi resmi dibaca dari Google Sheets; pengiriman transaksi tetap melalui Google Form dan Apps Script resmi.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+    child: Text('Data transaksi dikirim langsung dari aplikasi ke Google Forms resmi; trigger Apps Script tetap memprosesnya. Invoice dan kuitansi resmi dibaca dari Google Sheets.', style: TextStyle(fontSize: 11, color: Colors.black54)),
   );
 }
 
@@ -438,13 +443,17 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     if (picked != null && mounted) setState(() => paymentDate = picked);
   }
 
+  bool submitting = false;
+
   Future<void> save() async {
+    if (submitting) return;
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     if (invoice.text.trim().isEmpty || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
       return;
     }
     final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
+    setState(() => submitting = true);
     final opened = await ApiService.openPaymentForm({
       '1667531169': invoice.text,
       '266758159': date,
@@ -454,10 +463,11 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       '284716454': paymentNote.text,
     });
     if (!mounted) return;
+    setState(() => submitting = false);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(opened
-          ? 'Form Pembayaran resmi terbuka. Periksa invoice dan nominal, lalu tekan Kirim. Sistem lama akan memvalidasi sisa tagihan.'
-          : 'Google Form tidak dapat dibuka. Coba lagi.'),
+          ? 'Pembayaran berhasil dikirim ke sistem resmi. Apps Script akan memvalidasi sisa tagihan.'
+          : 'Pembayaran belum terkonfirmasi terkirim. Periksa koneksi dan coba lagi.'),
       duration: const Duration(seconds: 6),
     ));
   }
@@ -582,7 +592,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Lanjutkan ke Form Pembayaran resmi'),
+        onPressed: submitting ? null : save, icon: const Icon(Icons.save_outlined), label: Text(submitting ? 'Mengirim pembayaran…' : 'Simpan Pembayaran'),
       )),
     ])),
     const SizedBox(height: 18),
