@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 import '../services/api_service.dart';
+import '../services/sheets_read_service.dart';
 
 const _gold = Color(0xFFB99555);
 const _darkGold = Color(0xFF80612F);
@@ -325,6 +326,78 @@ class PaymentEntryScreen extends StatefulWidget {
 
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
+  List<Map<String, String>> officialInvoices = [];
+  bool loadingInvoices = false;
+  String? invoiceSyncError;
+
+  String _cell(Map<String, String> row, List<String> aliases) {
+    for (final alias in aliases) {
+      for (final entry in row.entries) {
+        if (entry.key.trim().toLowerCase() == alias.toLowerCase() &&
+            entry.value.trim().isNotEmpty) {
+          return entry.value.trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  int _money(String value) =>
+      int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOfficialInvoices();
+  }
+
+  Future<void> _loadOfficialInvoices() async {
+    if (mounted) setState(() {
+      loadingInvoices = true;
+      invoiceSyncError = null;
+    });
+    try {
+      final rows = await SheetsReadService.readTable('DATA_PESANAN');
+      final mapped = <Map<String, String>>[];
+      for (final row in rows) {
+        final number = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
+        if (number.isEmpty) continue;
+        final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+        final totalText = _cell(row, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
+        final paidText = _cell(row, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
+        final remainingText = _cell(row, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
+        final total = _money(totalText);
+        final paid = _money(paidText);
+        final remaining = remainingText.isNotEmpty
+            ? _money(remainingText)
+            : (total > 0 ? (total - paid).clamp(0, total) : 0);
+        mapped.add({
+          'invoice': number,
+          'name': name,
+          'total': total.toString(),
+          'paid': paid.toString(),
+          'remaining': remaining.toString(),
+          'status': _cell(row, ['Status', 'Status Pembayaran']),
+        });
+      }
+      mapped.sort((a, b) => b['invoice']!.compareTo(a['invoice']!));
+      if (!mounted) return;
+      setState(() {
+        officialInvoices = mapped;
+        loadingInvoices = false;
+        if (invoice.text.trim().isNotEmpty &&
+            !mapped.any((item) => item['invoice'] == invoice.text.trim())) {
+          invoice.clear();
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        loadingInvoices = false;
+        invoiceSyncError = error.toString();
+      });
+    }
+  }
   final nominal = TextEditingController();
   final paymentNote = TextEditingController();
   DateTime paymentDate = DateTime.now();
@@ -368,7 +441,68 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const _Intro('Pembayaran', 'Catat pembayaran lanjutan sesuai nomor invoice.', Icons.payments_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(children: [
-      _field(invoice, 'Nomor invoice *'),
+      if (officialInvoices.isNotEmpty)
+        DropdownButtonFormField<String>(
+          value: officialInvoices.any((item) => item['invoice'] == invoice.text)
+              ? invoice.text
+              : null,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: 'Pilih nomor invoice resmi *',
+            helperText: 'Daftar diambil langsung dari DATA_PESANAN.',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          items: officialInvoices.map((item) {
+            final remaining = _money(item['remaining'] ?? '');
+            final title = item['invoice']!;
+            final customerName = item['name'] ?? '';
+            return DropdownMenuItem<String>(
+              value: title,
+              child: Text(
+                customerName.isEmpty
+                    ? title
+                    : '$title • $customerName • Sisa Rp $remaining',
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) setState(() => invoice.text = value);
+          },
+        )
+      else
+        _field(invoice, 'Nomor invoice *'),
+      if (loadingInvoices)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: LinearProgressIndicator(minHeight: 2),
+        ),
+      if (invoiceSyncError != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(children: [
+            Expanded(
+              child: Text(
+                'Daftar invoice belum tersinkron: $invoiceSyncError',
+                style: const TextStyle(fontSize: 11, color: Colors.deepOrange),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Muat ulang invoice',
+              onPressed: _loadOfficialInvoices,
+              icon: const Icon(Icons.refresh),
+            ),
+          ]),
+        )
+      else if (officialInvoices.isEmpty && !loadingInvoices)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _loadOfficialInvoices,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Muat ulang daftar invoice'),
+          ),
+        ),
       ListTile(contentPadding: EdgeInsets.zero, title: const Text('Tanggal pembayaran'), subtitle: Text(paymentDate.toString().split(' ').first), trailing: const Icon(Icons.calendar_month_outlined, color: _darkGold), onTap: choosePaymentDate),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
       DropdownButtonFormField<String>(
