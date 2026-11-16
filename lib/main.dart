@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/api_service.dart';
 import 'models/optik_models.dart';
@@ -49,6 +52,56 @@ class _MainScreenState extends State<MainScreen> {
   final List<Customer> customers = [];
   final List<OptikOrder> orders = [];
   final List<OptikPayment> payments = [];
+  bool _loadingLocalData = true;
+  bool _localDataReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocalData();
+  }
+
+  Future<void> _loadLocalData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final customerData = jsonDecode(prefs.getString('ol_customers') ?? '[]') as List<dynamic>;
+      final orderData = jsonDecode(prefs.getString('ol_orders') ?? '[]') as List<dynamic>;
+      final paymentData = jsonDecode(prefs.getString('ol_payments') ?? '[]') as List<dynamic>;
+      customers.addAll(customerData.map((item) => Customer.fromJson(Map<String, dynamic>.from(item as Map))));
+      orders.addAll(orderData.map((item) => OptikOrder.fromJson(Map<String, dynamic>.from(item as Map))));
+      payments.addAll(paymentData.map((item) => OptikPayment.fromJson(Map<String, dynamic>.from(item as Map))));
+    } catch (_) {
+      // Data sesi tetap bisa dipakai bila cache versi lama tidak bisa dibaca.
+    }
+    if (!mounted) return;
+    setState(() {
+      _localDataReady = true;
+      _loadingLocalData = false;
+    });
+  }
+
+  Future<void> _saveLocalData() async {
+    if (!_localDataReady) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ol_customers', jsonEncode(customers.map((item) => item.toJson()).toList()));
+    await prefs.setString('ol_orders', jsonEncode(orders.map((item) => item.toJson()).toList()));
+    await prefs.setString('ol_payments', jsonEncode(payments.map((item) => item.toJson()).toList()));
+  }
+
+  void _addCustomer(Customer value) {
+    setState(() => customers.add(value));
+    _saveLocalData();
+  }
+
+  void _addOrder(OptikOrder value) {
+    setState(() => orders.add(value));
+    _saveLocalData();
+  }
+
+  void _addPayment(OptikPayment value) {
+    setState(() => payments.add(value));
+    _saveLocalData();
+  }
 
   final List<String> navigation = [
     'Beranda',
@@ -101,16 +154,18 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
       body: SafeArea(
-        child: switch (selectedIndex) {
+        child: _loadingLocalData
+            ? const Center(child: CircularProgressIndicator(color: darkGold))
+            : switch (selectedIndex) {
           0 => DashboardContent(
             onOpenModule: (index) => setState(() => selectedIndex = index),
             orderCount: orders.length,
             paymentTotal: payments.fold<int>(0, (sum, item) => sum + item.amount),
           ),
-          1 => TransactionScreen(orders: orders, onAdd: (order) => setState(() => orders.add(order))),
-          2 => CustomerScreen(customers: customers, onAdd: (customer) => setState(() => customers.add(customer))),
+          1 => TransactionScreen(orders: orders, onAdd: _addOrder),
+          2 => CustomerScreen(customers: customers, onAdd: _addCustomer),
           3 => OtherContent(title: navigation[selectedIndex]),
-          4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: (payment) => setState(() => payments.add(payment))),
+          4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
           5 => InvoiceReceiptScreen(orders: orders, payments: payments),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
