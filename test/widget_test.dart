@@ -10,7 +10,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
     expect(find.text('OPTIK LENTERA'), findsWidgets);
-    expect(find.text('Menu Operasional'), findsOneWidget);
-    expect(find.text('Data Pelanggan'), findsOneWidget);
+    expect(find.text('Semua layanan'), findsOneWidget);
+    expect(find.text('Akses cepat'), findsOneWidget);
   });
 }
