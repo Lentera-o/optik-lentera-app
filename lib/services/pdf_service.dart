@@ -28,8 +28,8 @@ class OptikPdfService {
       pw.SizedBox(width: 66, height: 66, child: pw.Image(logo, fit: pw.BoxFit.contain)),
       pw.SizedBox(width: 12),
       pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text('OPTIK LENTERA', style: pw.TextStyle(fontSize: 20, bold: true, color: gold, letterSpacing: 1)),
-        pw.Text('Jelas Melihat, Cerah Masa Depan', style: pw.TextStyle(fontSize: 9, italic: true, color: ink)),
+        pw.Text('OPTIK LENTERA', style: pw.TextStyle(fontSize: 20, font: pw.Font.helveticaBold(), color: gold, letterSpacing: 1)),
+        pw.Text('Jelas Melihat, Cerah Masa Depan', style: pw.TextStyle(fontSize: 9, font: pw.Font.helveticaOblique(), color: ink)),
         pw.Text('Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang', style: const pw.TextStyle(fontSize: 7, color: ink)),
         pw.Text('Telp/WA: 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink)),
       ])),
@@ -38,7 +38,7 @@ class OptikPdfService {
 
   static pw.Widget heading(String title, String sub) => pw.Column(children: [
     pw.SizedBox(height: 12),
-    pw.Text(title, style: pw.TextStyle(fontSize: 19, bold: true, color: gold, letterSpacing: 2)),
+    pw.Text(title, style: pw.TextStyle(fontSize: 19, font: pw.Font.helveticaBold(), color: gold, letterSpacing: 2)),
     pw.SizedBox(height: 3),
     pw.Text(sub, style: const pw.TextStyle(fontSize: 8, color: ink)),
     pw.SizedBox(height: 10),
@@ -48,7 +48,7 @@ class OptikPdfService {
     width: double.infinity, margin: const pw.EdgeInsets.only(top: 8, bottom: 5),
     padding: const pw.EdgeInsets.all(6),
     decoration: const pw.BoxDecoration(color: pink, border: pw.Border(left: pw.BorderSide(color: gold, width: 2))),
-    child: pw.Text(text, style: pw.TextStyle(fontSize: 9, bold: true, color: gold)),
+    child: pw.Text(text, style: pw.TextStyle(fontSize: 9, font: pw.Font.helveticaBold(), color: gold)),
   );
 
   static pw.Widget pair(String label, String? value) => pw.Padding(
@@ -63,7 +63,7 @@ class OptikPdfService {
   static pw.Widget dataTable(List<String> headers, List<List<String>> rows) => pw.Table(
     border: pw.TableBorder.all(color: line, width: .6),
     children: [
-      pw.TableRow(decoration: const pw.BoxDecoration(color: pink), children: headers.map((v) => pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(v, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 8, bold: true, color: gold)))).toList()),
+      pw.TableRow(decoration: const pw.BoxDecoration(color: pink), children: headers.map((v) => pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(v, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 8, font: pw.Font.helveticaBold(), color: gold)))).toList()),
       ...rows.map((r) => pw.TableRow(children: r.map((v) => pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(v.isEmpty ? '-' : v, style: const pw.TextStyle(fontSize: 8, color: ink)))).toList())),
     ],
   );
@@ -97,11 +97,11 @@ class OptikPdfService {
     pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4, margin: const pw.EdgeInsets.all(32), build: (_) => pw.Container(
       color: paper,
       child: pw.Column(children: [
-        brand(), pw.SizedBox(height: 30), pw.Text('KODE QR INVOICE', style: pw.TextStyle(fontSize: 16, bold: true, color: gold)),
+        brand(), pw.SizedBox(height: 30), pw.Text('KODE QR INVOICE', style: pw.TextStyle(fontSize: 16, font: pw.Font.helveticaBold(), color: gold)),
         pw.SizedBox(height: 65),
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceAround, children: [
           pw.Column(children: [pw.Text('Pelanggan'), pw.SizedBox(height: 60), pw.Text('(____________________)')]),
-          pw.Column(children: [pw.Text('Hormat kami,'), pw.SizedBox(height: 60), pw.Text('OPTIK LENTERA', style: pw.TextStyle(bold: true, color: gold))]),
+          pw.Column(children: [pw.Text('Hormat kami,'), pw.SizedBox(height: 60), pw.Text('OPTIK LENTERA', style: pw.TextStyle(font: pw.Font.helveticaBold(), color: gold))]),
         ]),
         pw.SizedBox(height: 28), pw.SizedBox(width: 150, height: 150, child: qr(o.invoiceNumber)),
         pw.Spacer(), pw.Text('Pindai QR untuk membaca nomor invoice: ' + o.invoiceNumber, style: const pw.TextStyle(fontSize: 8, color: ink)),
@@ -121,8 +121,8 @@ class OptikPdfService {
         section('RINCIAN PEMBAYARAN'),
         pw.Container(width: double.infinity, padding: const pw.EdgeInsets.all(13), decoration: pw.BoxDecoration(color: const PdfColor.fromInt(0xFFFFF6DF), border: pw.Border.all(color: line)), child: pw.Column(children: [
           pw.Text('TELAH DITERIMA PEMBAYARAN DARI', style: const pw.TextStyle(fontSize: 9, color: ink)),
-          pw.SizedBox(height: 5), pw.Text(o.customer.name, style: pw.TextStyle(fontSize: 15, bold: true, color: gold)),
-          pw.SizedBox(height: 5), pw.Text(money(p.amount), style: pw.TextStyle(fontSize: 21, bold: true, color: gold)),
+          pw.SizedBox(height: 5), pw.Text(o.customer.name, style: pw.TextStyle(fontSize: 15, font: pw.Font.helveticaBold(), color: gold)),
+          pw.SizedBox(height: 5), pw.Text(money(p.amount), style: pw.TextStyle(fontSize: 21, font: pw.Font.helveticaBold(), color: gold)),
         ])),
         pw.SizedBox(height: 7),
         pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
