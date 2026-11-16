@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:cross_file/cross_file.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 
@@ -561,7 +559,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(18),
     children: [
-      const _Intro('Invoice & Kuitansi', 'Pratinjau dokumen berdasarkan draft transaksi dan pembayaran sesi ini.', Icons.description_outlined),
+      const _Intro('Ringkasan Transaksi', 'Ringkasan data draft lokal. Ini bukan invoice atau kuitansi resmi.', Icons.description_outlined),
       const SizedBox(height: 16),
       if (orders.isEmpty)
         const _Empty('Belum ada draft pesanan. Buat pesanan terlebih dahulu untuk melihat invoice.')
@@ -571,11 +569,6 @@ class InvoiceReceiptScreen extends StatelessWidget {
           final paidLater = related.fold<int>(0, (sum, p) => sum + p.amount);
           final paid = order.initialPayment + paidLater;
           final remaining = order.total - paid;
-          final receiptPayments = <OptikPayment>[
-            if (order.initialPayment > 0)
-              OptikPayment(invoiceNumber: order.invoiceNumber, paymentDate: order.orderDate ?? DateTime.now(), amount: order.initialPayment, method: order.initialPaymentMethod, note: 'DP awal'),
-            ...related,
-          ];
           return Card(
             color: Colors.white,
             margin: const EdgeInsets.only(bottom: 14),
@@ -601,7 +594,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Center(child: Text('OPTIK LENTERA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 18))),
-                      const Center(child: Text('INVOICE • PRATINJAU', style: TextStyle(color: _ink, fontWeight: FontWeight.bold))),
+                      const Center(child: Text('RINGKASAN DRAFT • BUKAN DOKUMEN RESMI', style: TextStyle(color: _ink, fontWeight: FontWeight.bold))),
                       const Divider(height: 22, color: _gold),
                       _docLine('Nomor invoice', order.invoiceNumber),
                       _docLine('Tanggal', _date(order.orderDate)),
@@ -620,7 +613,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                       _docLine('Total dibayar', _rupiah(paid)),
                       _docLine('Sisa tagihan', _rupiah(remaining < 0 ? 0 : remaining), strong: true),
                       const SizedBox(height: 8),
-                      const Text('KUITANSI PEMBAYARAN', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+                      const Text('RIWAYAT PEMBAYARAN DRAFT', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
                       if (order.initialPayment > 0)
                         _docLine('DP awal • ${order.initialPaymentMethod}', _rupiah(order.initialPayment)),
                       ...related.map((p) => _docLine('${_date(p.paymentDate)} • ${p.method}', _rupiah(p.amount))),
@@ -668,6 +661,3 @@ Widget _docLine(String label, String value, {bool strong = false}) => Padding(
   ),
 );
 
-String _receiptNumber(DateTime date, int sequence) {
-  return 'KL-DRAFT-${date.millisecondsSinceEpoch}-${sequence.toString().padLeft(3, '0')}';
-}
