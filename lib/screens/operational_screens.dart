@@ -310,7 +310,7 @@ class _LocalNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.only(top: 14, bottom: 12),
-    child: Text('Data ini masih sementara di memori aplikasi dan belum dikirim ke Google Sheets. Sinkronisasi menunggu pencocokan kontrak API Apps Script yang aktif.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+    child: Text('Data pelanggan manual tersimpan di perangkat. Invoice dan kuitansi resmi dibaca dari Google Sheets; pengiriman transaksi tetap melalui Google Form dan Apps Script resmi.', style: TextStyle(fontSize: 11, color: Colors.black54)),
   );
 }
 
