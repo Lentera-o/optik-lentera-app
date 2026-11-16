@@ -327,6 +327,7 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   List<Map<String, String>> officialInvoices = [];
+  List<Map<String, String>> officialPayments = [];
   bool loadingInvoices = false;
   String? invoiceSyncError;
 
@@ -357,7 +358,20 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       invoiceSyncError = null;
     });
     try {
-      final rows = await SheetsReadService.readTable('DATA_PESANAN');
+      final tables = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN'),
+        SheetsReadService.readTable('DATA_PEMBAYARAN'),
+      ]);
+      final rows = tables[0];
+      final paymentRows = tables[1];
+      final mappedPayments = paymentRows.map((row) => <String, String>{
+        'invoice': _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']),
+        'receipt': _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']),
+        'date': _cell(row, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran']),
+        'amount': _cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran']),
+        'method': _cell(row, ['Metode', 'Metode Pembayaran', 'Metode pembayaran']),
+        'note': _cell(row, ['Catatan', 'Keterangan Pembayaran', 'Catatan Pembayaran']),
+      }).where((item) => item['invoice']!.isNotEmpty).toList();
       final mapped = <Map<String, String>>[];
       for (final row in rows) {
         final number = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
@@ -384,6 +398,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       if (!mounted) return;
       setState(() {
         officialInvoices = mapped;
+        officialPayments = mappedPayments;
         loadingInvoices = false;
         if (invoice.text.trim().isNotEmpty &&
             !mapped.any((item) => item['invoice'] == invoice.text.trim())) {
@@ -406,6 +421,17 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
 
   @override
   void dispose() { invoice.dispose(); nominal.dispose(); paymentNote.dispose(); super.dispose(); }
+
+  Map<String, String>? get selectedOfficialOrder {
+    for (final item in officialInvoices) {
+      if (item['invoice'] == invoice.text.trim()) return item;
+    }
+    return null;
+  }
+
+  List<Map<String, String>> get selectedOfficialPayments =>
+      officialPayments.where((item) => item['invoice'] == invoice.text.trim()).toList()
+        ..sort((a, b) => (b['date'] ?? '').compareTo(a['date'] ?? ''));
 
   Future<void> choosePaymentDate() async {
     final picked = await showDatePicker(context: context, initialDate: paymentDate, firstDate: DateTime(2000), lastDate: DateTime(2100));
@@ -501,6 +527,46 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
             onPressed: _loadOfficialInvoices,
             icon: const Icon(Icons.refresh),
             label: const Text('Muat ulang daftar invoice'),
+          ),
+        ),
+      if (selectedOfficialOrder != null)
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFCF7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _gold.withValues(alpha: .25)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                selectedOfficialOrder!['name'] ?? '',
+                style: const TextStyle(fontWeight: FontWeight.w800, color: _ink),
+              ),
+              const SizedBox(height: 5),
+              Text('Total: Rp ${selectedOfficialOrder!['total']}'),
+              Text('Sudah dibayar: Rp ${selectedOfficialOrder!['paid']}'),
+              Text(
+                'Sisa tagihan: Rp ${selectedOfficialOrder!['remaining']}',
+                style: const TextStyle(fontWeight: FontWeight.w800, color: _darkGold),
+              ),
+              if ((selectedOfficialOrder!['status'] ?? '').isNotEmpty)
+                Text('Status: ${selectedOfficialOrder!['status']}'),
+              if (selectedOfficialPayments.isNotEmpty) ...[
+                const Divider(height: 18),
+                const Text('Riwayat kuitansi resmi', style: TextStyle(fontWeight: FontWeight.w700)),
+                ...selectedOfficialPayments.take(5).map((item) => Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Text(
+                    '${item['date']} • ${item['receipt']} • Rp ${item['amount']} • ${item['method']}',
+                    style: const TextStyle(fontSize: 11, color: Colors.black87),
+                  ),
+                )),
+              ],
+            ],
           ),
         ),
       ListTile(contentPadding: EdgeInsets.zero, title: const Text('Tanggal pembayaran'), subtitle: Text(paymentDate.toString().split(' ').first), trailing: const Icon(Icons.calendar_month_outlined, color: _darkGold), onTap: choosePaymentDate),
