@@ -80,19 +80,20 @@ class OptikPdfService {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             brand(),
-            pw.Center(child: heading('INVOICE', 'PRATINJAU TATA LETAK • QR UJI')),
+            pw.Center(child: heading('INVOICE', 'RESEP KACAMATA & BUKTI PEMBAYARAN')),
             pair('Nomor invoice', o.invoiceNumber),
             pair('Tanggal', date(o.orderDate)),
             pair('Nama pelanggan', o.customer.name),
             pair('No. HP', o.customer.phone),
             pair('Alamat', o.customer.address),
+            pair('Dokter / Optometris', o.prescription.doctor),
             section('01 — RESEP KACAMATA'),
             dataTable(['MATA','SPH','CYL','AXIS','ADD','PD'], [
               ['OD • Kanan',o.prescription.odSph,o.prescription.odCyl,o.prescription.odAxis,o.prescription.odAdd,o.prescription.odPd],
               ['OS • Kiri',o.prescription.osSph,o.prescription.osCyl,o.prescription.osAxis,o.prescription.osAdd,o.prescription.osPd],
             ]),
             pair('Jenis lensa', o.prescription.lensType),
-            pair('Dokter / optometris', o.prescription.doctor),
+            pair('Jenis lensa', o.prescription.lensType),
             pair('Catatan resep', o.prescription.note),
             section('02 — RINCIAN PESANAN'),
             dataTable(['ITEM','KETERANGAN','HARGA'], [
@@ -106,32 +107,18 @@ class OptikPdfService {
             pair('TOTAL DIBAYAR', money(paid)),
             pair('SISA TAGIHAN', money(remaining)),
             pair('Metode DP', o.initialPaymentMethod),
+            pair('Terbilang', terbilang(o.total) + ' rupiah'),
             pair('Catatan', o.note),
             pw.Spacer(),
-            pw.Row(
-              crossAxisAlignment: pw.CrossAxisAlignment.center,
-              children: [
-                pw.Expanded(
-                  child: pw.Container(
-                    padding: const pw.EdgeInsets.all(7),
-                    decoration: pw.BoxDecoration(
-                      color: pink,
-                      borderRadius: pw.BorderRadius.circular(5),
-                    ),
-                    child: pw.Text(
-                      'Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA. Simpan invoice ini sebagai bukti transaksi.',
-                      textAlign: pw.TextAlign.center,
-                      style: const pw.TextStyle(fontSize: 7, color: ink),
-                    ),
-                  ),
-                ),
-                pw.SizedBox(width: 9),
-                pw.Column(children: [
-                  pw.SizedBox(width: 48, height: 48, child: qr(o.invoiceNumber)),
-                  pw.SizedBox(height: 2),
-                  pw.Text('QR UJI • NOMOR INVOICE', style: const pw.TextStyle(fontSize: 5, color: ink)),
-                ]),
-              ],
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line)),
+              child: pw.Text(
+                'Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA. Simpan invoice ini sebagai bukti transaksi.',
+                textAlign: pw.TextAlign.center,
+                style: const pw.TextStyle(fontSize: 7, color: ink),
+              ),
             ),
             pw.SizedBox(height: 5),
             pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 6, color: ink))),
@@ -142,7 +129,7 @@ class OptikPdfService {
     return pdf.save();
   }
 
-  static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
+  static String terbilang(int value) {\n    const words = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];\n    String say(int n) {\n      if (n < 12) return words[n];\n      if (n < 20) return say(n - 10) + ' belas';\n      if (n < 100) return say(n ~/ 10) + ' puluh ' + say(n % 10);\n      if (n < 200) return 'seratus ' + say(n - 100);\n      if (n < 1000) return say(n ~/ 100) + ' ratus ' + say(n % 100);\n      if (n < 2000) return 'seribu ' + say(n - 1000);\n      if (n < 1000000) return say(n ~/ 1000) + ' ribu ' + say(n % 1000);\n      if (n < 1000000000) return say(n ~/ 1000000) + ' juta ' + say(n % 1000000);\n      if (n < 1000000000000) return say(n ~/ 1000000000) + ' miliar ' + say(n % 1000000000);\n      return say(n ~/ 1000000000000) + ' triliun ' + say(n % 1000000000000);\n    }\n    final n = value.abs();\n    return (n == 0 ? 'nol' : say(n)).replaceAll(RegExp(r'\\s+'), ' ').trim();\n  }\n\n  static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
     final bytes = await invoiceBytes(o, paid: paid, remaining: remaining);
     await Printing.layoutPdf(name: 'UJI_Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => bytes);
   }
@@ -152,7 +139,7 @@ class OptikPdfService {
     pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4.landscape, margin: const pw.EdgeInsets.all(26), build: (_) => pw.Container(
       color: paper,
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        brand(), pw.Center(child: heading('KUITANSI', 'DOKUMEN PRATINJAU • BELUM TERSINKRONISASI')),
+        brand(), pw.Center(child: heading('KUITANSI', 'BUKTI PEMBAYARAN OPTIK LENTERA')),
         pw.Row(children: [pw.Expanded(child: pair('Nomor kuitansi', receiptNumber)), pw.SizedBox(width: 16), pw.Expanded(child: pair('Tanggal', date(p.paymentDate)))]),
         pw.Row(children: [pw.Expanded(child: pair('Nomor invoice', o.invoiceNumber)), pw.SizedBox(width: 16), pw.Expanded(child: pair('Nama pelanggan', o.customer.name))]),
         section('RINCIAN PEMBAYARAN'),
@@ -160,6 +147,8 @@ class OptikPdfService {
           pw.Text('TELAH DITERIMA PEMBAYARAN DARI', style: const pw.TextStyle(fontSize: 9, color: ink)),
           pw.SizedBox(height: 5), pw.Text(o.customer.name, style: pw.TextStyle(fontSize: 15, font: pw.Font.helveticaBold(), color: gold)),
           pw.SizedBox(height: 5), pw.Text(money(p.amount), style: pw.TextStyle(fontSize: 21, font: pw.Font.helveticaBold(), color: gold)),
+          pw.SizedBox(height: 4),
+          pw.Text('Terbilang: ' + terbilang(p.amount) + ' rupiah', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8, color: ink)),
         ])),
         pw.SizedBox(height: 7),
         pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
@@ -167,7 +156,8 @@ class OptikPdfService {
             pair('Metode pembayaran', p.method), pair('Keterangan', p.note), pair('Total tagihan', money(o.total)),
             pair('Total dibayar', money(paid)), pair('Sisa tagihan', money(remaining)),
           ])),
-          pw.SizedBox(width: 25), pw.SizedBox(width: 105, height: 105, child: qr(o.invoiceNumber + '|' + receiptNumber)),
+          pw.SizedBox(width: 25),
+          pw.Container(width: 110, padding: const pw.EdgeInsets.all(8), decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line)), child: pw.Text('OPTIK LENTERA\\nJernih Melihat, Nyaman Melangkah.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8, color: ink))),
         ]),
         pw.Spacer(), pw.Center(child: pw.Text('Terima kasih atas pembayaran Anda. Simpan kuitansi ini sebagai bukti pembayaran.', style: const pw.TextStyle(fontSize: 8, color: ink))),
         pw.SizedBox(height: 5), pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
