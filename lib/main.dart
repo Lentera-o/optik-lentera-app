@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'services/api_service.dart';
+import 'models/optik_models.dart';
+import 'screens/operational_screens.dart';
 
 
 void main() {
@@ -44,6 +46,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int selectedIndex = 0;
+  final List<Customer> customers = [];
+  final List<OptikOrder> orders = [];
 
   final List<String> navigation = [
     'Beranda',
@@ -94,9 +98,12 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
       body: SafeArea(
-        child: selectedIndex == 0
-            ? const DashboardContent()
-            : OtherContent(title: navigation[selectedIndex]),
+        child: switch (selectedIndex) {
+          0 => DashboardContent(onOpenModule: (index) => setState(() => selectedIndex = index)),
+          1 => TransactionScreen(orders: orders, onAdd: (order) => setState(() => orders.add(order))),
+          2 => CustomerScreen(customers: customers, onAdd: (customer) => setState(() => customers.add(customer))),
+          _ => OtherContent(title: navigation[selectedIndex]),
+        },
       ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: Colors.white,
@@ -133,7 +140,8 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 class DashboardContent extends StatelessWidget {
-  const DashboardContent({super.key});
+  final ValueChanged<int> onOpenModule;
+  const DashboardContent({super.key, required this.onOpenModule});
 
   @override
   Widget build(BuildContext context) {
@@ -235,13 +243,15 @@ class DashboardContent extends StatelessWidget {
               return InkWell(
                 borderRadius: BorderRadius.circular(16),
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${module.title} akan diaktifkan pada tahap berikutnya.',
-                      ),
-                    ),
-                  );
+                  if (module.title == 'Data Pelanggan') {
+                    onOpenModule(2);
+                  } else if (module.title == 'Pemesanan' || module.title == 'Pemeriksaan Mata') {
+                    onOpenModule(1);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${module.title} sedang disiapkan.')),
+                    );
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(14),
