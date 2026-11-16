@@ -204,8 +204,9 @@ class _LocalNote extends StatelessWidget {
 
 class PaymentEntryScreen extends StatefulWidget {
   final List<OptikPayment> payments;
+  final List<OptikOrder> orders;
   final ValueChanged<OptikPayment> onAdd;
-  const PaymentEntryScreen({super.key, required this.payments, required this.onAdd});
+  const PaymentEntryScreen({super.key, required this.payments, required this.orders, required this.onAdd});
   @override
   State<PaymentEntryScreen> createState() => _PaymentEntryScreenState();
 }
@@ -222,6 +223,20 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     if (invoice.text.trim().isEmpty || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
+      return;
+    }
+    final matches = widget.orders.where((o) => o.invoiceNumber == invoice.text.trim());
+    if (matches.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice tidak ditemukan pada daftar pesanan sesi ini.')));
+      return;
+    }
+    final order = matches.first;
+    final alreadyPaid = order.initialPayment + widget.payments
+        .where((p) => p.invoiceNumber == order.invoiceNumber)
+        .fold<int>(0, (sum, p) => sum + p.amount);
+    final balance = order.total - alreadyPaid;
+    if (balance <= 0 || value > balance) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(balance <= 0 ? 'Invoice sudah lunas.' : 'Pembayaran melebihi sisa tagihan Rp $balance.')));
       return;
     }
     widget.onAdd(OptikPayment(invoiceNumber: invoice.text.trim(), paymentDate: DateTime.now(), amount: value, method: method));
