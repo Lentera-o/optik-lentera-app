@@ -408,8 +408,18 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     if (customer == null) { message.text = ''; return; }
     final name = customer.name;
     final invoice = order?.invoiceNumber ?? '-';
+    final orderPayments = order == null
+        ? <OptikPayment>[]
+        : (widget.payments.where((p) => p.invoiceNumber == order.invoiceNumber).toList()
+          ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate)));
+    final paid = order == null
+        ? 0
+        : order.initialPayment + orderPayments.fold<int>(0, (sum, p) => sum + p.amount);
+    final remainingAmount = order == null ? 0 : (order.total - paid).clamp(0, order.total);
     final total = order == null ? '-' : _rupiah(order.total);
-    final balance = order == null ? '-' : _rupiah(order.remaining);
+    final paidText = order == null ? '-' : _rupiah(paid);
+    final balance = order == null ? '-' : _rupiah(remainingAmount);
+    final lastPayment = orderPayments.isEmpty ? null : orderPayments.first;
     if (template == 'Pesanan siap diambil') {
       message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
     } else if (template == 'Pengingat pembayaran') {
