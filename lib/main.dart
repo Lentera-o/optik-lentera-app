@@ -161,7 +161,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
           1 => TransactionScreen(orders: orders, onAdd: _addOrder),
           2 => CustomerScreen(customers: customers, onAdd: _addCustomer),
-          3 => OtherContent(title: navigation[selectedIndex]),
+          3 => WhatsAppCenterScreen(customers: customers, orders: orders),
           4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
           5 => InvoiceReceiptScreen(orders: orders, payments: payments),
           _ => OtherContent(title: navigation[selectedIndex]),
@@ -191,9 +191,9 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Pelanggan',
           ),
           NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view, color: darkGold),
-            label: 'Lainnya',
+            icon: Icon(Icons.chat_outlined),
+            selectedIcon: Icon(Icons.chat, color: darkGold),
+            label: 'WhatsApp',
           ),
           NavigationDestination(
             icon: Icon(Icons.payments_outlined),
@@ -228,6 +228,7 @@ class DashboardContent extends StatelessWidget {
       _ModuleData('Status Pesanan', Icons.local_shipping_outlined),
       _ModuleData('Laporan', Icons.bar_chart_outlined),
       _ModuleData('Pengaturan', Icons.settings_outlined),
+      _ModuleData('WhatsApp Semi-Otomatis', Icons.chat_outlined),
     ];
 
     return SingleChildScrollView(
@@ -323,6 +324,8 @@ class DashboardContent extends StatelessWidget {
                     onOpenModule(4);
                   } else if (module.title == 'Invoice & Kuitansi') {
                     onOpenModule(5);
+                  } else if (module.title == 'WhatsApp Semi-Otomatis') {
+                    onOpenModule(3);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('${module.title} sedang disiapkan.')),
