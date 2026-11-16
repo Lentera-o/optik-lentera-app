@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import '../assets/optik_brand_assets.dart';
 import '../models/optik_models.dart';
 
 class OptikPdfService {
@@ -9,6 +11,7 @@ class OptikPdfService {
   static const paper = PdfColor.fromInt(0xFFFFF8F7);
   static const line = PdfColor.fromInt(0xFFDDCBA8);
   static const ink = PdfColor.fromInt(0xFF51484A);
+  static pw.MemoryImage get logo => pw.MemoryImage(base64Decode(optikLogoBase64));
   static pw.Widget qr(String value) => pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: value, width: 92, height: 92, drawText: false);
 
   static String money(int n) => 'Rp ' + n.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
@@ -22,7 +25,7 @@ class OptikPdfService {
     padding: const pw.EdgeInsets.only(bottom: 10),
     decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: gold, width: 2))),
     child: pw.Row(children: [
-      pw.SizedBox(width: 66, height: 66, child: pw.Text('OPTIK\nLENTERA', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 12, bold: true, color: gold))),
+      pw.SizedBox(width: 66, height: 66, child: pw.Image(logo, fit: pw.BoxFit.contain)),
       pw.SizedBox(width: 12),
       pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
         pw.Text('OPTIK LENTERA', style: pw.TextStyle(fontSize: 20, bold: true, color: gold, letterSpacing: 1)),
