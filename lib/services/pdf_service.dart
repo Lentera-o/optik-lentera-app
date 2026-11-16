@@ -93,7 +93,6 @@ class OptikPdfService {
               ['OS • Kiri',o.prescription.osSph,o.prescription.osCyl,o.prescription.osAxis,o.prescription.osAdd,o.prescription.osPd],
             ]),
             pair('Jenis lensa', o.prescription.lensType),
-            pair('Jenis lensa', o.prescription.lensType),
             pair('Catatan resep', o.prescription.note),
             section('02 — RINCIAN PESANAN'),
             dataTable(['ITEM','KETERANGAN','HARGA'], [
@@ -149,7 +148,7 @@ class OptikPdfService {
 
   static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
     final bytes = await invoiceBytes(o, paid: paid, remaining: remaining);
-    await Printing.layoutPdf(name: 'UJI_Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => bytes);
+    await Printing.layoutPdf(name: 'Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => bytes);
   }
 
   static Future<Uint8List> receiptBytes(OptikOrder o, OptikPayment p, {required String receiptNumber, required int paid, required int remaining}) async {
