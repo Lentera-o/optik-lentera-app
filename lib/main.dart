@@ -79,13 +79,20 @@ class OptikLenteraApp extends StatelessWidget {
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: Colors.white,
-          indicatorColor: pink.withValues(alpha: .48),
-          height: 68,
+          backgroundColor: const Color(0xFFFFFCF8),
+          indicatorColor: pink.withValues(alpha: .52),
+          height: 70,
+          elevation: 0,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-            fontSize: 10,
+            fontSize: 9.5,
+            letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? darkGold : Colors.black54,
+            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF8A8177),
+          )),
+          iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+            size: 21,
+            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF9A9186),
           )),
         ),
         snackBarTheme: SnackBarThemeData(
@@ -172,6 +179,58 @@ class _MainScreenState extends State<MainScreen> {
     'Dokumen',
   ];
 
+  Future<void> _showMoreMenu() async {
+    final destination = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 26),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFFFCF8),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(color: gold.withValues(alpha: .45), borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text('Menu lainnya', style: TextStyle(color: ink, fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              const Text('Pilih layanan yang ingin dibuka.', style: TextStyle(color: Colors.black54, fontSize: 12)),
+              const SizedBox(height: 16),
+              _MoreMenuTile(
+                icon: Icons.payments_outlined,
+                title: 'Pembayaran',
+                subtitle: 'Catat pembayaran dan pelunasan',
+                onTap: () => Navigator.pop(sheetContext, 4),
+              ),
+              const SizedBox(height: 9),
+              _MoreMenuTile(
+                icon: Icons.description_outlined,
+                title: 'Invoice & Dokumen',
+                subtitle: 'Lihat, cetak, dan bagikan dokumen',
+                onTap: () => Navigator.pop(sheetContext, 5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (destination != null && mounted) {
+      setState(() => selectedIndex = destination);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -226,48 +285,112 @@ class _MainScreenState extends State<MainScreen> {
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: Colors.white,
-        indicatorColor: pink.withValues(alpha: 0.45),
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => selectedIndex = index);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard, color: darkGold),
-            label: 'Beranda',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long, color: darkGold),
-            label: 'Transaksi',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people, color: darkGold),
-            label: 'Pelanggan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.chat_outlined),
-            selectedIcon: Icon(Icons.chat, color: darkGold),
-            label: 'WhatsApp',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.payments_outlined),
-            selectedIcon: Icon(Icons.payments, color: darkGold),
-            label: 'Bayar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.description_outlined),
-            selectedIcon: Icon(Icons.description, color: darkGold),
-            label: 'Dokumen',
-          ),
-        ],
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFCF8),
+          border: Border(top: BorderSide(color: gold.withValues(alpha: .16))),
+          boxShadow: [
+            BoxShadow(color: ink.withValues(alpha: .045), blurRadius: 16, offset: const Offset(0, -5)),
+          ],
+        ),
+        child: NavigationBar(
+          backgroundColor: Colors.transparent,
+          indicatorColor: pink.withValues(alpha: .45),
+          selectedIndex: selectedIndex >= 4 ? 4 : selectedIndex,
+          onDestinationSelected: (index) {
+            if (index == 4) {
+              _showMoreMenu();
+            } else {
+              setState(() => selectedIndex = index);
+            }
+          },
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded, color: darkGold),
+              label: 'Beranda',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long_rounded, color: darkGold),
+              label: 'Transaksi',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.people_outline_rounded),
+              selectedIcon: Icon(Icons.people_rounded, color: darkGold),
+              label: 'Pelanggan',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.chat_bubble_outline_rounded),
+              selectedIcon: Icon(Icons.chat_bubble_rounded, color: darkGold),
+              label: 'WhatsApp',
+            ),
+            NavigationDestination(
+              icon: Icon(selectedIndex >= 4 ? Icons.grid_view_rounded : Icons.grid_view_outlined),
+              selectedIcon: const Icon(Icons.grid_view_rounded, color: darkGold),
+              label: 'Lainnya',
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _MoreMenuTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _MoreMenuTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(18),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: gold.withValues(alpha: .18)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7E8EA),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: darkGold, size: 21),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 11)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: gold),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class DashboardContent extends StatelessWidget {
