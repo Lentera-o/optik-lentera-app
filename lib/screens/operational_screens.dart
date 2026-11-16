@@ -781,7 +781,7 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
   String _rupiah(String value) {
     final amount = _money(value);
     return 'Rp ' + amount.toString().replaceAllMapped(
-      RegExp(r'\\B(?=(\\d{3})+(?!\\d))'),
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
       (match) => '.',
     );
   }
