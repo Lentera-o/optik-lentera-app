@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
+import '../services/api_service.dart';
 
 const _gold = Color(0xFFB99555);
 const _darkGold = Color(0xFF80612F);
@@ -117,31 +118,46 @@ class _TransactionScreenState extends State<TransactionScreen> {
     super.dispose();
   }
 
-  void save() {
+  Future<void> save() async {
     final total = amount(frame) + amount(lens) + amount(otherPrice);
     if (customer.text.trim().isEmpty || total <= 0 || amount(dp) > total) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
       return;
     }
-    widget.onAdd(OptikOrder(
-      invoiceNumber: 'DRAFT-' + DateTime.now().millisecondsSinceEpoch.toString(),
-      orderDate: DateTime.now(),
-      customer: Customer(name: customer.text.trim(), phone: phone.text.trim(), address: address.text.trim()),
-      prescription: EyePrescription(
-        doctor: doctor.text.trim(), lensType: lensType.text.trim(), note: rxNote.text.trim(),
-        odSph: odSph.text, odCyl: odCyl.text, odAxis: odAxis.text, odAdd: odAdd.text, odPd: odPd.text,
-        osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
-      ),
-      frame: OrderItem(description: frameDescription.text.trim(), price: amount(frame)),
-      lens: OrderItem(description: lensDescription.text.trim(), price: amount(lens)),
-      other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
-      initialPayment: amount(dp),
-      initialPaymentMethod: method,
-      note: invoiceNote.text.trim(),
+    final opened = await ApiService.openOrderForm({
+      '1324477027': customer.text,
+      '539015243': phone.text,
+      '1777754745': address.text,
+      '542463507': doctor.text,
+      '1271316087': odSph.text,
+      '1616866281': odCyl.text,
+      '1784427947': odAxis.text,
+      '1558365892': odAdd.text,
+      '940199491': odPd.text,
+      '480078014': osSph.text,
+      '66061879': osCyl.text,
+      '493870905': osAxis.text,
+      '42654846': osAdd.text,
+      '950234578': osPd.text,
+      '684419252': lensType.text,
+      '1481958730': rxNote.text,
+      '686343109': frameDescription.text,
+      '1727076794': amount(frame).toString(),
+      '1326678958': lensDescription.text,
+      '97131819': amount(lens).toString(),
+      '2101353430': otherDescription.text,
+      '1643782415': amount(otherPrice).toString(),
+      '1449005528': amount(dp).toString(),
+      '1188539863': invoiceNote.text,
+      '1492024415': method,
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(opened
+          ? 'Form Pesanan resmi terbuka. Periksa seluruh data lalu tekan Kirim. Nomor invoice resmi dibuat oleh sistem lama.'
+          : 'Google Form tidak dapat dibuka. Coba lagi.'),
+      duration: const Duration(seconds: 6),
     ));
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frameDescription, frame, lensDescription, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
-    setState(() { selectedCustomerIndex = null; });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
 
   @override
@@ -209,7 +225,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan draft pesanan'),
+        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Lanjutkan ke Form Pesanan resmi'),
       )),
     ])),
     const SizedBox(height: 18),
@@ -323,30 +339,28 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     if (picked != null && mounted) setState(() => paymentDate = picked);
   }
 
-  void save() {
+  Future<void> save() async {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     if (invoice.text.trim().isEmpty || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
       return;
     }
-    final matches = widget.orders.where((o) => o.invoiceNumber == invoice.text.trim());
-    if (matches.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice tidak ditemukan pada daftar pesanan sesi ini.')));
-      return;
-    }
-    final order = matches.first;
-    final alreadyPaid = order.initialPayment + widget.payments
-        .where((p) => p.invoiceNumber == order.invoiceNumber)
-        .fold<int>(0, (sum, p) => sum + p.amount);
-    final balance = order.total - alreadyPaid;
-    if (balance <= 0 || value > balance) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(balance <= 0 ? 'Invoice sudah lunas.' : 'Pembayaran melebihi sisa tagihan Rp $balance.')));
-      return;
-    }
-    widget.onAdd(OptikPayment(invoiceNumber: invoice.text.trim(), paymentDate: paymentDate, amount: value, method: method, category: category, note: paymentNote.text.trim()));
-    invoice.clear(); nominal.clear(); paymentNote.clear();
-    setState(() => paymentDate = DateTime.now());
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
+    final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
+    final opened = await ApiService.openPaymentForm({
+      '1667531169': invoice.text,
+      '266758159': date,
+      '448728880': value.toString(),
+      '1530690867': method,
+      '1651033565': category,
+      '284716454': paymentNote.text,
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(opened
+          ? 'Form Pembayaran resmi terbuka. Periksa invoice dan nominal, lalu tekan Kirim. Sistem lama akan memvalidasi sisa tagihan.'
+          : 'Google Form tidak dapat dibuka. Coba lagi.'),
+      duration: const Duration(seconds: 6),
+    ));
   }
 
   @override
@@ -368,7 +382,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Catat pembayaran'),
+        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Lanjutkan ke Form Pembayaran resmi'),
       )),
     ])),
     const SizedBox(height: 18),
