@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, test/pdf-qr-layout]
   workflow_dispatch:
 
 permissions:
