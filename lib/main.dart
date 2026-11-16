@@ -56,6 +56,7 @@ class _MainScreenState extends State<MainScreen> {
     'Pelanggan',
     'Lainnya',
     'Pembayaran',
+    'Dokumen',
   ];
 
   @override
@@ -110,6 +111,7 @@ class _MainScreenState extends State<MainScreen> {
           2 => CustomerScreen(customers: customers, onAdd: (customer) => setState(() => customers.add(customer))),
           3 => OtherContent(title: navigation[selectedIndex]),
           4 => PaymentEntryScreen(payments: payments, onAdd: (payment) => setState(() => payments.add(payment))),
+          5 => InvoiceReceiptScreen(orders: orders, payments: payments),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
@@ -145,6 +147,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.payments_outlined),
             selectedIcon: Icon(Icons.payments, color: darkGold),
             label: 'Bayar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.description_outlined),
+            selectedIcon: Icon(Icons.description, color: darkGold),
+            label: 'Dokumen',
           ),
         ],
       ),
@@ -264,6 +271,8 @@ class DashboardContent extends StatelessWidget {
                     onOpenModule(1);
                   } else if (module.title == 'Pembayaran') {
                     onOpenModule(4);
+                  } else if (module.title == 'Invoice & Kuitansi') {
+                    onOpenModule(5);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('${module.title} sedang disiapkan.')),
