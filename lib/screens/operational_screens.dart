@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:cross_file/cross_file.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 
@@ -431,6 +433,48 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     }
   }
 
+  Future<void> _shareInvoiceAndReceipt() async {
+    final order = selectedOrder;
+    if (order == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih invoice terlebih dahulu.')));
+      return;
+    }
+    final related = widget.payments.where((p) => p.invoiceNumber == order.invoiceNumber).toList()
+      ..sort((a, b) => a.paymentDate.compareTo(b.paymentDate));
+    final receiptPayments = <OptikPayment>[
+      if (order.initialPayment > 0)
+        OptikPayment(invoiceNumber: order.invoiceNumber, paymentDate: order.orderDate ?? DateTime.now(),
+          amount: order.initialPayment, method: order.initialPaymentMethod, note: 'DP awal'),
+      ...related,
+    ];
+    if (receiptPayments.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Belum ada pembayaran, jadi kuitansi belum dapat dibuat.')));
+      return;
+    }
+    final paid = order.initialPayment + related.fold<int>(0, (sum, p) => sum + p.amount);
+    final remaining = (order.total - paid).clamp(0, order.total);
+    final payment = receiptPayments.last;
+    final receiptNumber = _receiptNumber(payment.paymentDate, receiptPayments.length);
+    final paidAtReceipt = receiptPayments.fold<int>(0, (sum, item) => sum + item.amount);
+    try {
+      final invoiceBytes = await OptikPdfService.invoiceBytes(order, paid: paid, remaining: remaining);
+      final receiptBytes = await OptikPdfService.receiptBytes(order, payment,
+        receiptNumber: receiptNumber, paid: paidAtReceipt,
+        remaining: (order.total - paidAtReceipt).clamp(0, order.total));
+      await SharePlus.instance.share(ShareParams(
+        subject: 'Dokumen OPTIK LENTERA • ${order.invoiceNumber}',
+        text: message.text.trim().isEmpty ? 'Invoice dan kuitansi OPTIK LENTERA.' : message.text.trim(),
+        files: [
+          XFile.fromData(invoiceBytes, mimeType: 'application/pdf', name: 'Invoice_${order.invoiceNumber}.pdf'),
+          XFile.fromData(receiptBytes, mimeType: 'application/pdf', name: 'Kuitansi_${receiptNumber}.pdf'),
+        ],
+      ));
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Dokumen belum berhasil disiapkan untuk dibagikan: $error')));
+    }
+  }
+
   Future<void> _openWhatsApp() async {
     final customer = selectedCustomer;
     if (customer == null) {
@@ -489,7 +533,15 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168C54), padding: const EdgeInsets.symmetric(vertical: 14)),
             onPressed: _openWhatsApp, icon: const Icon(Icons.chat), label: const Text('Buka WhatsApp & Tinjau Pesan'))),
           const SizedBox(height: 8),
-          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          SizedBox(width: double.infinity, child: OutlinedButton.icon(
+            onPressed: selectedOrder == null ? null : _shareInvoiceAndReceipt,
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('Bagikan Invoice + Kuitansi PDF'),
+          )),
+          const SizedBox(height: 8),
+          const Text('PDF dibagikan melalui menu berbagi Android. Pilih WhatsApp dan penerima; petugas tetap menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const SizedBox(height: 8),
+          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa lalu menekan tombol Kirim sendiri. WhatsApp akan dibuka agar petugas memeriksa lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
         ])),
       ],
     );
