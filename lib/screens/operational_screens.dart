@@ -158,7 +158,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
       DropdownButtonFormField<String>(
         value: method,
-        decoration: const InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder()),
+        decoration: const InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
         items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/Kredit'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => method = v ?? 'Tunai'),
       ),
@@ -184,13 +184,36 @@ class _Intro extends StatelessWidget {
   final IconData icon;
   const _Intro(this.title, this.subtitle, this.icon);
   @override
-  Widget build(BuildContext context) => Row(children: [
-    Icon(icon, color: _darkGold, size: 30), const SizedBox(width: 12),
-    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title, style: const TextStyle(color: _darkGold, fontWeight: FontWeight.bold, fontSize: 19)),
-      Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-    ])),
-  ]);
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFFFFFCF7), Color(0xFFF8EEF0)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(19),
+      border: Border.all(color: _gold.withValues(alpha: .20)),
+    ),
+    child: Row(children: [
+      Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [BoxShadow(color: _gold.withValues(alpha: .10), blurRadius: 10, offset: const Offset(0, 3))],
+        ),
+        child: Icon(icon, color: _darkGold, size: 25),
+      ),
+      const SizedBox(width: 13),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(color: _darkGold, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: .1)),
+        const SizedBox(height: 3),
+        Text(subtitle, style: const TextStyle(color: Color(0xFF81766E), fontSize: 11, height: 1.35)),
+      ])),
+    ]),
+  );
 }
 
 class _Panel extends StatelessWidget {
@@ -198,15 +221,20 @@ class _Panel extends StatelessWidget {
   const _Panel({required this.child});
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: _gold.withValues(alpha: .3))),
+    padding: const EdgeInsets.all(17),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _gold.withValues(alpha: .20)),
+      boxShadow: [BoxShadow(color: _ink.withValues(alpha: .035), blurRadius: 16, offset: const Offset(0, 5))],
+    ),
     child: child,
   );
 }
 
 Widget _field(TextEditingController c, String label, {TextInputType? type}) => Padding(
   padding: const EdgeInsets.only(bottom: 10),
-  child: TextField(controller: c, keyboardType: type, decoration: InputDecoration(labelText: label, border: const OutlineInputBorder(), isDense: true)),
+  child: TextField(controller: c, keyboardType: type, decoration: InputDecoration(labelText: label, isDense: true)),
 );
 
 class _Empty extends StatelessWidget {
