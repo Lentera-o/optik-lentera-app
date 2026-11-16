@@ -258,3 +258,111 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const _LocalNote(),
   ]);
 }
+
+
+class InvoiceReceiptScreen extends StatelessWidget {
+  final List<OptikOrder> orders;
+  final List<OptikPayment> payments;
+  const InvoiceReceiptScreen({super.key, required this.orders, required this.payments});
+
+  String _rupiah(int value) => 'Rp ' + value.toString().replaceAllMapped(
+    RegExp(r'\\B(?=(\\d{3})+(?!\\d))'),
+    (match) => '.',
+  );
+
+  String _date(DateTime? value) {
+    if (value == null) return '-';
+    final d = value.day.toString().padLeft(2, '0');
+    final m = value.month.toString().padLeft(2, '0');
+    return '$d/$m/${value.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(18),
+    children: [
+      const _Intro('Invoice & Kuitansi', 'Pratinjau dokumen berdasarkan draft transaksi dan pembayaran sesi ini.', Icons.description_outlined),
+      const SizedBox(height: 16),
+      if (orders.isEmpty)
+        const _Empty('Belum ada draft pesanan. Buat pesanan terlebih dahulu untuk melihat invoice.')
+      else
+        ...orders.reversed.map((order) {
+          final related = payments.where((p) => p.invoiceNumber == order.invoiceNumber).toList();
+          final paidLater = related.fold<int>(0, (sum, p) => sum + p.amount);
+          final paid = order.initialPayment + paidLater;
+          final remaining = order.total - paid;
+          return Card(
+            color: Colors.white,
+            margin: const EdgeInsets.only(bottom: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: _gold.withValues(alpha: .35)),
+            ),
+            child: ExpansionTile(
+              leading: const Icon(Icons.receipt_long_outlined, color: _darkGold),
+              title: Text(order.customer.name, style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
+              subtitle: Text('${order.invoiceNumber} • ${_date(order.orderDate)}'),
+              childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8F7),
+                    border: Border.all(color: _gold.withValues(alpha: .35)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Center(child: Text('OPTIK LENTERA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 18))),
+                      const Center(child: Text('INVOICE • PRATINJAU', style: TextStyle(color: _ink, fontWeight: FontWeight.bold))),
+                      const Divider(height: 22, color: _gold),
+                      _docLine('Nomor invoice', order.invoiceNumber),
+                      _docLine('Tanggal', _date(order.orderDate)),
+                      _docLine('Pelanggan', order.customer.name),
+                      _docLine('Telepon', order.customer.phone.isEmpty ? '-' : order.customer.phone),
+                      const Divider(height: 20),
+                      const Text('RESEP KACAMATA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+                      _docLine('OD (kanan)', 'SPH ${order.prescription.odSph} • CYL ${order.prescription.odCyl} • AXIS ${order.prescription.odAxis}'),
+                      _docLine('OS (kiri)', 'SPH ${order.prescription.osSph} • CYL ${order.prescription.osCyl} • AXIS ${order.prescription.osAxis}'),
+                      const Divider(height: 20),
+                      _docLine('Frame', _rupiah(order.frame.price)),
+                      _docLine('Lensa', _rupiah(order.lens.price)),
+                      _docLine('Lain-lain', _rupiah(order.other.price)),
+                      _docLine('TOTAL', _rupiah(order.total), strong: true),
+                      _docLine('DP awal', _rupiah(order.initialPayment)),
+                      _docLine('Total dibayar', _rupiah(paid)),
+                      _docLine('Sisa tagihan', _rupiah(remaining < 0 ? 0 : remaining), strong: true),
+                      const SizedBox(height: 8),
+                      const Text('KUITANSI PEMBAYARAN', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+                      if (order.initialPayment > 0)
+                        _docLine('DP awal • ${order.initialPaymentMethod}', _rupiah(order.initialPayment)),
+                      ...related.map((p) => _docLine('${_date(p.paymentDate)} • ${p.method}', _rupiah(p.amount))),
+                      if (order.initialPayment == 0 && related.isEmpty)
+                        const Text('Belum ada pembayaran tercatat.', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text('Ini pratinjau data sesi aplikasi, bukan PDF resmi yang tersimpan di Drive.', style: TextStyle(color: Colors.black54, fontSize: 11)),
+              ],
+            ),
+          );
+        }),
+      const _LocalNote(),
+    ],
+  );
+}
+
+Widget _docLine(String label, String value, {bool strong = false}) => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 3),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: 112, child: Text(label, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: _ink))),
+      const Text(': ', style: TextStyle(fontSize: 11)),
+      Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: strong ? _darkGold : _ink))),
+    ],
+  ),
+);
