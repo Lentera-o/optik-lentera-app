@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 
 const _gold = Color(0xFFB99555);
@@ -306,6 +307,11 @@ class InvoiceReceiptScreen extends StatelessWidget {
           final paidLater = related.fold<int>(0, (sum, p) => sum + p.amount);
           final paid = order.initialPayment + paidLater;
           final remaining = order.total - paid;
+          final receiptPayments = <OptikPayment>[
+            if (order.initialPayment > 0)
+              OptikPayment(invoiceNumber: order.invoiceNumber, paymentDate: order.orderDate ?? DateTime.now(), amount: order.initialPayment, method: order.initialPaymentMethod, note: 'DP awal'),
+            ...related,
+          ];
           return Card(
             color: Colors.white,
             margin: const EdgeInsets.only(bottom: 14),
@@ -359,8 +365,34 @@ class InvoiceReceiptScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: _darkGold),
+                    onPressed: () => OptikPdfService.invoice(order, paid: paid, remaining: remaining < 0 ? 0 : remaining),
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('Cetak / Bagikan Invoice PDF'),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                if (receiptPayments.isNotEmpty)
+                  ...receiptPayments.asMap().entries.map((entry) {
+                    final payment = entry.value;
+                    final receiptNo = _receiptNumber(payment.paymentDate, entry.key + 1);
+                    final paidAtReceipt = receiptPayments.take(entry.key + 1).fold<int>(0, (sum, item) => sum + item.amount);
+                    final balanceAtReceipt = order.total - paidAtReceipt;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: OutlinedButton.icon(
+                        onPressed: () => OptikPdfService.receipt(order, payment, receiptNumber: receiptNo, paid: paidAtReceipt, remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt),
+                        icon: const Icon(Icons.receipt_long_outlined),
+                        label: Text('Cetak / Bagikan Kuitansi $receiptNo'),
+                      ),
+                    );
+                  }),
                 const SizedBox(height: 8),
-                const Text('Ini pratinjau data sesi aplikasi, bukan PDF resmi yang tersimpan di Drive.', style: TextStyle(color: Colors.black54, fontSize: 11)),
+                const Text('PDF ini dibuat dari draft sesi aplikasi. Untuk dokumen resmi tersimpan di Drive dan sinkronisasi database, transaksi tetap harus masuk melalui backend aktif.', style: TextStyle(color: Colors.black54, fontSize: 11)),
               ],
             ),
           );
@@ -381,3 +413,10 @@ Widget _docLine(String label, String value, {bool strong = false}) => Padding(
     ],
   ),
 );
+
+String _receiptNumber(DateTime date, int sequence) {
+  final y = date.year.toString().padLeft(4, '0');
+  final m = date.month.toString().padLeft(2, '0');
+  final d = date.day.toString().padLeft(2, '0');
+  return 'KL-$y$m$d-${sequence.toString().padLeft(3, '0')}';
+}
