@@ -85,6 +85,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final otherPrice = TextEditingController();
   final otherDescription = TextEditingController();
   final dp = TextEditingController();
+  final invoiceNote = TextEditingController();
   final odSph = TextEditingController();
   final odCyl = TextEditingController();
   final odAxis = TextEditingController();
@@ -114,7 +115,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frameDescription, frame, lensDescription, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, frameDescription, frame, lensDescription, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
@@ -138,8 +139,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
       initialPaymentMethod: method,
+      note: invoiceNote.text.trim(),
     ));
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frameDescription, frame, lensDescription, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, frameDescription, frame, lensDescription, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
     setState(() { selectedCustomerIndex = null; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
@@ -199,10 +201,11 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(otherDescription, 'Keterangan biaya lain-lain'),
       _field(otherPrice, 'Harga lain-lain (Rp)', type: TextInputType.number),
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
+      _field(invoiceNote, 'Catatan tambahan untuk invoice'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/Kredit'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/kartu', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => method = v ?? 'Tunai'),
       ),
       const SizedBox(height: 12),
@@ -309,10 +312,18 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   final nominal = TextEditingController();
+  final paymentNote = TextEditingController();
+  DateTime paymentDate = DateTime.now();
   String method = 'Tunai';
+  String category = 'DP tambahan';
 
   @override
-  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+  void dispose() { invoice.dispose(); nominal.dispose(); paymentNote.dispose(); super.dispose(); }
+
+  Future<void> choosePaymentDate() async {
+    final picked = await showDatePicker(context: context, initialDate: paymentDate, firstDate: DateTime(2000), lastDate: DateTime(2100));
+    if (picked != null && mounted) setState(() => paymentDate = picked);
+  }
 
   void save() {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -334,8 +345,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(balance <= 0 ? 'Invoice sudah lunas.' : 'Pembayaran melebihi sisa tagihan Rp $balance.')));
       return;
     }
-    widget.onAdd(OptikPayment(invoiceNumber: invoice.text.trim(), paymentDate: DateTime.now(), amount: value, method: method));
-    invoice.clear(); nominal.clear();
+    widget.onAdd(OptikPayment(invoiceNumber: invoice.text.trim(), paymentDate: paymentDate, amount: value, method: method, category: category, note: paymentNote.text.trim()));
+    invoice.clear(); nominal.clear(); paymentNote.clear();
+    setState(() => paymentDate = DateTime.now());
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
   }
 
@@ -345,13 +357,16 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const SizedBox(height: 16),
     _Panel(child: Column(children: [
       _field(invoice, 'Nomor invoice *'),
+      ListTile(contentPadding: EdgeInsets.zero, title: const Text('Tanggal pembayaran'), subtitle: Text(paymentDate.toString().split(' ').first), trailing: const Icon(Icons.calendar_month_outlined, color: _darkGold), onTap: choosePaymentDate),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
-        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/Kredit'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/kartu', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => method = v ?? 'Tunai'),
       ),
+      DropdownButtonFormField<String>(value: category, decoration: InputDecoration(labelText: 'Keterangan pembayaran', border: OutlineInputBorder()), items: const ['DP tambahan', 'Cicilan', 'Pelunasan', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => category = v ?? 'DP tambahan')),
+      _field(paymentNote, 'Catatan pembayaran'),
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
