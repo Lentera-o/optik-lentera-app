@@ -200,3 +200,61 @@ class _LocalNote extends StatelessWidget {
     child: Text('Data ini masih sementara di memori aplikasi dan belum dikirim ke Google Sheets. Sinkronisasi menunggu pencocokan kontrak API Apps Script yang aktif.', style: TextStyle(fontSize: 11, color: Colors.black54)),
   );
 }
+
+
+class PaymentEntryScreen extends StatefulWidget {
+  final List<OptikPayment> payments;
+  final ValueChanged<OptikPayment> onAdd;
+  const PaymentEntryScreen({super.key, required this.payments, required this.onAdd});
+  @override
+  State<PaymentEntryScreen> createState() => _PaymentEntryScreenState();
+}
+
+class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
+  final invoice = TextEditingController();
+  final nominal = TextEditingController();
+  String method = 'Tunai';
+
+  @override
+  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+
+  void save() {
+    final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    if (invoice.text.trim().isEmpty || value <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
+      return;
+    }
+    widget.onAdd(OptikPayment(invoiceNumber: invoice.text.trim(), paymentDate: DateTime.now(), amount: value, method: method));
+    invoice.clear(); nominal.clear();
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(18), children: [
+    const _Intro('Pembayaran', 'Catat pembayaran lanjutan sesuai nomor invoice.', Icons.payments_outlined),
+    const SizedBox(height: 16),
+    _Panel(child: Column(children: [
+      _field(invoice, 'Nomor invoice *'),
+      _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
+      DropdownButtonFormField<String>(
+        value: method,
+        decoration: const InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
+        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/Kredit'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        onChanged: (v) => setState(() => method = v ?? 'Tunai'),
+      ),
+      const SizedBox(height: 12),
+      SizedBox(width: double.infinity, child: FilledButton.icon(
+        style: FilledButton.styleFrom(backgroundColor: _darkGold),
+        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Catat pembayaran'),
+      )),
+    ])),
+    const SizedBox(height: 18),
+    Text('Pembayaran sesi ini: ${widget.payments.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
+    ...widget.payments.reversed.map((p) => Card(color: Colors.white, child: ListTile(
+      leading: const Icon(Icons.payments_outlined, color: _darkGold),
+      title: Text('Rp ' + p.amount.toString()),
+      subtitle: Text(p.invoiceNumber + ' • ' + p.method),
+    ))),
+    const _LocalNote(),
+  ]);
+}
