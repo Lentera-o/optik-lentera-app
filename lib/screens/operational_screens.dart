@@ -266,7 +266,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
   const InvoiceReceiptScreen({super.key, required this.orders, required this.payments});
 
   String _rupiah(int value) => 'Rp ' + value.toString().replaceAllMapped(
-    RegExp(r'\\B(?=(\\d{3})+(?!\\d))'),
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
     (match) => '.',
   );
 
