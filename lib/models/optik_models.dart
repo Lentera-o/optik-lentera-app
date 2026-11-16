@@ -137,6 +137,19 @@ class OptikOrder {
   int get total => frame.price + lens.price + other.price;
   int get remaining => total - initialPayment;
 
+  factory OptikOrder.fromJson(Map<String, dynamic> json) => OptikOrder(
+        invoiceNumber: json['invoiceNumber']?.toString() ?? '',
+        orderDate: DateTime.tryParse(json['orderDate']?.toString() ?? ''),
+        customer: Customer.fromJson(Map<String, dynamic>.from(json['customer'] as Map? ?? {})),
+        prescription: EyePrescription.fromJson(Map<String, dynamic>.from(json['prescription'] as Map? ?? {})),
+        frame: OrderItem.fromJson(Map<String, dynamic>.from(json['frame'] as Map? ?? {})),
+        lens: OrderItem.fromJson(Map<String, dynamic>.from(json['lens'] as Map? ?? {})),
+        other: OrderItem.fromJson(Map<String, dynamic>.from(json['other'] as Map? ?? {})),
+        initialPayment: _asInt(json['initialPayment']),
+        initialPaymentMethod: json['initialPaymentMethod']?.toString() ?? '',
+        note: json['note']?.toString() ?? '',
+      );
+
   Map<String, dynamic> toJson() => {
         'invoiceNumber': invoiceNumber,
         'orderDate': orderDate?.toIso8601String(),
@@ -165,6 +178,14 @@ class OptikPayment {
     required this.method,
     this.note = '',
   });
+
+  factory OptikPayment.fromJson(Map<String, dynamic> json) => OptikPayment(
+        invoiceNumber: json['invoiceNumber']?.toString() ?? '',
+        paymentDate: DateTime.tryParse(json['paymentDate']?.toString() ?? '') ?? DateTime.now(),
+        amount: _asInt(json['amount']),
+        method: json['method']?.toString() ?? '',
+        note: json['note']?.toString() ?? '',
+      );
 
   Map<String, dynamic> toJson() => {
         'invoiceNumber': invoiceNumber,
