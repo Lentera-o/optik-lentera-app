@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'services/api_service.dart';
+
 
 void main() {
   runApp(const OptikLenteraApp());
@@ -275,8 +277,25 @@ class DashboardContent extends StatelessWidget {
 }
 
 
-class BackendStatusCard extends StatelessWidget {
+class BackendStatusCard extends StatefulWidget {
   const BackendStatusCard({super.key});
+
+  @override
+  State<BackendStatusCard> createState() => _BackendStatusCardState();
+}
+
+class _BackendStatusCardState extends State<BackendStatusCard> {
+  late Future<ApiResponse> _check;
+
+  @override
+  void initState() {
+    super.initState();
+    _check = ApiService.get();
+  }
+
+  void _retry() {
+    setState(() => _check = ApiService.get());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -288,32 +307,69 @@ class BackendStatusCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: gold.withValues(alpha: 0.25)),
       ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline, color: darkGold, size: 25),
-          SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'INTEGRASI BACKEND',
-                  style: TextStyle(
-                    color: darkGold,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
+      child: FutureBuilder<ApiResponse>(
+        future: _check,
+        builder: (context, snapshot) {
+          final waiting = snapshot.connectionState == ConnectionState.waiting;
+          final reachable = snapshot.hasData && snapshot.data!.isSuccessful;
+          final failed = snapshot.hasError ||
+              (snapshot.hasData && !snapshot.data!.isSuccessful);
+          final color = waiting
+              ? darkGold
+              : reachable
+                  ? Colors.green.shade700
+                  : Colors.red.shade700;
+          final heading = waiting
+              ? 'MEMERIKSA BACKEND...'
+              : reachable
+                  ? 'ENDPOINT BACKEND TERJANGKAU'
+                  : 'BACKEND BELUM TERJANGKAU';
+          final detail = waiting
+              ? 'Menghubungi Google Apps Script...'
+              : reachable
+                  ? 'Web App merespons. Ini belum membuktikan API transaksi aktif; format endpoint transaksi tetap perlu diverifikasi.'
+                  : 'Koneksi gagal atau Web App tidak merespons. Periksa deployment dan jaringan, lalu coba lagi.';
+          return Row(
+            children: [
+              Icon(
+                waiting
+                    ? Icons.sync
+                    : reachable
+                        ? Icons.cloud_done_outlined
+                        : Icons.cloud_off_outlined,
+                color: color,
+                size: 25,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      heading,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      detail,
+                      style: const TextStyle(color: ink, fontSize: 11),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 3),
-                Text(
-                  'Endpoint doGet digunakan untuk verifikasi invoice/kuitansi. API transaksi Flutter perlu kontrak terpisah yang sudah diverifikasi.',
-                  style: TextStyle(color: ink, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ],
+              ),
+              IconButton(
+                tooltip: 'Periksa ulang',
+                onPressed: waiting ? null : _retry,
+                icon: Icon(Icons.refresh, color: failed ? color : darkGold),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
