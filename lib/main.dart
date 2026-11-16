@@ -366,7 +366,7 @@ class DashboardContent extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    const Text('Jernih Melihat,\nNyaman Melangkah.',
+                    Text('Jernih Melihat,\nNyaman Melangkah.',
                       style: GoogleFonts.dmSerifDisplay(fontSize: 27, height: 1.16, color: Colors.white, letterSpacing: .1)),
                     const SizedBox(height: 8),
                     Text('Kelola pelayanan dan operasional optik dalam satu tempat.',
