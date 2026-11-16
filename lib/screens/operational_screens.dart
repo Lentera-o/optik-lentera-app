@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
+import '../services/api_service.dart';
 
 const _gold = Color(0xFFB99555);
 const _darkGold = Color(0xFF80612F);
@@ -76,11 +77,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final doctor = TextEditingController();
   final lensType = TextEditingController();
   final rxNote = TextEditingController();
+  final frameDescription = TextEditingController();
   final frame = TextEditingController();
+  final lensDescription = TextEditingController();
   final lens = TextEditingController();
   final otherPrice = TextEditingController();
   final otherDescription = TextEditingController();
   final dp = TextEditingController();
+  final invoiceNote = TextEditingController();
   final odSph = TextEditingController();
   final odCyl = TextEditingController();
   final odAxis = TextEditingController();
@@ -110,34 +114,50 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, frameDescription, frame, lensDescription, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
-  void save() {
+  Future<void> save() async {
     final total = amount(frame) + amount(lens) + amount(otherPrice);
     if (customer.text.trim().isEmpty || total <= 0 || amount(dp) > total) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
       return;
     }
-    widget.onAdd(OptikOrder(
-      invoiceNumber: 'DRAFT-' + DateTime.now().millisecondsSinceEpoch.toString(),
-      orderDate: DateTime.now(),
-      customer: Customer(name: customer.text.trim(), phone: phone.text.trim(), address: address.text.trim()),
-      prescription: EyePrescription(
-        doctor: doctor.text.trim(), lensType: lensType.text.trim(), note: rxNote.text.trim(),
-        odSph: odSph.text, odCyl: odCyl.text, odAxis: odAxis.text, odAdd: odAdd.text, odPd: odPd.text,
-        osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
-      ),
-      frame: OrderItem(description: 'Frame', price: amount(frame)),
-      lens: OrderItem(description: lensType.text.trim().isEmpty ? 'Lensa' : lensType.text.trim(), price: amount(lens)),
-      other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
-      initialPayment: amount(dp),
-      initialPaymentMethod: method,
+    final opened = await ApiService.openOrderForm({
+      '1324477027': customer.text,
+      '539015243': phone.text,
+      '1777754745': address.text,
+      '542463507': doctor.text,
+      '1271316087': odSph.text,
+      '1616866281': odCyl.text,
+      '1784427947': odAxis.text,
+      '1558365892': odAdd.text,
+      '940199491': odPd.text,
+      '480078014': osSph.text,
+      '66061879': osCyl.text,
+      '493870905': osAxis.text,
+      '42654846': osAdd.text,
+      '950234578': osPd.text,
+      '684419252': lensType.text,
+      '1481958730': rxNote.text,
+      '686343109': frameDescription.text,
+      '1727076794': amount(frame).toString(),
+      '1326678958': lensDescription.text,
+      '97131819': amount(lens).toString(),
+      '2101353430': otherDescription.text,
+      '1643782415': amount(otherPrice).toString(),
+      '1449005528': amount(dp).toString(),
+      '1188539863': invoiceNote.text,
+      '1492024415': method,
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(opened
+          ? 'Form Pesanan resmi terbuka. Periksa seluruh data lalu tekan Kirim. Nomor invoice resmi dibuat oleh sistem lama.'
+          : 'Google Form tidak dapat dibuka. Coba lagi.'),
+      duration: const Duration(seconds: 6),
     ));
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
-    setState(() { selectedCustomerIndex = null; });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
 
   @override
@@ -184,23 +204,28 @@ class _TransactionScreenState extends State<TransactionScreen> {
         Expanded(child: _field(osAxis, 'AXIS')),
       ]),
       Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
-      _field(lensType, 'Jenis / model lensa'),
+      _field(lensType, 'Jenis lensa'),
       _field(rxNote, 'Catatan resep'),
+      const SizedBox(height: 6),
+      const Text('Rincian pesanan', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+      _field(frameDescription, 'Frame - merek / model / warna'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
+      _field(lensDescription, 'Lensa - jenis / ukuran / coating'),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
       _field(otherPrice, 'Harga lain-lain (Rp)', type: TextInputType.number),
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
+      _field(invoiceNote, 'Catatan tambahan untuk invoice'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/Kredit'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/kartu', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => method = v ?? 'Tunai'),
       ),
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan draft pesanan'),
+        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Lanjutkan ke Form Pesanan resmi'),
       )),
     ])),
     const SizedBox(height: 18),
@@ -301,34 +326,41 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   final nominal = TextEditingController();
+  final paymentNote = TextEditingController();
+  DateTime paymentDate = DateTime.now();
   String method = 'Tunai';
+  String category = 'DP tambahan';
 
   @override
-  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+  void dispose() { invoice.dispose(); nominal.dispose(); paymentNote.dispose(); super.dispose(); }
 
-  void save() {
+  Future<void> choosePaymentDate() async {
+    final picked = await showDatePicker(context: context, initialDate: paymentDate, firstDate: DateTime(2000), lastDate: DateTime(2100));
+    if (picked != null && mounted) setState(() => paymentDate = picked);
+  }
+
+  Future<void> save() async {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     if (invoice.text.trim().isEmpty || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
       return;
     }
-    final matches = widget.orders.where((o) => o.invoiceNumber == invoice.text.trim());
-    if (matches.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice tidak ditemukan pada daftar pesanan sesi ini.')));
-      return;
-    }
-    final order = matches.first;
-    final alreadyPaid = order.initialPayment + widget.payments
-        .where((p) => p.invoiceNumber == order.invoiceNumber)
-        .fold<int>(0, (sum, p) => sum + p.amount);
-    final balance = order.total - alreadyPaid;
-    if (balance <= 0 || value > balance) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(balance <= 0 ? 'Invoice sudah lunas.' : 'Pembayaran melebihi sisa tagihan Rp $balance.')));
-      return;
-    }
-    widget.onAdd(OptikPayment(invoiceNumber: invoice.text.trim(), paymentDate: DateTime.now(), amount: value, method: method));
-    invoice.clear(); nominal.clear();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
+    final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
+    final opened = await ApiService.openPaymentForm({
+      '1667531169': invoice.text,
+      '266758159': date,
+      '448728880': value.toString(),
+      '1530690867': method,
+      '1651033565': category,
+      '284716454': paymentNote.text,
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(opened
+          ? 'Form Pembayaran resmi terbuka. Periksa invoice dan nominal, lalu tekan Kirim. Sistem lama akan memvalidasi sisa tagihan.'
+          : 'Google Form tidak dapat dibuka. Coba lagi.'),
+      duration: const Duration(seconds: 6),
+    ));
   }
 
   @override
@@ -337,17 +369,20 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const SizedBox(height: 16),
     _Panel(child: Column(children: [
       _field(invoice, 'Nomor invoice *'),
+      ListTile(contentPadding: EdgeInsets.zero, title: const Text('Tanggal pembayaran'), subtitle: Text(paymentDate.toString().split(' ').first), trailing: const Icon(Icons.calendar_month_outlined, color: _darkGold), onTap: choosePaymentDate),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
-        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/Kredit'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/kartu', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => method = v ?? 'Tunai'),
       ),
+      DropdownButtonFormField<String>(value: category, decoration: InputDecoration(labelText: 'Keterangan pembayaran', border: OutlineInputBorder()), items: const ['DP tambahan', 'Cicilan', 'Pelunasan', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => category = v ?? 'DP tambahan')),
+      _field(paymentNote, 'Catatan pembayaran'),
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Catat pembayaran'),
+        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Lanjutkan ke Form Pembayaran resmi'),
       )),
     ])),
     const SizedBox(height: 18),
@@ -431,6 +466,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     }
   }
 
+
   Future<void> _openWhatsApp() async {
     final customer = selectedCustomer;
     if (customer == null) {
@@ -489,7 +525,15 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168C54), padding: const EdgeInsets.symmetric(vertical: 14)),
             onPressed: _openWhatsApp, icon: const Icon(Icons.chat), label: const Text('Buka WhatsApp & Tinjau Pesan'))),
           const SizedBox(height: 8),
-          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          SizedBox(width: double.infinity, child: OutlinedButton.icon(
+            onPressed: null,
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('PDF resmi menunggu sinkronisasi Apps Script'),
+          )),
+          const SizedBox(height: 8),
+          const Text('PDF resmi tidak dibuat oleh aplikasi. Dokumen akan dibagikan dari tautan Drive Apps Script setelah integrasi transaksi tersedia.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const SizedBox(height: 8),
+          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa pesan lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
         ])),
       ],
     );
@@ -517,7 +561,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(18),
     children: [
-      const _Intro('Invoice & Kuitansi', 'Pratinjau dokumen berdasarkan draft transaksi dan pembayaran sesi ini.', Icons.description_outlined),
+      const _Intro('Ringkasan Transaksi', 'Ringkasan data draft lokal. Ini bukan invoice atau kuitansi resmi.', Icons.description_outlined),
       const SizedBox(height: 16),
       if (orders.isEmpty)
         const _Empty('Belum ada draft pesanan. Buat pesanan terlebih dahulu untuk melihat invoice.')
@@ -527,11 +571,6 @@ class InvoiceReceiptScreen extends StatelessWidget {
           final paidLater = related.fold<int>(0, (sum, p) => sum + p.amount);
           final paid = order.initialPayment + paidLater;
           final remaining = order.total - paid;
-          final receiptPayments = <OptikPayment>[
-            if (order.initialPayment > 0)
-              OptikPayment(invoiceNumber: order.invoiceNumber, paymentDate: order.orderDate ?? DateTime.now(), amount: order.initialPayment, method: order.initialPaymentMethod, note: 'DP awal'),
-            ...related,
-          ];
           return Card(
             color: Colors.white,
             margin: const EdgeInsets.only(bottom: 14),
@@ -557,7 +596,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Center(child: Text('OPTIK LENTERA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 18))),
-                      const Center(child: Text('INVOICE • PRATINJAU', style: TextStyle(color: _ink, fontWeight: FontWeight.bold))),
+                      const Center(child: Text('RINGKASAN DRAFT • BUKAN DOKUMEN RESMI', style: TextStyle(color: _ink, fontWeight: FontWeight.bold))),
                       const Divider(height: 22, color: _gold),
                       _docLine('Nomor invoice', order.invoiceNumber),
                       _docLine('Tanggal', _date(order.orderDate)),
@@ -576,7 +615,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                       _docLine('Total dibayar', _rupiah(paid)),
                       _docLine('Sisa tagihan', _rupiah(remaining < 0 ? 0 : remaining), strong: true),
                       const SizedBox(height: 8),
-                      const Text('KUITANSI PEMBAYARAN', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+                      const Text('RIWAYAT PEMBAYARAN DRAFT', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
                       if (order.initialPayment > 0)
                         _docLine('DP awal • ${order.initialPaymentMethod}', _rupiah(order.initialPayment)),
                       ...related.map((p) => _docLine('${_date(p.paymentDate)} • ${p.method}', _rupiah(p.amount))),
@@ -590,29 +629,19 @@ class InvoiceReceiptScreen extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(backgroundColor: _darkGold),
-                    onPressed: () => OptikPdfService.invoice(order, paid: paid, remaining: remaining < 0 ? 0 : remaining),
+                    onPressed: null,
                     icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: const Text('Cetak / Bagikan Invoice PDF'),
+                    label: const Text('Invoice PDF resmi — menunggu sinkronisasi Apps Script'),
                   ),
                 ),
                 const SizedBox(height: 6),
-                if (receiptPayments.isNotEmpty)
-                  ...receiptPayments.asMap().entries.map((entry) {
-                    final payment = entry.value;
-                    final receiptNo = _receiptNumber(payment.paymentDate, entry.key + 1);
-                    final paidAtReceipt = receiptPayments.take(entry.key + 1).fold<int>(0, (sum, item) => sum + item.amount);
-                    final balanceAtReceipt = order.total - paidAtReceipt;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: OutlinedButton.icon(
-                        onPressed: () => OptikPdfService.receipt(order, payment, receiptNumber: receiptNo, paid: paidAtReceipt, remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt),
-                        icon: const Icon(Icons.receipt_long_outlined),
-                        label: Text('Cetak / Bagikan Kuitansi $receiptNo'),
-                      ),
-                    );
-                  }),
                 const SizedBox(height: 8),
-                const Text('PDF ini dibuat dari draft sesi aplikasi. Untuk dokumen resmi tersimpan di Drive dan sinkronisasi database, transaksi tetap harus masuk melalui backend aktif.', style: TextStyle(color: Colors.black54, fontSize: 11)),
+                const Text(
+                  'Kuitansi resmi dan nomor kuitansi dibuat oleh Apps Script setelah pembayaran tercatat. '
+                  'PDF buatan lokal dan nomor sementara tidak digunakan.',
+                  style: TextStyle(color: Colors.black54, fontSize: 11),
+                ),
+
               ],
             ),
           );
@@ -634,6 +663,3 @@ Widget _docLine(String label, String value, {bool strong = false}) => Padding(
   ),
 );
 
-String _receiptNumber(DateTime date, int sequence) {
-  return 'KL-DRAFT-${date.millisecondsSinceEpoch}-${sequence.toString().padLeft(3, '0')}';
-}

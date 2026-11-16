@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../app_config.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Hasil mentah dari Google Apps Script.
 /// Parsing payload bisnis dilakukan setelah kontrak endpoint diverifikasi.
@@ -51,6 +52,39 @@ class ApiService {
     final response = await request.close().timeout(AppConfig.apiTimeout);
     return _readResponse(response);
   }
+
+
+  /// Membuka Google Form resmi dengan jawaban transaksi yang sudah diisi.
+  /// Petugas tetap meninjau dan menekan Kirim di Google Form; trigger Form
+  /// yang sudah ada tetap menjadi satu-satunya pemroses transaksi resmi.
+  static Future<bool> openPrefilledForm({
+    required String formId,
+    required Map<String, String> answers,
+  }) async {
+    final query = <String, String>{'usp': 'pp_url'};
+    for (final entry in answers.entries) {
+      if (entry.value.trim().isNotEmpty) {
+        query['entry.${entry.key}'] = entry.value.trim();
+      }
+    }
+    final uri = Uri.https(
+      'docs.google.com',
+      '/forms/d/e/$formId/viewform',
+      query,
+    );
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  static const String orderFormId =
+      '1FAIpQLSfp5DYAtg8ENTmW4_jOVpwVL7ZUzi2v5KDb8VtKp-zoZY0rQA';
+  static const String paymentFormId =
+      '1FAIpQLScckA6mmAbrektSRO1-9rRE9ObwRErwmb5LLTo5ZTq24DEbEQ';
+
+  static Future<bool> openOrderForm(Map<String, String> answers) =>
+      openPrefilledForm(formId: orderFormId, answers: answers);
+
+  static Future<bool> openPaymentForm(Map<String, String> answers) =>
+      openPrefilledForm(formId: paymentFormId, answers: answers);
 
   static Future<ApiResponse> _send(String method, Uri uri) async {
     final request = await _client.openUrl(method, uri)
