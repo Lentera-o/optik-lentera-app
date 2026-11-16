@@ -169,6 +169,7 @@ class OptikPayment {
   final DateTime paymentDate;
   final int amount;
   final String method;
+  final String category;
   final String note;
 
   const OptikPayment({
@@ -176,6 +177,7 @@ class OptikPayment {
     required this.paymentDate,
     required this.amount,
     required this.method,
+    this.category = '',
     this.note = '',
   });
 
@@ -184,6 +186,7 @@ class OptikPayment {
         paymentDate: DateTime.tryParse(json['paymentDate']?.toString() ?? '') ?? DateTime.now(),
         amount: _asInt(json['amount']),
         method: json['method']?.toString() ?? '',
+        category: json['category']?.toString() ?? '',
         note: json['note']?.toString() ?? '',
       );
 
@@ -192,6 +195,7 @@ class OptikPayment {
         'paymentDate': paymentDate.toIso8601String(),
         'amount': amount,
         'method': method,
+        'category': category,
         'note': note,
       };
 }
