@@ -73,7 +73,7 @@ class OptikPdfService {
     pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4, margin: const pw.EdgeInsets.all(28), build: (_) => pw.Container(
       color: paper,
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        brand(), pw.Center(child: heading('INVOICE', 'RESEP KACAMATA & RINCIAN TRANSAKSI')),
+        brand(), pw.Center(child: heading('INVOICE', 'DOKUMEN PRATINJAU • BELUM TERSINKRONISASI')),
         pair('Nomor invoice', o.invoiceNumber), pair('Tanggal', date(o.orderDate)),
         pair('Nama pelanggan', o.customer.name), pair('No. HP', o.customer.phone), pair('Alamat', o.customer.address),
         section('01 — RESEP KACAMATA'),
@@ -115,7 +115,7 @@ class OptikPdfService {
     pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4.landscape, margin: const pw.EdgeInsets.all(26), build: (_) => pw.Container(
       color: paper,
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        brand(), pw.Center(child: heading('KUITANSI', 'BUKTI PEMBAYARAN OPTIK LENTERA')),
+        brand(), pw.Center(child: heading('KUITANSI', 'DOKUMEN PRATINJAU • BELUM TERSINKRONISASI')),
         pw.Row(children: [pw.Expanded(child: pair('Nomor kuitansi', receiptNumber)), pw.SizedBox(width: 16), pw.Expanded(child: pair('Tanggal', date(p.paymentDate)))]),
         pw.Row(children: [pw.Expanded(child: pair('Nomor invoice', o.invoiceNumber)), pw.SizedBox(width: 16), pw.Expanded(child: pair('Nama pelanggan', o.customer.name))]),
         section('RINCIAN PEMBAYARAN'),
