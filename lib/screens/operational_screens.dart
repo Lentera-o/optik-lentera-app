@@ -158,7 +158,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
       DropdownButtonFormField<String>(
         value: method,
-        decoration: const InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
+        decoration: InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
         items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/Kredit'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => method = v ?? 'Tunai'),
       ),
@@ -305,7 +305,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
       DropdownButtonFormField<String>(
         value: method,
-        decoration: const InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
+        decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
         items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/Kredit'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => method = v ?? 'Tunai'),
       ),
@@ -416,7 +416,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
           DropdownButtonFormField<Customer>(
             value: customerOptions.contains(selectedCustomer) ? selectedCustomer : null,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
             items: customerOptions.map((c) => DropdownMenuItem(value: c, child: Text(c.name + ' • ' + c.phone, overflow: TextOverflow.ellipsis))).toList(),
             onChanged: _chooseCustomer,
           ),
@@ -424,20 +424,20 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
           DropdownButtonFormField<OptikOrder>(
             value: orderOptions.contains(selectedOrder) ? selectedOrder : null,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Pilih invoice (opsional)', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: 'Pilih invoice (opsional)', border: OutlineInputBorder()),
             items: orderOptions.map((o) => DropdownMenuItem(value: o, child: Text(o.invoiceNumber + ' • ' + o.customer.name, overflow: TextOverflow.ellipsis))).toList(),
             onChanged: (value) => setState(() { selectedOrder = value; _buildMessage(); }),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: template,
-            decoration: const InputDecoration(labelText: 'Template pesan', border: OutlineInputBorder()),
+            decoration: InputDecoration(labelText: 'Template pesan', border: OutlineInputBorder()),
             items: const ['Konfirmasi pesanan', 'Pesanan siap diambil', 'Pengingat pembayaran', 'Tindak lanjut pelanggan'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
             onChanged: (value) => setState(() { template = value ?? 'Konfirmasi pesanan'; _buildMessage(); }),
           ),
           const SizedBox(height: 12),
           TextField(controller: message, minLines: 6, maxLines: 10,
-            decoration: const InputDecoration(labelText: 'Pesan (bisa diedit sebelum dikirim)', alignLabelWithHint: true, border: OutlineInputBorder())),
+            decoration: InputDecoration(labelText: 'Pesan (bisa diedit sebelum dikirim)', alignLabelWithHint: true, border: OutlineInputBorder())),
           const SizedBox(height: 14),
           SizedBox(width: double.infinity, child: FilledButton.icon(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168C54), padding: const EdgeInsets.symmetric(vertical: 14)),
