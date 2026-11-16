@@ -281,7 +281,7 @@ class _MainScreenState extends State<MainScreen> {
           2 => CustomerScreen(customers: customers, onAdd: _addCustomer),
           3 => WhatsAppCenterScreen(customers: customers, orders: orders, payments: payments),
           4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
-          5 => InvoiceReceiptScreen(orders: orders, payments: payments),
+          5 => const InvoiceReceiptScreen(),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
