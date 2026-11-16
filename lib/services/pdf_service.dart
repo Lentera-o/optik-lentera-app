@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -68,7 +69,7 @@ class OptikPdfService {
     ],
   );
 
-  static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
+  static Future<Uint8List> invoiceBytes(OptikOrder o, {required int paid, required int remaining}) async {
     final pdf = pw.Document();
     pdf.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
@@ -138,10 +139,15 @@ class OptikPdfService {
         ),
       ),
     ));
-    await Printing.layoutPdf(name: 'UJI_Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => pdf.save());
+    return pdf.save();
   }
 
-  static Future<void> receipt(OptikOrder o, OptikPayment p, {required String receiptNumber, required int paid, required int remaining}) async {
+  static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
+    final bytes = await invoiceBytes(o, paid: paid, remaining: remaining);
+    await Printing.layoutPdf(name: 'UJI_Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => bytes);
+  }
+
+  static Future<Uint8List> receiptBytes(OptikOrder o, OptikPayment p, {required String receiptNumber, required int paid, required int remaining}) async {
     final pdf = pw.Document();
     pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4.landscape, margin: const pw.EdgeInsets.all(26), build: (_) => pw.Container(
       color: paper,
@@ -167,6 +173,11 @@ class OptikPdfService {
         pw.SizedBox(height: 5), pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
       ]),
     )));
-    await Printing.layoutPdf(name: 'Kuitansi_' + receiptNumber + '.pdf', onLayout: (_) async => pdf.save());
+    return pdf.save();
+  }
+
+  static Future<void> receipt(OptikOrder o, OptikPayment p, {required String receiptNumber, required int paid, required int remaining}) async {
+    final bytes = await receiptBytes(o, p, receiptNumber: receiptNumber, paid: paid, remaining: remaining);
+    await Printing.layoutPdf(name: 'Kuitansi_' + receiptNumber + '.pdf', onLayout: (_) async => bytes);
   }
 }
