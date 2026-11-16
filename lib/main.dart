@@ -485,7 +485,7 @@ class DashboardContent extends StatelessWidget {
                           child: const Icon(Icons.auto_awesome, color: Colors.white, size: 17),
                         ),
                         const SizedBox(width: 9),
-                        const Text('OPTIK LENTERA', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                        const Text('LAYANAN OPTIK TERPADU', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
                       ],
                     ),
                     const SizedBox(height: 20),
