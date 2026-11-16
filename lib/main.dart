@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'models/optik_models.dart';
 import 'screens/operational_screens.dart';
+import 'assets/optik_brand_assets.dart';
 
 
 void main() {
@@ -119,21 +120,17 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: cream,
         elevation: 0,
         titleSpacing: 20,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text(
-              'OPTIK LENTERA',
-              style: TextStyle(
-                color: darkGold,
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            Text(
-              'Sistem Manajemen Optik',
-              style: TextStyle(color: Colors.black54, fontSize: 11),
+            const _OptikLogo(size: 42),
+            const SizedBox(width: 10),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('OPTIK LENTERA', style: TextStyle(color: darkGold, fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                Text('Sistem Manajemen Optik', style: TextStyle(color: Colors.black54, fontSize: 10)),
+              ],
             ),
           ],
         ),
@@ -250,24 +247,22 @@ class DashboardContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: gold.withValues(alpha: 0.35)),
             ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text('Selamat Datang', style: TextStyle(color: ink, fontSize: 14)),
-                SizedBox(height: 5),
-                Text(
-                  'OPTIK LENTERA',
-                  style: TextStyle(
-                    color: darkGold,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
+                const _OptikLogo(size: 88),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('SELAMAT DATANG', style: TextStyle(color: ink, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.3)),
+                      SizedBox(height: 6),
+                      Text('OPTIK LENTERA', style: TextStyle(color: darkGold, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+                      SizedBox(height: 7),
+                      Text('Kemewahan dalam Pelayanan, Kesederhanaan dalam Biaya.', style: TextStyle(color: ink, fontSize: 11, height: 1.35)),
+                    ],
                   ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Kemewahan dalam Pelayanan, Kesederhanaan dalam Biaya.',
-                  style: TextStyle(color: ink, fontSize: 12),
                 ),
               ],
             ),
@@ -531,4 +526,26 @@ class OtherContent extends StatelessWidget {
       ),
     );
   }
+}
+
+
+class _OptikLogo extends StatelessWidget {
+  final double size;
+  const _OptikLogo({required this.size});
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(size * 0.18),
+    child: Container(
+      width: size,
+      height: size,
+      color: Colors.white,
+      padding: EdgeInsets.all(size * 0.035),
+      child: Image.memory(
+        base64Decode(optikLogoBase64),
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(Icons.visibility_outlined, color: darkGold, size: size * 0.65),
+      ),
+    ),
+  );
 }
