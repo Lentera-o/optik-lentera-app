@@ -705,6 +705,20 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         }
       }
     }
+    // Match reordered/descriptive headings without requiring an exact label.
+    for (final alias in aliases) {
+      final tokens = RegExp(r'[a-z0-9]+').allMatches(alias.toLowerCase())
+          .map((match) => match.group(0)!)
+          .where((token) => token.length > 1)
+          .toList();
+      if (tokens.length < 2) continue;
+      for (final entry in row.entries) {
+        if (entry.value.trim().isNotEmpty &&
+            tokens.every(normalize(entry.key).contains)) {
+          return entry.value.trim();
+        }
+      }
+    }
     return '';
   }
 
@@ -739,11 +753,16 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       }).where((item) => item['invoice']!.isNotEmpty).toList();
       final mapped = <Map<String, String>>[];
       for (final row in rows) {
-        final number = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
+        final number = _cell(row, [
+          'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
+          'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'No Faktur',
+          'Nomor Faktur', 'Kode Invoice', 'Invoice ID', 'ID Invoice',
+        ]);
         if (number.isEmpty) continue;
         final name = _cell(row, [
           'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
-          'Nama Customer', 'Customer', 'Nama Konsumen',
+          'Nama Customer', 'Customer', 'Nama Konsumen', 'Nama Pemesan',
+          'Nama Lengkap', 'Nama Pasien', 'Nama Klien', 'Nama Penerima',
         ]);
         final totalText = _cell(row, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
         final paidText = _cell(row, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
