@@ -43,11 +43,13 @@ class SheetsReadService {
     if (pending != null) {
       if (!forceRefresh) return pending;
       try { await pending; } catch (_) { /* Start a clean retry below. */ }
-      final newerPending = _inFlight[key];
-      if (newerPending != null) return newerPending;
+      // The old request may still be registered for one microtask after it
+      // completes. Reuse only a genuinely newer request, never that old one.
+      final current = _inFlight[key];
+      if (current != null && !identical(current, pending)) return current;
     }
 
-    final future = _downloadTable(key);
+    final future = _downloadTable(key, cacheBust: forceRefresh);
     _inFlight[key] = future;
     try {
       final rows = await future;
@@ -59,15 +61,21 @@ class SheetsReadService {
   }
 
   static Future<List<Map<String, String>>> _downloadTable(
-    String worksheetName,
-  ) async {
+    String worksheetName, {
+    bool cacheBust = false,
+  }) async {
+    final query = <String, String>{
+      'tqx': 'out:csv',
+      'sheet': worksheetName,
+    };
+    // A unique URL prevents intermediary caches from serving the pre-submit CSV.
+    if (cacheBust) {
+      query['_refresh'] = DateTime.now().microsecondsSinceEpoch.toString();
+    }
     final uri = Uri.https(
       'docs.google.com',
       '/spreadsheets/d/$spreadsheetId/gviz/tq',
-      <String, String>{
-        'tqx': 'out:csv',
-        'sheet': worksheetName,
-      },
+      query,
     );
 
     final request = await _client.getUrl(uri).timeout(timeout);
