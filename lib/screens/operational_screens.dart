@@ -1581,7 +1581,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             onChanged: (value) => setState(() { selectedInvoice = value; _buildMessage(); }),
           ),
           if (loadingOfficialData) const LinearProgressIndicator(),
-          if (!loadingOfficialData && syncError == null)
+          if (!loadingOfficialData)
             Padding(
               padding: const EdgeInsets.only(top: 5),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
