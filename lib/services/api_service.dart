@@ -100,6 +100,43 @@ class ApiService {
     return _readResponse(response);
   }
 
+  /// Authenticated, read-only request to the Apps Script API.
+  /// This endpoint is separate from transaction writes and never replays a POST.
+  static Future<ApiResponse> postAuthorizedRead({
+    required String action,
+    required String idToken,
+    required Map<String, dynamic> data,
+  }) async {
+    if (action != 'readTable' || idToken.isEmpty) {
+      throw ArgumentError('Authenticated read action and Google ID token are required.');
+    }
+    final uri = Uri.parse(AppConfig.appsScriptUrl);
+    final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
+    request.followRedirects = false;
+    request.headers
+      ..contentType = ContentType.json
+      ..set(HttpHeaders.acceptHeader, 'application/json');
+    request.write(jsonEncode({'action': action, 'idToken': idToken, 'data': data}));
+    final response = await request.close().timeout(AppConfig.apiTimeout);
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      final location = response.headers.value(HttpHeaders.locationHeader);
+      await response.drain<void>();
+      if (location == null || location.trim().isEmpty) {
+        throw const HttpException('Apps Script mengembalikan redirect tanpa alamat tujuan.');
+      }
+      final target = uri.resolve(location);
+      if (target.scheme != 'https' ||
+          (target.host != 'script.googleusercontent.com' && target.host != 'script.google.com')) {
+        throw const HttpException('Tujuan redirect Apps Script tidak tepercaya.');
+      }
+      final redirected = await _client.getUrl(target).timeout(AppConfig.apiTimeout);
+      redirected.followRedirects = true;
+      redirected.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      return _readResponse(await redirected.close().timeout(AppConfig.apiTimeout));
+    }
+    return _readResponse(response);
+  }
+
   static Future<ApiResponse> createOrder({
     required String idToken,
     required String requestId,
