@@ -721,9 +721,925 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   OptikOrder? selectedOrder;
   String template = 'Konfirmasi pesanan';
   final message = TextEditingController();
+  List<Map<String, String>> officialOrders = [];
+  List<Map<String, String>> officialPayments = [];
+  bool syncingOfficialData = false;
+  String? officialSyncError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOfficialData();
+  }
 
   @override
   void dispose() { message.dispose(); super.dispose(); }
+
+  String _officialCell(Map<String, String> row, List<String> aliases) {
+    for (final alias in aliases) {
+      for (final entry in row.entries) {
+        if (entry.key.trim().toLowerCase() == alias.toLowerCase() &&
+            entry.value.trim().isNotEmpty) return entry.value.trim();
+      }
+    }
+    return '';
+  }
+
+  String _officialDocumentUrl(Map<String, String> row, List<String> aliases) {
+    final candidates = <String>[
+      _officialCell(row, aliases),
+      ...row.entries.where((entry) =>
+        RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false).hasMatch(entry.key)
+      ).map((entry) => entry.value),
+      ...row.values,
+    ];
+    final urlPattern = RegExp(r'https?://[^\\s<>"]+', caseSensitive: false);
+    for (final candidate in candidates) {
+      for (final match in urlPattern.allMatches(candidate.trim())) {
+        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+
+    RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+
+  String _phoneForWhatsApp(String raw) {
+    var digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.startsWith('0')) digits = '62' + digits.substring(1);
+    if (digits.startsWith('8')) digits = '62' + digits;
+    return digits;
+  }
+
+  void _chooseCustomer(Customer? customer) {
+    setState(() {
+      selectedCustomer = customer;
+      selectedOrder = null;
+      for (final order in widget.orders) {
+        if (order.customer.phone == customer?.phone) { selectedOrder = order; break; }
+      }
+      _buildMessage();
+    });
+  }
+
+  void _buildMessage() {
+    final customer = selectedCustomer;
+    final order = selectedOrder;
+    if (customer == null) { message.text = ''; return; }
+    final name = customer.name;
+    final invoice = order?.invoiceNumber ?? '-';
+    final orderPayments = order == null
+        ? <OptikPayment>[]
+        : (widget.payments.where((p) => p.invoiceNumber == order.invoiceNumber).toList()
+          ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate)));
+    final paid = order == null
+        ? 0
+        : order.initialPayment + orderPayments.fold<int>(0, (sum, p) => sum + p.amount);
+    final remainingAmount = order == null ? 0 : (order.total - paid).clamp(0, order.total);
+    final total = order == null ? '-' : _rupiah(order.total);
+    final paidText = order == null ? '-' : _rupiah(paid);
+    final balance = order == null ? '-' : _rupiah(remainingAmount);
+    final lastPayment = orderPayments.isEmpty ? null : orderPayments.first;
+    final officialOrder = officialOrders.where((row) =>
+      _officialCell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) == invoice
+    ).firstOrNull;
+    final invoicePdf = officialOrder == null ? '' : _officialDocumentUrl(officialOrder, [
+      'Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice', 'Invoice PDF',
+      'URL Invoice PDF', 'URL PDF Invoice',
+    ]);
+    final receiptLinks = officialPayments.where((row) =>
+      _officialCell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) == invoice
+    ).map((row) => _officialDocumentUrl(row, [
+      'PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF',
+      'Kuitansi PDF', 'URL Kuitansi PDF', 'URL PDF Kuitansi',
+    ])).where((url) => url.isNotEmpty).toSet().toList();
+    final documentLinks = <String>[
+      if (invoicePdf.isNotEmpty) 'Invoice PDF resmi: $invoicePdf',
+      ...receiptLinks.asMap().entries.map((entry) => 'Kuitansi PDF resmi ${entry.key + 1}: ${entry.value}'),
+    ];
+    final documentSection = documentLinks.isEmpty
+      ? (syncingOfficialData ? 'Dokumen resmi sedang disinkronkan dari Google Sheets.\\n' :
+         'Tautan PDF resmi belum ditemukan pada data invoice/pembayaran.\\n')
+      : documentLinks.join('\\n') + '\\n';
+    if (template == 'Pesanan siap diambil') {
+      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + '\nSilakan datang pada jam operasional kami.\\n' + documentSection + 'Terima kasih 🙏';
+    } else if (template == 'Pengingat pembayaran') {
+      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n' + (lastPayment == null ? '' : 'Pembayaran terakhir: ' + _rupiah(lastPayment.amount) + ' (' + lastPayment.method + ') pada ' + OptikPdfService.date(lastPayment.paymentDate) + '\n') + 'Jika sudah melakukan pembayaran, mohon abaikan pesan ini.\\n' + documentSection + 'Terima kasih 🙏';
+    } else if (template == 'Tindak lanjut pelanggan') {
+      message.text = 'Halo ' + name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏';
+    } else {
+      message.text = 'Halo ' + name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' + (order == null ? '' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n') + 'Jika ada pertanyaan, silakan balas pesan ini.\\n' + documentSection + 'Terima kasih 🙏';
+    }
+  }
+
+
+  Future<void> _openWhatsApp() async {
+    final customer = selectedCustomer;
+    if (customer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih pelanggan terlebih dahulu.')));
+      return;
+    }
+    final phone = _phoneForWhatsApp(customer.phone);
+    if (phone.length < 10 || phone.length > 15) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor WhatsApp pelanggan tidak valid. Periksa nomor pada data pelanggan.')));
+      return;
+    }
+    final uri = Uri.https('wa.me', '/' + phone, {'text': message.text});
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('WhatsApp tidak dapat dibuka pada perangkat ini.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final customerOptions = <Customer>{...widget.customers, ...widget.orders.map((o) => o.customer)}.toList();
+    final orderOptions = widget.orders.where((o) => selectedCustomer == null || o.customer.phone == selectedCustomer!.phone).toList();
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const _Intro('WhatsApp Semi-Otomatis', 'Pilih pelanggan dan template. Chat dibuka dengan pesan siap ditinjau dan dikirim oleh petugas.', Icons.chat_outlined),
+        const SizedBox(height: 16),
+        _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          DropdownButtonFormField<Customer>(
+            value: customerOptions.contains(selectedCustomer) ? selectedCustomer : null,
+            isExpanded: true,
+            decoration: InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
+            items: customerOptions.map((c) => DropdownMenuItem(value: c, child: Text(c.name + ' • ' + c.phone, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: _chooseCustomer,
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<OptikOrder>(
+            value: orderOptions.contains(selectedOrder) ? selectedOrder : null,
+            isExpanded: true,
+            decoration: InputDecoration(labelText: 'Pilih invoice (opsional)', border: OutlineInputBorder()),
+            items: orderOptions.map((o) => DropdownMenuItem(value: o, child: Text(o.invoiceNumber + ' • ' + o.customer.name, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: (value) => setState(() { selectedOrder = value; _buildMessage(); }),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: template,
+            decoration: InputDecoration(labelText: 'Template pesan', border: OutlineInputBorder()),
+            items: const ['Konfirmasi pesanan', 'Pesanan siap diambil', 'Pengingat pembayaran', 'Tindak lanjut pelanggan'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+            onChanged: (value) => setState(() { template = value ?? 'Konfirmasi pesanan'; _buildMessage(); }),
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: message, minLines: 6, maxLines: 10,
+            decoration: InputDecoration(labelText: 'Pesan (bisa diedit sebelum dikirim)', alignLabelWithHint: true, border: OutlineInputBorder())),
+          const SizedBox(height: 14),
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168C54), padding: const EdgeInsets.symmetric(vertical: 14)),
+            onPressed: _openWhatsApp, icon: const Icon(Icons.chat), label: const Text('Buka WhatsApp & Tinjau Pesan'))),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: Text(
+              syncingOfficialData ? 'Menyinkronkan invoice & kuitansi dari Google Sheets…'
+                : officialSyncError != null ? 'Sinkronisasi gagal: $officialSyncError'
+                : 'Data resmi tersinkron: ${officialOrders.length} invoice • ${officialPayments.length} pembayaran',
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            )),
+            IconButton(
+              tooltip: 'Sinkronkan data resmi',
+              onPressed: syncingOfficialData ? null : _loadOfficialData,
+              icon: const Icon(Icons.sync),
+            ),
+          ]),
+          const Text('Tautan PDF resmi dari Sheets otomatis disertakan ke pesan WhatsApp jika tersedia. Aplikasi tidak membuat ulang dokumen.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const SizedBox(height: 8),
+          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa pesan lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+        ])),
+      ],
+    );
+  }
+}
+
+class InvoiceReceiptScreen extends StatefulWidget {
+  const InvoiceReceiptScreen({super.key});
+
+  @override
+  State<InvoiceReceiptScreen> createState() => _InvoiceReceiptScreenState();
+}
+
+class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
+  List<Map<String, String>> orders = [];
+  List<Map<String, String>> payments = [];
+  bool loading = true;
+  String? loadError;
+
+  String _cell(Map<String, String> row, List<String> aliases) {
+    for (final alias in aliases) {
+      for (final entry in row.entries) {
+        if (entry.key.trim().toLowerCase() == alias.toLowerCase() &&
+            entry.value.trim().isNotEmpty) {
+          return entry.value.trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  String _documentUrl(Map<String, String> row, List<String> aliases) {
+    final candidates = <String>[
+      _cell(row, aliases),
+      ...row.entries
+          .where((entry) =>
+              RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false)
+                  .hasMatch(entry.key))
+          .map((entry) => entry.value),
+      ...row.values,
+    ];
+    final urlPattern = RegExp(r'https?://[^\s<>"]+', caseSensitive: false);
+    for (final candidate in candidates) {
+      final matches = urlPattern.allMatches(candidate.trim());
+      for (final match in matches) {
+        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+$'), '');
+        final uri = Uri.tryParse(raw);
+        if (uri != null &&
+            (uri.host.toLowerCase() == 'drive.google.com' ||
+             uri.host.toLowerCase().endsWith('.google.com')) &&
+            (uri.path.contains('/file/') || uri.path.contains('/document/') ||
+             uri.queryParameters.containsKey('id'))) {
+          return uri.toString();
+        }
+      }
+      final value = candidate.trim();
+      if (RegExp(r'^[A-Za-z0-9_-]{25,}$').hasMatch(value) &&
+          RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false)
+              .hasMatch(aliases.join(' '))) {
+        return 'https://drive.google.com/file/d/$value/view';
+      }
+    }
+    return '';
+  }
+
+  int _money(String value) =>
+      int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
+
+  String _rupiah(String value) {
+    final amount = _money(value);
+    return 'Rp ' + amount.toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => '.',
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOfficialDocuments();
+  }
+
+  Future<void> _loadOfficialDocuments() async {
+    if (mounted) setState(() {
+      loading = true;
+      loadError = null;
+    });
+    try {
+      final tables = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN'),
+        SheetsReadService.readTable('DATA_PEMBAYARAN'),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        orders = tables[0].where((row) =>
+          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+        ).toList();
+        payments = tables[1].where((row) =>
+          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+        ).toList();
+        loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        loading = false;
+        loadError = error.toString();
+      });
+    }
+  }
+
+  Future<void> _openDocument(String url) async {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !uri.hasScheme ||
+        (uri.scheme != 'https' && uri.scheme != 'http')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tautan dokumen resmi belum tersedia.')),
+      );
+      return;
+    }
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dokumen tidak dapat dibuka.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+    onRefresh: _loadOfficialDocuments,
+    child: ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const _Intro(
+          'Invoice & Kuitansi Resmi',
+          'Data dibaca langsung dari DATA_PESANAN dan DATA_PEMBAYARAN.',
+          Icons.description_outlined,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${orders.length} invoice • ${payments.length} pembayaran',
+                style: const TextStyle(
+                  color: _darkGold,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Sinkronkan ulang',
+              onPressed: loading ? null : _loadOfficialDocuments,
+              icon: const Icon(Icons.sync),
+            ),
+          ],
+        ),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (loadError != null)
+          _Panel(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Data resmi belum dapat dibaca.',
+                style: TextStyle(fontWeight: FontWeight.bold, color: _ink),
+              ),
+              const SizedBox(height: 6),
+              Text(loadError!, style: const TextStyle(fontSize: 11, color: Colors.deepOrange)),
+              TextButton.icon(
+                onPressed: _loadOfficialDocuments,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba lagi'),
+              ),
+            ],
+          ))
+        else if (orders.isEmpty)
+          const _Empty('Belum ada invoice resmi yang dapat ditampilkan.')
+        else
+          ...orders.map((order) {
+            final invoice = _cell(order, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
+            final relatedPayments = payments.where((payment) =>
+              _cell(payment, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) == invoice
+            ).toList();
+            final invoicePdf = _documentUrl(order, [
+              'Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice',
+              'Invoice PDF', 'URL Invoice PDF', 'URL PDF Invoice',
+            ]);
+            final name = _cell(order, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+            final total = _cell(order, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
+            final paid = _cell(order, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
+            final remaining = _cell(order, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
+            return Card(
+              color: Colors.white,
+              margin: const EdgeInsets.only(bottom: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: _gold.withValues(alpha: .30)),
+              ),
+              child: ExpansionTile(
+                leading: const Icon(Icons.receipt_long_outlined, color: _darkGold),
+                title: Text(name.isEmpty ? invoice : name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
+                subtitle: Text(invoice),
+                childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                children: [
+                  _docLine('Tanggal', _cell(order, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp', 'Cap waktu'])),
+                  _docLine('Total', _rupiah(total), strong: true),
+                  _docLine('Dibayar', _rupiah(paid)),
+                  _docLine('Sisa tagihan', _rupiah(remaining), strong: true),
+                  _docLine('Status', _cell(order, ['Status', 'Status Pembayaran'])),
+                  const Divider(),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('RIWAYAT KUITANSI RESMI',
+                      style: const TextStyle(color: _darkGold, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                  if (relatedPayments.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Belum ada pembayaran tercatat.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                      ),
+                    )
+                  else
+                    ...relatedPayments.map((payment) {
+                      final receiptPdf = _documentUrl(payment, [
+                        'PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF',
+                        'Kuitansi PDF', 'URL Kuitansi PDF', 'URL PDF Kuitansi',
+                      ]);
+                      return Column(
+                        children: [
+                          _docLine('No. kuitansi', _cell(payment, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi'])),
+                          _docLine('Tanggal bayar', _cell(payment, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])),
+                          _docLine('Jumlah', _rupiah(_cell(payment, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran']))),
+                          _docLine('Metode', _cell(payment, ['Metode', 'Metode Pembayaran', 'Metode pembayaran'])),
+                          if (receiptPdf.isNotEmpty)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: () => _openDocument(receiptPdf),
+                                icon: const Icon(Icons.picture_as_pdf_outlined),
+                                label: const Text('Buka kuitansi PDF resmi'),
+                              ),
+                            ),
+                          const Divider(),
+                        ],
+                      );
+                    }),
+                  if (invoicePdf.isNotEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(backgroundColor: _darkGold),
+                        onPressed: () => _openDocument(invoicePdf),
+                        icon: const Icon(Icons.picture_as_pdf_outlined),
+                        label: const Text('Buka invoice PDF resmi'),
+                      ),
+                    )
+                  else
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Tautan invoice PDF belum tersedia pada baris ini.',
+                        style: TextStyle(fontSize: 11, color: Colors.black54)),
+                    ),
+                ],
+              ),
+            );
+          }),
+      ],
+    ),
+  );
+}
+
+Widget _docLine(String label, String value, {bool strong = false}) => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 3),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: 112, child: Text(label, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: _ink))),
+      const Text(': ', style: TextStyle(fontSize: 11)),
+      Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: strong ? _darkGold : _ink))),
+    ],
+  ),
+);
+
+), '');
+        final uri = Uri.tryParse(raw);
+        if (uri != null &&
+            (uri.host.toLowerCase() == 'drive.google.com' ||
+             uri.host.toLowerCase().endsWith('.google.com')) &&
+            (uri.path.contains('/file/') || uri.path.contains('/document/') ||
+             uri.queryParameters.containsKey('id'))) return uri.toString();
+      }
+      final value = candidate.trim();
+      if (RegExp(r'^[A-Za-z0-9_-]{25,}
+    RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+
+  String _phoneForWhatsApp(String raw) {
+    var digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.startsWith('0')) digits = '62' + digits.substring(1);
+    if (digits.startsWith('8')) digits = '62' + digits;
+    return digits;
+  }
+
+  void _chooseCustomer(Customer? customer) {
+    setState(() {
+      selectedCustomer = customer;
+      selectedOrder = null;
+      for (final order in widget.orders) {
+        if (order.customer.phone == customer?.phone) { selectedOrder = order; break; }
+      }
+      _buildMessage();
+    });
+  }
+
+  void _buildMessage() {
+    final customer = selectedCustomer;
+    final order = selectedOrder;
+    if (customer == null) { message.text = ''; return; }
+    final name = customer.name;
+    final invoice = order?.invoiceNumber ?? '-';
+    final orderPayments = order == null
+        ? <OptikPayment>[]
+        : (widget.payments.where((p) => p.invoiceNumber == order.invoiceNumber).toList()
+          ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate)));
+    final paid = order == null
+        ? 0
+        : order.initialPayment + orderPayments.fold<int>(0, (sum, p) => sum + p.amount);
+    final remainingAmount = order == null ? 0 : (order.total - paid).clamp(0, order.total);
+    final total = order == null ? '-' : _rupiah(order.total);
+    final paidText = order == null ? '-' : _rupiah(paid);
+    final balance = order == null ? '-' : _rupiah(remainingAmount);
+    final lastPayment = orderPayments.isEmpty ? null : orderPayments.first;
+    if (template == 'Pesanan siap diambil') {
+      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
+    } else if (template == 'Pengingat pembayaran') {
+      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n' + (lastPayment == null ? '' : 'Pembayaran terakhir: ' + _rupiah(lastPayment.amount) + ' (' + lastPayment.method + ') pada ' + OptikPdfService.date(lastPayment.paymentDate) + '\n') + 'Jika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih 🙏';
+    } else if (template == 'Tindak lanjut pelanggan') {
+      message.text = 'Halo ' + name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏';
+    } else {
+      message.text = 'Halo ' + name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' + (order == null ? '' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n') + 'Jika ada pertanyaan, silakan balas pesan ini. Terima kasih 🙏';
+    }
+  }
+
+
+  Future<void> _openWhatsApp() async {
+    final customer = selectedCustomer;
+    if (customer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih pelanggan terlebih dahulu.')));
+      return;
+    }
+    final phone = _phoneForWhatsApp(customer.phone);
+    if (phone.length < 10 || phone.length > 15) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor WhatsApp pelanggan tidak valid. Periksa nomor pada data pelanggan.')));
+      return;
+    }
+    final uri = Uri.https('wa.me', '/' + phone, {'text': message.text});
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('WhatsApp tidak dapat dibuka pada perangkat ini.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final customerOptions = <Customer>{...widget.customers, ...widget.orders.map((o) => o.customer)}.toList();
+    final orderOptions = widget.orders.where((o) => selectedCustomer == null || o.customer.phone == selectedCustomer!.phone).toList();
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const _Intro('WhatsApp Semi-Otomatis', 'Pilih pelanggan dan template. Chat dibuka dengan pesan siap ditinjau dan dikirim oleh petugas.', Icons.chat_outlined),
+        const SizedBox(height: 16),
+        _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          DropdownButtonFormField<Customer>(
+            value: customerOptions.contains(selectedCustomer) ? selectedCustomer : null,
+            isExpanded: true,
+            decoration: InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
+            items: customerOptions.map((c) => DropdownMenuItem(value: c, child: Text(c.name + ' • ' + c.phone, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: _chooseCustomer,
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<OptikOrder>(
+            value: orderOptions.contains(selectedOrder) ? selectedOrder : null,
+            isExpanded: true,
+            decoration: InputDecoration(labelText: 'Pilih invoice (opsional)', border: OutlineInputBorder()),
+            items: orderOptions.map((o) => DropdownMenuItem(value: o, child: Text(o.invoiceNumber + ' • ' + o.customer.name, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: (value) => setState(() { selectedOrder = value; _buildMessage(); }),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: template,
+            decoration: InputDecoration(labelText: 'Template pesan', border: OutlineInputBorder()),
+            items: const ['Konfirmasi pesanan', 'Pesanan siap diambil', 'Pengingat pembayaran', 'Tindak lanjut pelanggan'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+            onChanged: (value) => setState(() { template = value ?? 'Konfirmasi pesanan'; _buildMessage(); }),
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: message, minLines: 6, maxLines: 10,
+            decoration: InputDecoration(labelText: 'Pesan (bisa diedit sebelum dikirim)', alignLabelWithHint: true, border: OutlineInputBorder())),
+          const SizedBox(height: 14),
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168C54), padding: const EdgeInsets.symmetric(vertical: 14)),
+            onPressed: _openWhatsApp, icon: const Icon(Icons.chat), label: const Text('Buka WhatsApp & Tinjau Pesan'))),
+          const SizedBox(height: 8),
+          SizedBox(width: double.infinity, child: OutlinedButton.icon(
+            onPressed: null,
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('PDF resmi menunggu sinkronisasi Apps Script'),
+          )),
+          const SizedBox(height: 8),
+          const Text('PDF resmi tidak dibuat oleh aplikasi. Dokumen akan dibagikan dari tautan Drive Apps Script setelah integrasi transaksi tersedia.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const SizedBox(height: 8),
+          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa pesan lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+        ])),
+      ],
+    );
+  }
+}
+
+class InvoiceReceiptScreen extends StatefulWidget {
+  const InvoiceReceiptScreen({super.key});
+
+  @override
+  State<InvoiceReceiptScreen> createState() => _InvoiceReceiptScreenState();
+}
+
+class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
+  List<Map<String, String>> orders = [];
+  List<Map<String, String>> payments = [];
+  bool loading = true;
+  String? loadError;
+
+  String _cell(Map<String, String> row, List<String> aliases) {
+    for (final alias in aliases) {
+      for (final entry in row.entries) {
+        if (entry.key.trim().toLowerCase() == alias.toLowerCase() &&
+            entry.value.trim().isNotEmpty) {
+          return entry.value.trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  String _documentUrl(Map<String, String> row, List<String> aliases) {
+    final candidates = <String>[
+      _cell(row, aliases),
+      ...row.entries
+          .where((entry) =>
+              RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false)
+                  .hasMatch(entry.key))
+          .map((entry) => entry.value),
+      ...row.values,
+    ];
+    final urlPattern = RegExp(r'https?://[^\s<>"]+', caseSensitive: false);
+    for (final candidate in candidates) {
+      final matches = urlPattern.allMatches(candidate.trim());
+      for (final match in matches) {
+        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+$'), '');
+        final uri = Uri.tryParse(raw);
+        if (uri != null &&
+            (uri.host.toLowerCase() == 'drive.google.com' ||
+             uri.host.toLowerCase().endsWith('.google.com')) &&
+            (uri.path.contains('/file/') || uri.path.contains('/document/') ||
+             uri.queryParameters.containsKey('id'))) {
+          return uri.toString();
+        }
+      }
+      final value = candidate.trim();
+      if (RegExp(r'^[A-Za-z0-9_-]{25,}$').hasMatch(value) &&
+          RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false)
+              .hasMatch(aliases.join(' '))) {
+        return 'https://drive.google.com/file/d/$value/view';
+      }
+    }
+    return '';
+  }
+
+  int _money(String value) =>
+      int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
+
+  String _rupiah(String value) {
+    final amount = _money(value);
+    return 'Rp ' + amount.toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => '.',
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOfficialDocuments();
+  }
+
+  Future<void> _loadOfficialDocuments() async {
+    if (mounted) setState(() {
+      loading = true;
+      loadError = null;
+    });
+    try {
+      final tables = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN'),
+        SheetsReadService.readTable('DATA_PEMBAYARAN'),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        orders = tables[0].where((row) =>
+          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+        ).toList();
+        payments = tables[1].where((row) =>
+          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+        ).toList();
+        loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        loading = false;
+        loadError = error.toString();
+      });
+    }
+  }
+
+  Future<void> _openDocument(String url) async {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !uri.hasScheme ||
+        (uri.scheme != 'https' && uri.scheme != 'http')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tautan dokumen resmi belum tersedia.')),
+      );
+      return;
+    }
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dokumen tidak dapat dibuka.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+    onRefresh: _loadOfficialDocuments,
+    child: ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const _Intro(
+          'Invoice & Kuitansi Resmi',
+          'Data dibaca langsung dari DATA_PESANAN dan DATA_PEMBAYARAN.',
+          Icons.description_outlined,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${orders.length} invoice • ${payments.length} pembayaran',
+                style: const TextStyle(
+                  color: _darkGold,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Sinkronkan ulang',
+              onPressed: loading ? null : _loadOfficialDocuments,
+              icon: const Icon(Icons.sync),
+            ),
+          ],
+        ),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (loadError != null)
+          _Panel(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Data resmi belum dapat dibaca.',
+                style: TextStyle(fontWeight: FontWeight.bold, color: _ink),
+              ),
+              const SizedBox(height: 6),
+              Text(loadError!, style: const TextStyle(fontSize: 11, color: Colors.deepOrange)),
+              TextButton.icon(
+                onPressed: _loadOfficialDocuments,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba lagi'),
+              ),
+            ],
+          ))
+        else if (orders.isEmpty)
+          const _Empty('Belum ada invoice resmi yang dapat ditampilkan.')
+        else
+          ...orders.map((order) {
+            final invoice = _cell(order, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
+            final relatedPayments = payments.where((payment) =>
+              _cell(payment, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) == invoice
+            ).toList();
+            final invoicePdf = _documentUrl(order, [
+              'Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice',
+              'Invoice PDF', 'URL Invoice PDF', 'URL PDF Invoice',
+            ]);
+            final name = _cell(order, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+            final total = _cell(order, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
+            final paid = _cell(order, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
+            final remaining = _cell(order, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
+            return Card(
+              color: Colors.white,
+              margin: const EdgeInsets.only(bottom: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: _gold.withValues(alpha: .30)),
+              ),
+              child: ExpansionTile(
+                leading: const Icon(Icons.receipt_long_outlined, color: _darkGold),
+                title: Text(name.isEmpty ? invoice : name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
+                subtitle: Text(invoice),
+                childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                children: [
+                  _docLine('Tanggal', _cell(order, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp', 'Cap waktu'])),
+                  _docLine('Total', _rupiah(total), strong: true),
+                  _docLine('Dibayar', _rupiah(paid)),
+                  _docLine('Sisa tagihan', _rupiah(remaining), strong: true),
+                  _docLine('Status', _cell(order, ['Status', 'Status Pembayaran'])),
+                  const Divider(),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('RIWAYAT KUITANSI RESMI',
+                      style: const TextStyle(color: _darkGold, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                  if (relatedPayments.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Belum ada pembayaran tercatat.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                      ),
+                    )
+                  else
+                    ...relatedPayments.map((payment) {
+                      final receiptPdf = _documentUrl(payment, [
+                        'PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF',
+                        'Kuitansi PDF', 'URL Kuitansi PDF', 'URL PDF Kuitansi',
+                      ]);
+                      return Column(
+                        children: [
+                          _docLine('No. kuitansi', _cell(payment, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi'])),
+                          _docLine('Tanggal bayar', _cell(payment, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])),
+                          _docLine('Jumlah', _rupiah(_cell(payment, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran']))),
+                          _docLine('Metode', _cell(payment, ['Metode', 'Metode Pembayaran', 'Metode pembayaran'])),
+                          if (receiptPdf.isNotEmpty)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: () => _openDocument(receiptPdf),
+                                icon: const Icon(Icons.picture_as_pdf_outlined),
+                                label: const Text('Buka kuitansi PDF resmi'),
+                              ),
+                            ),
+                          const Divider(),
+                        ],
+                      );
+                    }),
+                  if (invoicePdf.isNotEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(backgroundColor: _darkGold),
+                        onPressed: () => _openDocument(invoicePdf),
+                        icon: const Icon(Icons.picture_as_pdf_outlined),
+                        label: const Text('Buka invoice PDF resmi'),
+                      ),
+                    )
+                  else
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Tautan invoice PDF belum tersedia pada baris ini.',
+                        style: TextStyle(fontSize: 11, color: Colors.black54)),
+                    ),
+                ],
+              ),
+            );
+          }),
+      ],
+    ),
+  );
+}
+
+Widget _docLine(String label, String value, {bool strong = false}) => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 3),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: 112, child: Text(label, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: _ink))),
+      const Text(': ', style: TextStyle(fontSize: 11)),
+      Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: strong ? _darkGold : _ink))),
+    ],
+  ),
+);
+
+).hasMatch(value) &&
+          RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false).hasMatch(aliases.join(' '))) {
+        return 'https://drive.google.com/file/d/$value/view';
+      }
+    }
+    return '';
+  }
+
+  Future<void> _loadOfficialData() async {
+    if (mounted) setState(() { syncingOfficialData = true; officialSyncError = null; });
+    try {
+      final tables = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN'),
+        SheetsReadService.readTable('DATA_PEMBAYARAN'),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        officialOrders = tables[0];
+        officialPayments = tables[1];
+        syncingOfficialData = false;
+      });
+      _buildMessage();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() { syncingOfficialData = false; officialSyncError = error.toString(); });
+    }
+  }
 
   String _rupiah(int value) => 'Rp ' + value.toString().replaceAllMapped(
     RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
