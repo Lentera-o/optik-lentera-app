@@ -1356,18 +1356,18 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         (receiptPdf.isEmpty ? '' : '\nPDF Kuitansi: ' + receiptPdf);
     final orderDetails = _orderDetailText(order);
     if (template == 'Pesanan siap diambil') {
-      message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + documentLinks + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
+      message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + orderDetails + documentLinks + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
     } else if (template == 'Pengingat pembayaran') {
       final paymentText = latestPayment == null ? '' : '\nPembayaran terakhir: ' +
         _rupiah(_money(_cell(latestPayment, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Nominal Pembayaran', 'Nominal Bayar', 'Nominal', 'Total Bayar']))) +
         ' (' + _cell(latestPayment, ['Metode', 'Metode Pembayaran']) + ')';
       message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paid + '\nSisa tagihan: ' + balance + paymentText + orderDetails + documentLinks + '\nJika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih 🙏';
     } else if (template == 'Tindak lanjut pelanggan') {
-      message.text = 'Halo ' + customer.name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏' + documentLinks;
+      message.text = 'Halo ' + customer.name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏' + orderDetails + documentLinks;
     } else {
       message.text = 'Halo ' + customer.name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' +
         (order == null ? 'Nomor invoice belum ditemukan pada data resmi.' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paid + '\nSisa tagihan: ' + balance) +
-        documentLinks + '\nJika ada pertanyaan, silakan balas pesan ini. Terima kasih 🙏';
+        orderDetails + documentLinks + '\nJika ada pertanyaan, silakan balas pesan ini. Terima kasih 🙏';
     }
   }
 
