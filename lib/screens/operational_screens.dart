@@ -90,9 +90,21 @@ class _CustomerScreenState extends State<CustomerScreen> {
       });
     } catch (e) { if (!mounted) return; setState(() { error = e.toString(); loading = false; }); }
   }
+  String _invoiceKey(String value) =>
+      value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
   bool paymentFor(Map<String,String> p, String invoice) {
-    final v = cell(p, ['No Invoice','Nomor Invoice','No. Invoice','Invoice','Nomor Tagihan']);
-    return v.isNotEmpty ? v == invoice : p.values.any((x) => x.trim() == invoice);
+    final wanted = _invoiceKey(invoice);
+    if (wanted.isEmpty) return false;
+    final paymentInvoice = cell(p, [
+      'No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice',
+      'Nomor Tagihan', 'No Tagihan', 'No Faktur', 'Nomor Faktur',
+      'Kode Invoice', 'Invoice ID', 'ID Invoice',
+    ]);
+    // Never match against arbitrary cell values: a payment note, amount, or
+    // customer field can coincidentally equal an invoice string.
+    return paymentInvoice.isNotEmpty &&
+        _invoiceKey(paymentInvoice) == wanted;
   }
   String documentUrl(Map<String,String> row, List<String> aliases) {
     final candidates = <String>[cell(row, aliases), ...row.entries.where((e) => RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive:false).hasMatch(e.key)).map((e)=>e.value), ...row.values];
