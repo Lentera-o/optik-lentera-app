@@ -700,7 +700,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       for (final row in rows) {
         final number = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
         if (number.isEmpty) continue;
-        final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+        final name = _cell(row, [
+        'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
+        'Nama Customer', 'Customer', 'Nama Konsumen',
+      ]);
         final totalText = _cell(row, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
         final paidText = _cell(row, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
         final remainingText = _cell(row, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
@@ -997,10 +1000,25 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
 
   String _cell(Map<String, String> row, List<String> aliases) {
     String normalize(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    // Exact aliases always win, preventing similarly named fields from mixing.
     for (final alias in aliases) {
       final target = normalize(alias);
       for (final entry in row.entries) {
         if (normalize(entry.key) == target && entry.value.trim().isNotEmpty) {
+          return entry.value.trim();
+        }
+      }
+    }
+    // Accept harmless variations in actual spreadsheet column headings.
+    for (final alias in aliases) {
+      final tokens = RegExp(r'[a-z0-9]+').allMatches(alias.toLowerCase())
+          .map((match) => match.group(0)!)
+          .where((token) => token.length > 1)
+          .toList();
+      if (tokens.length < 2) continue;
+      for (final entry in row.entries) {
+        final header = normalize(entry.key);
+        if (entry.value.trim().isNotEmpty && tokens.every(header.contains)) {
           return entry.value.trim();
         }
       }
@@ -1011,11 +1029,12 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   String _phoneFromRow(Map<String, String> row) {
     final known = _cell(row, [
       'No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA',
-      'Nomor WA', 'WA', 'WhatsApp', 'Whatsapp', 'No Telepon',
-      'Nomor Telepon', 'Telepon', 'No HP', 'Nomor HP', 'No. HP',
-      'Handphone', 'HP', 'No HP/WA', 'Nomor HP/WA', 'HP/WA',
-      'Nomor WhatsApp Pelanggan', 'No WhatsApp Pelanggan',
-      'Nomor WA Pelanggan', 'No WA Pelanggan', 'Phone', 'Mobile',
+      'Nomor WA', 'WA', 'WhatsApp', 'Whatsapp', 'Kontak WhatsApp',
+      'No Telepon', 'Nomor Telepon', 'Telepon', 'No Telp', 'Nomor Telp', 'Telp',
+      'No HP', 'Nomor HP', 'No. HP', 'Handphone', 'HP', 'No HP/WA',
+      'Nomor HP/WA', 'HP/WA', 'Nomor WhatsApp Pelanggan', 'No WhatsApp Pelanggan',
+      'Nomor WA Pelanggan', 'No WA Pelanggan', 'Nomor Kontak', 'Kontak Pelanggan',
+      'Phone', 'Mobile',
     ]);
     if (known.isNotEmpty) return known;
 
@@ -1024,8 +1043,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       final key = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
       final phoneColumn = key == 'wa' || key == 'hp' || key == 'nohp' ||
           key == 'phone' || key == 'mobile' || key.contains('whatsapp') ||
-          key.contains('nomorwa') || key.contains('telepon') ||
-          key.contains('handphone') || key.contains('nomorhp');
+          key.contains('nomorwa') || key.contains('telepon') || key.contains('telp') ||
+          key.contains('handphone') || key.contains('nomorhp') || key.contains('kontak');
       if (phoneColumn && entry.value.trim().isNotEmpty) {
         return entry.value.trim();
       }
@@ -1108,7 +1127,10 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
       ]);
       final orders = tables[0].where((row) =>
-        _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+        _cell(row, [
+          'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
+          'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice',
+        ]).isNotEmpty
       ).toList();
       // Keep rows even when the form uses a different invoice column heading.
       final payments = tables[1].where((row) =>
@@ -1117,21 +1139,33 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       if (!mounted) return;
       final sheetCustomersByKey = <String, Customer>{};
       for (final row in orders) {
-        final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan']);
+        final name = _cell(row, [
+          'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
+          'Nama Customer', 'Customer', 'Nama Konsumen',
+        ]);
         if (name.isEmpty) continue;
         final customer = Customer(
           name: name,
           phone: _phoneFromRow(row),
-          address: _cell(row, ['Alamat', 'Alamat Pelanggan']),
+          address: _cell(row, ['Alamat', 'Alamat Pelanggan', 'Alamat Customer', 'Alamat Konsumen']),
         );
         final phone = _canonicalPhone(customer.phone);
         final key = phone.isNotEmpty ? 'phone:$phone' : 'name:${name.trim().toLowerCase()}';
         sheetCustomersByKey.putIfAbsent(key, () => customer);
       }
       setState(() {
+        final previousCustomerKey = selectedCustomer == null ? null : _customerKey(selectedCustomer!);
         officialOrders = orders;
         officialPayments = payments;
         officialCustomers = sheetCustomersByKey.values.toList();
+        if (previousCustomerKey != null) {
+          for (final option in _customerOptions) {
+            if (_customerKey(option) == previousCustomerKey) {
+              selectedCustomer = option;
+              break;
+            }
+          }
+        }
         loadingOfficialData = false;
         if (selectedCustomer != null) {
           final matches = customerOrders;
@@ -1153,7 +1187,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
 
   Map<String, String>? get selectedOfficialOrder {
     for (final row in officialOrders) {
-      if (_cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice) return row;
+      if (_cell(row, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice']) == selectedInvoice) return row;
     }
     return null;
   }
@@ -1213,7 +1247,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     setState(() {
       selectedCustomer = customer;
       final matches = customerOrders;
-      selectedInvoice = matches.isEmpty ? null : _cell(matches.first, ['No Invoice', 'Nomor Invoice']);
+      selectedInvoice = matches.isEmpty ? null : _cell(matches.first, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice']);
       _buildMessage();
     });
   }
@@ -1316,8 +1350,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
               border: const OutlineInputBorder(),
             ),
             items: invoiceOptions.map((row) {
-              final number = _cell(row, ['No Invoice', 'Nomor Invoice']);
-              final name = _cell(row, ['Nama', 'Nama Pelanggan']);
+              final number = _cell(row, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice']);
+              final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Pelanggan', 'Nama Customer', 'Customer', 'Nama Konsumen']);
               return DropdownMenuItem<String>(value: number, child: Text(number + (name.isEmpty ? '' : ' • ' + name), overflow: TextOverflow.ellipsis));
             }).toList(),
             onChanged: (value) => setState(() { selectedInvoice = value; _buildMessage(); }),
