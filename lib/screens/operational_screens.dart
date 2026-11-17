@@ -986,7 +986,7 @@ class WhatsAppCenterScreen extends StatefulWidget {
   State<WhatsAppCenterScreen> createState() => _WhatsAppCenterScreenState();
 }
 
-class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
+class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with WidgetsBindingObserver {
   Customer? selectedCustomer;
   String? selectedInvoice;
   String template = 'Konfirmasi pesanan';
@@ -997,6 +997,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   List<Customer> officialCustomers = [];
   late final List<Customer> _orderCustomers;
   bool loadingOfficialData = false;
+  bool _refreshRequested = false;
   String? syncError;
   Timer? _syncTimer;
   DateTime? _lastSyncedAt;
@@ -1128,17 +1129,26 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _orderCustomers = widget.orders.map((order) => order.customer).toList();
     _loadOfficialData();
     // Keep the WhatsApp picker current while this screen is open. The Google
     // Forms/Sheets workflow may receive orders from another device at any time.
     _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted && !loadingOfficialData) _loadOfficialData(silent: true);
+      if (mounted) _loadOfficialData(silent: true);
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _loadOfficialData(silent: true);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _syncTimer?.cancel();
     message.dispose();
     super.dispose();
@@ -1167,7 +1177,11 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   }
 
   Future<void> _loadOfficialData({bool silent = false}) async {
-    if (loadingOfficialData) return;
+    if (loadingOfficialData) {
+      // Never drop a manual, timer, or app-resume refresh while a fetch is active.
+      _refreshRequested = true;
+      return;
+    }
     String rowSignature(Map<String, String>? row) =>
         row == null ? '' : row.entries.map((e) => e.key + '=' + e.value).join('|');
     String rowsSignature(List<Map<String, String>> rows) =>
@@ -1314,6 +1328,12 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       // Keep a staff-edited draft unless its selected official source changed.
       if (messageSourceChanged) _buildMessage();
     });
+
+    // Coalesce refresh requests received during this fetch into one newer read.
+    if (_refreshRequested && mounted) {
+      _refreshRequested = false;
+      await _loadOfficialData(silent: true);
+    }
   }
 
   Map<String, String>? get selectedOfficialOrder {
@@ -1573,7 +1593,13 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   @override
   Widget build(BuildContext context) {
     final customerOptions = _customerOptions;
-    final invoiceOptions = customerOrders;
+    // A sheet can contain repeated invoice rows; DropdownButton requires unique values.
+    final uniqueInvoices = <String, Map<String, String>>{};
+    for (final row in customerOrders) {
+      final number = _invoiceNumber(row);
+      if (number.isNotEmpty) uniqueInvoices.putIfAbsent(number, () => row);
+    }
+    final invoiceOptions = uniqueInvoices.values.toList();
     final invoiceIsValid = invoiceOptions.any((row) =>
       _invoiceNumber(row) == selectedInvoice);
     return ListView(
