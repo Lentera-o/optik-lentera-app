@@ -1011,6 +1011,15 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
     return '';
   }
 
+  bool _paymentBelongsToInvoice(Map<String, String> payment, String invoice) {
+    final linkedInvoice = _cell(payment, [
+      'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
+      'Invoice', 'Invoice Number', 'Nomor Tagihan',
+    ]);
+    if (linkedInvoice.isNotEmpty) return linkedInvoice == invoice;
+    return payment.values.any((value) => value.trim() == invoice);
+  }
+
   String _documentUrl(Map<String, String> row, List<String> aliases) {
     final candidates = <String>[
       _cell(row, aliases),
