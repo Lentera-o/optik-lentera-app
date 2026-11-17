@@ -4,6 +4,7 @@ import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 import '../services/api_service.dart';
 import '../services/sheets_read_service.dart';
+import '../services/whatsapp_phone_service.dart';
 
 const _gold = Color(0xFFB99555);
 const _darkGold = Color(0xFF80612F);
@@ -1030,7 +1031,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         if (name.isEmpty) continue;
         final customer = Customer(
           name: name,
-          phone: _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']),
+          phone: _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA', 'Nomor WA', 'WA', 'WhatsApp', 'Whatsapp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'No HP', 'Nomor HP', 'No. HP', 'Handphone', 'HP', 'No HP/WA', 'Nomor HP/WA', 'HP/WA']),
           address: _cell(row, ['Alamat', 'Alamat Pelanggan']),
         );
         final phone = _canonicalPhone(customer.phone);
@@ -1091,19 +1092,15 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     return DateTime(2000);
   }
 
-  String _canonicalPhone(String value) {
-    var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('0')) digits = '62' + digits.substring(1);
-    if (digits.startsWith('8')) digits = '62' + digits;
-    return digits;
-  }
+  String _canonicalPhone(String value) =>
+      normalizeWhatsAppPhone(value);
 
   List<Map<String, String>> get customerOrders {
     final customer = selectedCustomer;
     if (customer == null) return [];
     final customerPhone = _canonicalPhone(customer.phone);
     final matches = officialOrders.where((row) {
-      final phone = _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']);
+      final phone = _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA', 'Nomor WA', 'WA', 'WhatsApp', 'Whatsapp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'No HP', 'Nomor HP', 'No. HP', 'Handphone', 'HP', 'No HP/WA', 'Nomor HP/WA', 'HP/WA']);
       final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
       final rowPhone = _canonicalPhone(phone);
       final samePhone = customerPhone.isNotEmpty && rowPhone == customerPhone;
@@ -1171,12 +1168,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     }
   }
 
-  String _phoneForWhatsApp(String raw) {
-    var digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('0')) digits = '62' + digits.substring(1);
-    if (digits.startsWith('8')) digits = '62' + digits;
-    return digits;
-  }
+  String _phoneForWhatsApp(String raw) =>
+      normalizeWhatsAppPhone(raw);
 
   Future<void> _openWhatsApp() async {
     final customer = selectedCustomer;
@@ -1185,8 +1178,16 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       return;
     }
     final phone = _phoneForWhatsApp(customer.phone);
-    if (phone.length < 10 || phone.length > 15) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor WhatsApp pelanggan tidak valid. Periksa nomor pada data pelanggan.')));
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Nomor WhatsApp belum terbaca dari data pelanggan. Periksa kolom No WA / WhatsApp / HP di DATA_PESANAN.'),
+      ));
+      return;
+    }
+    if (!isValidWhatsAppPhone(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Format nomor WhatsApp belum valid. Gunakan 08..., 628..., atau +62... tanpa nomor yang terpotong.'),
+      ));
       return;
     }
     final uri = Uri.https('wa.me', '/' + phone, {'text': message.text});
