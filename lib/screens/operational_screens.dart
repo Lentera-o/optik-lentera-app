@@ -1173,7 +1173,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
           if (!stillValid) {
             selectedInvoice = matches.isEmpty
                 ? null
-                : _cell(matches.first, ['No Invoice', 'Nomor Invoice', 'Invoice']);
+                : _invoiceNumber(matches.first);
           }
         }
         _buildMessage();
