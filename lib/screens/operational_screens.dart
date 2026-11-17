@@ -232,31 +232,32 @@ class _TransactionScreenState extends State<TransactionScreen> {
       }
     }
     if (row == null) return;
+    final selectedRow = row;
     setState(() {
       _selectedHistoryInvoice = invoice;
-      customer.text = _historyCell(row!, ['Nama', 'Nama Pelanggan', 'Pelanggan']);
-      phone.text = _historyCell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']);
-      address.text = _historyCell(row, ['Alamat', 'Alamat Pelanggan']);
-      doctor.text = _historyCell(row, ['Dokter', 'Dokter / Optometris', 'Optometris', 'Pemeriksa']);
-      odSph.text = _historyCell(row, ['OD SPH', 'SPH OD', 'Mata Kanan SPH', 'SPH Kanan']);
-      odCyl.text = _historyCell(row, ['OD CYL', 'CYL OD', 'Mata Kanan CYL', 'CYL Kanan']);
-      odAxis.text = _historyCell(row, ['OD AXIS', 'AXIS OD', 'Mata Kanan AXIS', 'AXIS Kanan']);
-      odAdd.text = _historyCell(row, ['OD ADD', 'ADD OD', 'Mata Kanan ADD', 'ADD Kanan']);
-      odPd.text = _historyCell(row, ['OD PD', 'PD OD', 'PD Kanan']);
-      osSph.text = _historyCell(row, ['OS SPH', 'SPH OS', 'Mata Kiri SPH', 'SPH Kiri']);
-      osCyl.text = _historyCell(row, ['OS CYL', 'CYL OS', 'Mata Kiri CYL', 'CYL Kiri']);
-      osAxis.text = _historyCell(row, ['OS AXIS', 'AXIS OS', 'Mata Kiri AXIS', 'AXIS Kiri']);
-      osAdd.text = _historyCell(row, ['OS ADD', 'ADD OS', 'Mata Kiri ADD', 'ADD Kiri']);
-      osPd.text = _historyCell(row, ['OS PD', 'PD OS', 'PD Kiri']);
-      lensType.text = _historyCell(row, ['Jenis Lensa', 'Tipe Lensa', 'Lensa']);
-      rxNote.text = _historyCell(row, ['Catatan Resep', 'Keterangan Resep', 'Catatan Pemeriksaan']);
-      frameDescription.text = _historyCell(row, ['Deskripsi Frame', 'Model Frame', 'Frame']);
-      frame.text = _historyCell(row, ['Harga Frame', 'Harga Bingkai', 'Biaya Frame']);
-      lensDescription.text = _historyCell(row, ['Deskripsi Lensa', 'Detail Lensa']);
-      lens.text = _historyCell(row, ['Harga Lensa', 'Biaya Lensa']);
-      otherDescription.text = _historyCell(row, ['Keterangan Lain', 'Deskripsi Lain', 'Biaya Lain']);
-      otherPrice.text = _historyCell(row, ['Harga Lain', 'Biaya Lainnya', 'Nominal Lain']);
-      invoiceNote.text = _historyCell(row, ['Catatan Invoice', 'Catatan Pesanan', 'Keterangan']);
+      customer.text = _historyCell(selectedRow, ['Nama', 'Nama Pelanggan', 'Pelanggan']);
+      phone.text = _historyCell(selectedRow, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']);
+      address.text = _historyCell(selectedRow, ['Alamat', 'Alamat Pelanggan']);
+      doctor.text = _historyCell(selectedRow, ['Dokter', 'Dokter / Optometris', 'Optometris', 'Pemeriksa']);
+      odSph.text = _historyCell(selectedRow, ['OD SPH', 'SPH OD', 'Mata Kanan SPH', 'SPH Kanan']);
+      odCyl.text = _historyCell(selectedRow, ['OD CYL', 'CYL OD', 'Mata Kanan CYL', 'CYL Kanan']);
+      odAxis.text = _historyCell(selectedRow, ['OD AXIS', 'AXIS OD', 'Mata Kanan AXIS', 'AXIS Kanan']);
+      odAdd.text = _historyCell(selectedRow, ['OD ADD', 'ADD OD', 'Mata Kanan ADD', 'ADD Kanan']);
+      odPd.text = _historyCell(selectedRow, ['OD PD', 'PD OD', 'PD Kanan']);
+      osSph.text = _historyCell(selectedRow, ['OS SPH', 'SPH OS', 'Mata Kiri SPH', 'SPH Kiri']);
+      osCyl.text = _historyCell(selectedRow, ['OS CYL', 'CYL OS', 'Mata Kiri CYL', 'CYL Kiri']);
+      osAxis.text = _historyCell(selectedRow, ['OS AXIS', 'AXIS OS', 'Mata Kiri AXIS', 'AXIS Kiri']);
+      osAdd.text = _historyCell(selectedRow, ['OS ADD', 'ADD OS', 'Mata Kiri ADD', 'ADD Kiri']);
+      osPd.text = _historyCell(selectedRow, ['OS PD', 'PD OS', 'PD Kiri']);
+      lensType.text = _historyCell(selectedRow, ['Jenis Lensa', 'Tipe Lensa', 'Lensa']);
+      rxNote.text = _historyCell(selectedRow, ['Catatan Resep', 'Keterangan Resep', 'Catatan Pemeriksaan']);
+      frameDescription.text = _historyCell(selectedRow, ['Deskripsi Frame', 'Model Frame', 'Frame']);
+      frame.text = _historyCell(selectedRow, ['Harga Frame', 'Harga Bingkai', 'Biaya Frame']);
+      lensDescription.text = _historyCell(selectedRow, ['Deskripsi Lensa', 'Detail Lensa']);
+      lens.text = _historyCell(selectedRow, ['Harga Lensa', 'Biaya Lensa']);
+      otherDescription.text = _historyCell(selectedRow, ['Keterangan Lain', 'Deskripsi Lain', 'Biaya Lain']);
+      otherPrice.text = _historyCell(selectedRow, ['Harga Lain', 'Biaya Lainnya', 'Nominal Lain']);
+      invoiceNote.text = _historyCell(selectedRow, ['Catatan Invoice', 'Catatan Pesanan', 'Keterangan']);
       // DP intentionally stays empty: repeat orders must not inherit a previous invoice payment.
       dp.clear();
       selectedCustomerIndex = null;
