@@ -943,6 +943,31 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     return '';
   }
 
+  String _phoneFromRow(Map<String, String> row) {
+    final known = _cell(row, [
+      'No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA',
+      'Nomor WA', 'WA', 'WhatsApp', 'Whatsapp', 'No Telepon',
+      'Nomor Telepon', 'Telepon', 'No HP', 'Nomor HP', 'No. HP',
+      'Handphone', 'HP', 'No HP/WA', 'Nomor HP/WA', 'HP/WA',
+      'Nomor WhatsApp Pelanggan', 'No WhatsApp Pelanggan',
+      'Nomor WA Pelanggan', 'No WA Pelanggan', 'Phone', 'Mobile',
+    ]);
+    if (known.isNotEmpty) return known;
+
+    // Also tolerate descriptive header variants such as "Kontak WhatsApp".
+    for (final entry in row.entries) {
+      final key = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+      final phoneColumn = key == 'wa' || key == 'hp' || key == 'nohp' ||
+          key == 'phone' || key == 'mobile' || key.contains('whatsapp') ||
+          key.contains('nomorwa') || key.contains('telepon') ||
+          key.contains('handphone') || key.contains('nomorhp');
+      if (phoneColumn && entry.value.trim().isNotEmpty) {
+        return entry.value.trim();
+      }
+    }
+    return '';
+  }
+
   int _money(String value) =>
       int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
 
@@ -1031,7 +1056,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         if (name.isEmpty) continue;
         final customer = Customer(
           name: name,
-          phone: _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA', 'Nomor WA', 'WA', 'WhatsApp', 'Whatsapp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'No HP', 'Nomor HP', 'No. HP', 'Handphone', 'HP', 'No HP/WA', 'Nomor HP/WA', 'HP/WA']),
+          phone: _phoneFromRow(row),
           address: _cell(row, ['Alamat', 'Alamat Pelanggan']),
         );
         final phone = _canonicalPhone(customer.phone);
@@ -1100,7 +1125,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     if (customer == null) return [];
     final customerPhone = _canonicalPhone(customer.phone);
     final matches = officialOrders.where((row) {
-      final phone = _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA', 'Nomor WA', 'WA', 'WhatsApp', 'Whatsapp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'No HP', 'Nomor HP', 'No. HP', 'Handphone', 'HP', 'No HP/WA', 'Nomor HP/WA', 'HP/WA']);
+      final phone = _phoneFromRow(row);
       final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
       final rowPhone = _canonicalPhone(phone);
       final samePhone = customerPhone.isNotEmpty && rowPhone == customerPhone;
