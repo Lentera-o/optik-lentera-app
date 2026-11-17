@@ -128,8 +128,11 @@ function olApiAssertActiveStaff_(email) {
 
 function olApiCreateOrder_(data, requestId, actor) {
   const eventKey = 'APP_ORDER_' + requestId;
+  const initialPayment = olMoney_(data.initialPayment);
+  const orderDate = data.orderDate ? String(data.orderDate).trim() : new Date().toISOString();
+  if (isNaN(new Date(orderDate).getTime())) throw new Error('Tanggal pesanan tidak valid.');
   const answers = {
-    'Cap waktu': data.orderDate ? String(data.orderDate) : new Date().toISOString(),
+    'Cap waktu': orderDate,
     'Nama pelanggan': olApiText_(data.name, 'Nama pelanggan', 120, true),
     'Nomor HP / WhatsApp': olApiText_(data.phone, 'Nomor WhatsApp', 40, false),
     'Alamat pelanggan': olApiText_(data.address, 'Alamat pelanggan', 500, false),
@@ -152,8 +155,8 @@ function olApiCreateOrder_(data, requestId, actor) {
     'Harga lensa': olMoney_(data.lensPrice),
     'Lain-lain': olApiText_(data.otherDescription, 'Keterangan biaya lain', 240, false),
     'Harga lain-lain': olMoney_(data.otherPrice),
-    'DP Awal': olMoney_(data.initialPayment),
-    'Metode pembayaran awal': olApiMethod_(data.initialPaymentMethod, true),
+    'DP Awal': initialPayment,
+    'Metode pembayaran awal': olApiMethod_(data.initialPaymentMethod, initialPayment > 0),
     'Catatan invoice': olApiText_(data.note, 'Catatan invoice', 1000, false)
   };
 
