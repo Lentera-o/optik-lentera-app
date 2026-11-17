@@ -412,6 +412,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   bool submitting = false;
   String? _pendingOrderRequestId;
   String? _pendingOrderPayload;
+  DateTime? _pendingOrderDate;
 
   int amount(TextEditingController c) => int.tryParse(c.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
@@ -487,6 +488,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       }
       _pendingOrderRequestId = null;
       _pendingOrderPayload = null;
+      _pendingOrderDate = null;
       widget.onAdd(OptikOrder(
         invoiceNumber: invoiceNumber,
         orderDate: orderDate,
