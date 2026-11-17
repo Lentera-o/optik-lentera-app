@@ -401,24 +401,244 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     return '';
   }
 
-  // Apps Script menyimpan URL Drive langsung pada kolom PDF. Ambil juga URL
-  // jika CSV menyertakannya bersama teks lain atau header kolomnya bervariasi.
-  String _documentUrl(Map<String, String> row, List<String> aliases) {
-    final candidates = <String>[
-      _cell(row, aliases),
-      ...row.entries
-          .where((entry) =>
-              RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false)
-                  .hasMatch(entry.key))
-          .map((entry) => entry.value),
-      ...row.values,
-    ];
-    final urlPattern = RegExp(r'https?://[^\\s<>"]+', caseSensitive: false);
-    for (final candidate in candidates) {
-      final value = candidate.trim();
-      final matches = urlPattern.allMatches(value);
-      for (final match in matches) {
-        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+
+  int _money(String value) =>
+      int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
+
+  String _rupiah(String value) {
+    final amount = _money(value);
+    return 'Rp ' + amount.toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => '.',
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOfficialDocuments();
+  }
+
+  Future<void> _loadOfficialDocuments() async {
+    if (mounted) setState(() {
+      loading = true;
+      loadError = null;
+    });
+    try {
+      final tables = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN'),
+        SheetsReadService.readTable('DATA_PEMBAYARAN'),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        orders = tables[0].where((row) =>
+          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+        ).toList();
+        payments = tables[1].where((row) =>
+          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+        ).toList();
+        loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        loading = false;
+        loadError = error.toString();
+      });
+    }
+  }
+
+  Future<void> _openDocument(String url) async {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !uri.hasScheme ||
+        (uri.scheme != 'https' && uri.scheme != 'http')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tautan dokumen resmi belum tersedia.')),
+      );
+      return;
+    }
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dokumen tidak dapat dibuka.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+    onRefresh: _loadOfficialDocuments,
+    child: ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const _Intro(
+          'Invoice & Kuitansi Resmi',
+          'Data dibaca langsung dari DATA_PESANAN dan DATA_PEMBAYARAN.',
+          Icons.description_outlined,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${orders.length} invoice • ${payments.length} pembayaran',
+                style: const TextStyle(
+                  color: _darkGold,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Sinkronkan ulang',
+              onPressed: loading ? null : _loadOfficialDocuments,
+              icon: const Icon(Icons.sync),
+            ),
+          ],
+        ),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (loadError != null)
+          _Panel(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Data resmi belum dapat dibaca.',
+                style: TextStyle(fontWeight: FontWeight.bold, color: _ink),
+              ),
+              const SizedBox(height: 6),
+              Text(loadError!, style: const TextStyle(fontSize: 11, color: Colors.deepOrange)),
+              TextButton.icon(
+                onPressed: _loadOfficialDocuments,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Coba lagi'),
+              ),
+            ],
+          ))
+        else if (orders.isEmpty)
+          const _Empty('Belum ada invoice resmi yang dapat ditampilkan.')
+        else
+          ...orders.map((order) {
+            final invoice = _cell(order, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
+            final relatedPayments = payments.where((payment) =>
+              _cell(payment, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) == invoice
+            ).toList();
+            final invoicePdf = _documentUrl(order, [
+              'Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice',
+              'Invoice PDF', 'URL Invoice PDF', 'URL PDF Invoice',
+            ]);
+            final name = _cell(order, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+            final total = _cell(order, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
+            final paid = _cell(order, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
+            final remaining = _cell(order, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
+            return Card(
+              color: Colors.white,
+              margin: const EdgeInsets.only(bottom: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: _gold.withValues(alpha: .30)),
+              ),
+              child: ExpansionTile(
+                leading: const Icon(Icons.receipt_long_outlined, color: _darkGold),
+                title: Text(name.isEmpty ? invoice : name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
+                subtitle: Text(invoice),
+                childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                children: [
+                  _docLine('Tanggal', _cell(order, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp', 'Cap waktu'])),
+                  _docLine('Total', _rupiah(total), strong: true),
+                  _docLine('Dibayar', _rupiah(paid)),
+                  _docLine('Sisa tagihan', _rupiah(remaining), strong: true),
+                  _docLine('Status', _cell(order, ['Status', 'Status Pembayaran'])),
+                  const Divider(),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('RIWAYAT KUITANSI RESMI',
+                      style: const TextStyle(color: _darkGold, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                  if (relatedPayments.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Belum ada pembayaran tercatat.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                      ),
+                    )
+                  else
+                    ...relatedPayments.map((payment) {
+                      final receiptPdf = _documentUrl(payment, [
+                        'PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF',
+                        'Kuitansi PDF', 'URL Kuitansi PDF', 'URL PDF Kuitansi',
+                      ]);
+                      return Column(
+                        children: [
+                          _docLine('No. kuitansi', _cell(payment, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi'])),
+                          _docLine('Tanggal bayar', _cell(payment, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])),
+                          _docLine('Jumlah', _rupiah(_cell(payment, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran']))),
+                          _docLine('Metode', _cell(payment, ['Metode', 'Metode Pembayaran', 'Metode pembayaran'])),
+                          if (receiptPdf.isNotEmpty)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: () => _openDocument(receiptPdf),
+                                icon: const Icon(Icons.picture_as_pdf_outlined),
+                                label: const Text('Buka kuitansi PDF resmi'),
+                              ),
+                            ),
+                          const Divider(),
+                        ],
+                      );
+                    }),
+                  if (invoicePdf.isNotEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(backgroundColor: _darkGold),
+                        onPressed: () => _openDocument(invoicePdf),
+                        icon: const Icon(Icons.picture_as_pdf_outlined),
+                        label: const Text('Buka invoice PDF resmi'),
+                      ),
+                    )
+                  else
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Tautan invoice PDF belum tersedia pada baris ini.',
+                        style: TextStyle(fontSize: 11, color: Colors.black54)),
+                    ),
+                ],
+              ),
+            );
+          }),
+      ],
+    ),
+  );
+}
+
+Widget _docLine(String label, String value, {bool strong = false}) => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 3),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: 112, child: Text(label, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: _ink))),
+      const Text(': ', style: TextStyle(fontSize: 11)),
+      Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: strong ? _darkGold : _ink))),
+    ],
+  ),
+);
+
+), '');
+        final uri = Uri.tryParse(raw);
+        if (uri != null &&
+            (uri.host.toLowerCase() == 'drive.google.com' ||
+             uri.host.toLowerCase().endsWith('.google.com')) &&
+            (uri.path.contains('/file/') || uri.path.contains('/document/') ||
+             uri.queryParameters.containsKey('id'))) {
+          return uri.toString();
+        }
+      }
+      if (RegExp(r'^[A-Za-z0-9_-]{25,}
       int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
 
   @override
@@ -891,244 +1111,24 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
     return '';
   }
 
-  int _money(String value) =>
-      int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
-
-  String _rupiah(String value) {
-    final amount = _money(value);
-    return 'Rp ' + amount.toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (match) => '.',
-    );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadOfficialDocuments();
-  }
-
-  Future<void> _loadOfficialDocuments() async {
-    if (mounted) setState(() {
-      loading = true;
-      loadError = null;
-    });
-    try {
-      final tables = await Future.wait([
-        SheetsReadService.readTable('DATA_PESANAN'),
-        SheetsReadService.readTable('DATA_PEMBAYARAN'),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        orders = tables[0].where((row) =>
-          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
-        ).toList();
-        payments = tables[1].where((row) =>
-          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
-        ).toList();
-        loading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        loading = false;
-        loadError = error.toString();
-      });
-    }
-  }
-
-  Future<void> _openDocument(String url) async {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null || !uri.hasScheme ||
-        (uri.scheme != 'https' && uri.scheme != 'http')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tautan dokumen resmi belum tersedia.')),
-      );
-      return;
-    }
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dokumen tidak dapat dibuka.')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => RefreshIndicator(
-    onRefresh: _loadOfficialDocuments,
-    child: ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        const _Intro(
-          'Invoice & Kuitansi Resmi',
-          'Data dibaca langsung dari DATA_PESANAN dan DATA_PEMBAYARAN.',
-          Icons.description_outlined,
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${orders.length} invoice • ${payments.length} pembayaran',
-                style: const TextStyle(
-                  color: _darkGold,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: 'Sinkronkan ulang',
-              onPressed: loading ? null : _loadOfficialDocuments,
-              icon: const Icon(Icons.sync),
-            ),
-          ],
-        ),
-        if (loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 30),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (loadError != null)
-          _Panel(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Data resmi belum dapat dibaca.',
-                style: TextStyle(fontWeight: FontWeight.bold, color: _ink),
-              ),
-              const SizedBox(height: 6),
-              Text(loadError!, style: const TextStyle(fontSize: 11, color: Colors.deepOrange)),
-              TextButton.icon(
-                onPressed: _loadOfficialDocuments,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Coba lagi'),
-              ),
-            ],
-          ))
-        else if (orders.isEmpty)
-          const _Empty('Belum ada invoice resmi yang dapat ditampilkan.')
-        else
-          ...orders.map((order) {
-            final invoice = _cell(order, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
-            final relatedPayments = payments.where((payment) =>
-              _cell(payment, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) == invoice
-            ).toList();
-            final invoicePdf = _documentUrl(order, [
-              'Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice',
-              'Invoice PDF', 'URL Invoice PDF', 'URL PDF Invoice',
-            ]);
-            final name = _cell(order, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
-            final total = _cell(order, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
-            final paid = _cell(order, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
-            final remaining = _cell(order, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
-            return Card(
-              color: Colors.white,
-              margin: const EdgeInsets.only(bottom: 13),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: _gold.withValues(alpha: .30)),
-              ),
-              child: ExpansionTile(
-                leading: const Icon(Icons.receipt_long_outlined, color: _darkGold),
-                title: Text(name.isEmpty ? invoice : name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
-                subtitle: Text(invoice),
-                childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                children: [
-                  _docLine('Tanggal', _cell(order, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp', 'Cap waktu'])),
-                  _docLine('Total', _rupiah(total), strong: true),
-                  _docLine('Dibayar', _rupiah(paid)),
-                  _docLine('Sisa tagihan', _rupiah(remaining), strong: true),
-                  _docLine('Status', _cell(order, ['Status', 'Status Pembayaran'])),
-                  const Divider(),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text('RIWAYAT KUITANSI RESMI',
-                      style: const TextStyle(color: _darkGold, fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                  if (relatedPayments.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text('Belum ada pembayaran tercatat.', style: TextStyle(fontSize: 11, color: Colors.black54)),
-                      ),
-                    )
-                  else
-                    ...relatedPayments.map((payment) {
-                      final receiptPdf = _documentUrl(payment, [
-                        'PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF',
-                        'Kuitansi PDF', 'URL Kuitansi PDF', 'URL PDF Kuitansi',
-                      ]);
-                      return Column(
-                        children: [
-                          _docLine('No. kuitansi', _cell(payment, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi'])),
-                          _docLine('Tanggal bayar', _cell(payment, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])),
-                          _docLine('Jumlah', _rupiah(_cell(payment, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran']))),
-                          _docLine('Metode', _cell(payment, ['Metode', 'Metode Pembayaran', 'Metode pembayaran'])),
-                          if (receiptPdf.isNotEmpty)
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
-                                onPressed: () => _openDocument(receiptPdf),
-                                icon: const Icon(Icons.picture_as_pdf_outlined),
-                                label: const Text('Buka kuitansi PDF resmi'),
-                              ),
-                            ),
-                          const Divider(),
-                        ],
-                      );
-                    }),
-                  if (invoicePdf.isNotEmpty)
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(backgroundColor: _darkGold),
-                        onPressed: () => _openDocument(invoicePdf),
-                        icon: const Icon(Icons.picture_as_pdf_outlined),
-                        label: const Text('Buka invoice PDF resmi'),
-                      ),
-                    )
-                  else
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Tautan invoice PDF belum tersedia pada baris ini.',
-                        style: TextStyle(fontSize: 11, color: Colors.black54)),
-                    ),
-                ],
-              ),
-            );
-          }),
-      ],
-    ),
-  );
-}
-
-Widget _docLine(String label, String value, {bool strong = false}) => Padding(
-  padding: const EdgeInsets.symmetric(vertical: 3),
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SizedBox(width: 112, child: Text(label, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: _ink))),
-      const Text(': ', style: TextStyle(fontSize: 11)),
-      Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: strong ? _darkGold : _ink))),
-    ],
-  ),
-);
-
-), '');
-        final uri = Uri.tryParse(raw);
-        if (uri != null &&
-            (uri.host.toLowerCase() == 'drive.google.com' ||
-             uri.host.toLowerCase().endsWith('.google.com')) &&
-            (uri.path.contains('/file/') || uri.path.contains('/document/') ||
-             uri.queryParameters.containsKey('id'))) {
-          return uri.toString();
-        }
-      }
-      if (RegExp(r'^[A-Za-z0-9_-]{25,}
+  // Apps Script menyimpan URL Drive langsung pada kolom PDF. Ambil juga URL
+  // jika CSV menyertakannya bersama teks lain atau header kolomnya bervariasi.
+  String _documentUrl(Map<String, String> row, List<String> aliases) {
+    final candidates = <String>[
+      _cell(row, aliases),
+      ...row.entries
+          .where((entry) =>
+              RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false)
+                  .hasMatch(entry.key))
+          .map((entry) => entry.value),
+      ...row.values,
+    ];
+    final urlPattern = RegExp(r'https?://[^\\s<>"]+', caseSensitive: false);
+    for (final candidate in candidates) {
+      final value = candidate.trim();
+      final matches = urlPattern.allMatches(value);
+      for (final match in matches) {
+        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+
       int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
 
   @override
