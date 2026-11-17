@@ -1026,6 +1026,11 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     return '';
   }
 
+  String _invoiceNumber(Map<String, String> row) => _cell(row, [
+    'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
+    'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice',
+  ]);
+
   String _phoneFromRow(Map<String, String> row) {
     final known = _cell(row, [
       'No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA',
@@ -1059,10 +1064,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
 
   bool _paymentBelongsToInvoice(Map<String, String> payment, String invoice) {
-    final linkedInvoice = _cell(payment, [
-      'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
-      'Invoice', 'Invoice Number', 'Nomor Tagihan',
-    ]);
+    final linkedInvoice = _invoiceNumber(payment);
     if (linkedInvoice.isNotEmpty) return linkedInvoice == invoice;
     // Some response sheets use a different heading; exact cell matching is a safe fallback.
     return payment.values.any((value) => value.trim() == invoice);
@@ -1127,10 +1129,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
       ]);
       final orders = tables[0].where((row) =>
-        _cell(row, [
-          'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
-          'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice',
-        ]).isNotEmpty
+        _invoiceNumber(row).isNotEmpty
       ).toList();
       // Keep rows even when the form uses a different invoice column heading.
       final payments = tables[1].where((row) =>
@@ -1170,7 +1169,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         if (selectedCustomer != null) {
           final matches = customerOrders;
           final stillValid = matches.any((row) =>
-            _cell(row, ['No Invoice', 'Nomor Invoice', 'Invoice']) == selectedInvoice);
+            _invoiceNumber(row) == selectedInvoice);
           if (!stillValid) {
             selectedInvoice = matches.isEmpty
                 ? null
@@ -1187,7 +1186,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
 
   Map<String, String>? get selectedOfficialOrder {
     for (final row in officialOrders) {
-      if (_cell(row, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice']) == selectedInvoice) return row;
+      if (_invoiceNumber(row) == selectedInvoice) return row;
     }
     return null;
   }
@@ -1237,8 +1236,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       final dateB = _dateValue(_cell(b, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp']));
       final byDate = dateB.compareTo(dateA);
       if (byDate != 0) return byDate;
-      return _cell(b, ['No Invoice', 'Nomor Invoice']).compareTo(
-        _cell(a, ['No Invoice', 'Nomor Invoice']));
+      return _invoiceNumber(b).compareTo(
+        _invoiceNumber(a));
     });
     return matches;
   }
@@ -1247,7 +1246,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     setState(() {
       selectedCustomer = customer;
       final matches = customerOrders;
-      selectedInvoice = matches.isEmpty ? null : _cell(matches.first, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice']);
+      selectedInvoice = matches.isEmpty ? null : _invoiceNumber(matches.first);
       _buildMessage();
     });
   }
@@ -1256,7 +1255,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     final customer = selectedCustomer;
     final order = selectedOfficialOrder;
     if (customer == null) { message.text = ''; return; }
-    final invoice = order == null ? '-' : _cell(order, ['No Invoice', 'Nomor Invoice']);
+    final invoice = order == null ? '-' : _invoiceNumber(order);
     final totalAmount = order == null ? 0 : _money(_cell(order, ['Total', 'Total Harga', 'Total Tagihan']));
     final payments = selectedOfficialPayments;
     final paymentSum = payments.fold<int>(0, (sum, row) =>
@@ -1326,7 +1325,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     final customerOptions = _customerOptions;
     final invoiceOptions = customerOrders;
     final invoiceIsValid = invoiceOptions.any((row) =>
-      _cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice);
+      _invoiceNumber(row) == selectedInvoice);
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
@@ -1350,7 +1349,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
               border: const OutlineInputBorder(),
             ),
             items: invoiceOptions.map((row) {
-              final number = _cell(row, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice']);
+              final number = _invoiceNumber(row);
               final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Pelanggan', 'Nama Customer', 'Customer', 'Nama Konsumen']);
               return DropdownMenuItem<String>(value: number, child: Text(number + (name.isEmpty ? '' : ' • ' + name), overflow: TextOverflow.ellipsis));
             }).toList(),
