@@ -718,15 +718,166 @@ class WhatsAppCenterScreen extends StatefulWidget {
 
 class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   Customer? selectedCustomer;
-  OptikOrder? selectedOrder;
+  String? selectedInvoice;
   String template = 'Konfirmasi pesanan';
   final message = TextEditingController();
+  List<Map<String, String>> officialOrders = [];
+  List<Map<String, String>> officialPayments = [];
+  bool loadingOfficialData = false;
+  String? syncError;
 
-  @override
-  void dispose() { message.dispose(); super.dispose(); }
+  String _cell(Map<String, String> row, List<String> aliases) {
+    String normalize(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    for (final alias in aliases) {
+      final target = normalize(alias);
+      for (final entry in row.entries) {
+        if (normalize(entry.key) == target && entry.value.trim().isNotEmpty) {
+          return entry.value.trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  int _money(String value) =>
+      int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
 
   String _rupiah(int value) => 'Rp ' + value.toString().replaceAllMapped(
     RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+
+  String _documentUrl(Map<String, String> row, List<String> aliases) {
+    final values = <String>[
+      _cell(row, aliases),
+      ...row.entries.where((e) => RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false).hasMatch(e.key)).map((e) => e.value),
+      ...row.values,
+    ];
+    for (final value in values) {
+      final match = RegExp(r'https?://[^\s<>"]+', caseSensitive: false).firstMatch(value.trim());
+      if (match != null) {
+        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+$'), '');
+        final uri = Uri.tryParse(raw);
+        if (uri != null && (uri.host == 'drive.google.com' || uri.host.endsWith('.google.com'))) return uri.toString();
+      }
+      final id = value.trim();
+      if (RegExp(r'^[A-Za-z0-9_-]{25,}$').hasMatch(id) &&
+          RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false).hasMatch(aliases.join(' '))) {
+        return 'https://drive.google.com/file/d/' + id + '/view';
+      }
+    }
+    return '';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOfficialData();
+  }
+
+  Future<void> _loadOfficialData() async {
+    if (mounted) setState(() { loadingOfficialData = true; syncError = null; });
+    try {
+      final tables = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
+      ]);
+      final orders = tables[0].where((row) =>
+        _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+      ).toList();
+      final payments = tables[1].where((row) =>
+        _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+      ).toList();
+      if (!mounted) return;
+      setState(() {
+        officialOrders = orders;
+        officialPayments = payments;
+        loadingOfficialData = false;
+        if (selectedInvoice != null &&
+            !orders.any((row) => _cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice)) {
+          selectedInvoice = null;
+        }
+        _buildMessage();
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() { loadingOfficialData = false; syncError = error.toString(); });
+    }
+  }
+
+  Map<String, String>? get selectedOfficialOrder {
+    for (final row in officialOrders) {
+      if (_cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice) return row;
+    }
+    return null;
+  }
+
+  List<Map<String, String>> get selectedOfficialPayments {
+    final rows = officialPayments.where((row) =>
+      _cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice
+    ).toList();
+    rows.sort((a, b) => _cell(b, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])
+        .compareTo(_cell(a, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])));
+    return rows;
+  }
+
+  List<Map<String, String>> get customerOrders {
+    final customer = selectedCustomer;
+    if (customer == null) return [];
+    return officialOrders.where((row) {
+      final phone = _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']);
+      final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+      final samePhone = customer.phone.trim().isNotEmpty && phone.replaceAll(RegExp(r'[^0-9]'), '') == customer.phone.replaceAll(RegExp(r'[^0-9]'), '');
+      return samePhone || name.toLowerCase() == customer.name.toLowerCase();
+    }).toList();
+  }
+
+  void _chooseCustomer(Customer? customer) {
+    setState(() {
+      selectedCustomer = customer;
+      final matches = customerOrders;
+      selectedInvoice = matches.isEmpty ? null : _cell(matches.first, ['No Invoice', 'Nomor Invoice']);
+      _buildMessage();
+    });
+  }
+
+  void _buildMessage() {
+    final customer = selectedCustomer;
+    final order = selectedOfficialOrder;
+    if (customer == null) { message.text = ''; return; }
+    final invoice = order == null ? '-' : _cell(order, ['No Invoice', 'Nomor Invoice']);
+    final totalAmount = order == null ? 0 : _money(_cell(order, ['Total', 'Total Harga', 'Total Tagihan']));
+    final payments = selectedOfficialPayments;
+    final paymentSum = payments.fold<int>(0, (sum, row) =>
+      sum + _money(_cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Nominal Pembayaran'])));
+    final paidValue = order == null ? 0 : (_cell(order, ['Total Dibayar', 'Total Dibayar Kumulatif']).isNotEmpty
+        ? _money(_cell(order, ['Total Dibayar', 'Total Dibayar Kumulatif'])) : paymentSum);
+    final remainingValue = order == null ? 0 : (totalAmount - paidValue).clamp(0, totalAmount);
+    final total = order == null ? '-' : _rupiah(totalAmount);
+    final paid = order == null ? '-' : _rupiah(paidValue);
+    final balance = order == null ? '-' : _rupiah(remainingValue);
+    final invoicePdf = order == null ? '' : _documentUrl(order, [
+      'Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice', 'Invoice PDF', 'URL Invoice PDF',
+    ]);
+    final latestPayment = payments.isEmpty ? null : payments.first;
+    final receiptPdf = latestPayment == null ? '' : _documentUrl(latestPayment, [
+      'PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF', 'Kuitansi PDF',
+    ]);
+    final documentLinks = (invoicePdf.isEmpty ? '' : '\nPDF Invoice: ' + invoicePdf) +
+        (receiptPdf.isEmpty ? '' : '\nPDF Kuitansi: ' + receiptPdf);
+    if (template == 'Pesanan siap diambil') {
+      message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + documentLinks + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
+    } else if (template == 'Pengingat pembayaran') {
+      final paymentText = latestPayment == null ? '' : '\nPembayaran terakhir: ' +
+        _rupiah(_money(_cell(latestPayment, ['Jumlah Bayar', 'Jumlah Pembayaran']))) +
+        ' (' + _cell(latestPayment, ['Metode', 'Metode Pembayaran']) + ')';
+      message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paid + '\nSisa tagihan: ' + balance + paymentText + documentLinks + '\nJika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih 🙏';
+    } else if (template == 'Tindak lanjut pelanggan') {
+      message.text = 'Halo ' + customer.name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏' + documentLinks;
+    } else {
+      message.text = 'Halo ' + customer.name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' +
+        (order == null ? 'Nomor invoice belum ditemukan pada data resmi.' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paid + '\nSisa tagihan: ' + balance) +
+        documentLinks + '\nJika ada pertanyaan, silakan balas pesan ini. Terima kasih 🙏';
+    }
+  }
 
   String _phoneForWhatsApp(String raw) {
     var digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
@@ -734,47 +885,6 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     if (digits.startsWith('8')) digits = '62' + digits;
     return digits;
   }
-
-  void _chooseCustomer(Customer? customer) {
-    setState(() {
-      selectedCustomer = customer;
-      selectedOrder = null;
-      for (final order in widget.orders) {
-        if (order.customer.phone == customer?.phone) { selectedOrder = order; break; }
-      }
-      _buildMessage();
-    });
-  }
-
-  void _buildMessage() {
-    final customer = selectedCustomer;
-    final order = selectedOrder;
-    if (customer == null) { message.text = ''; return; }
-    final name = customer.name;
-    final invoice = order?.invoiceNumber ?? '-';
-    final orderPayments = order == null
-        ? <OptikPayment>[]
-        : (widget.payments.where((p) => p.invoiceNumber == order.invoiceNumber).toList()
-          ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate)));
-    final paid = order == null
-        ? 0
-        : order.initialPayment + orderPayments.fold<int>(0, (sum, p) => sum + p.amount);
-    final remainingAmount = order == null ? 0 : (order.total - paid).clamp(0, order.total);
-    final total = order == null ? '-' : _rupiah(order.total);
-    final paidText = order == null ? '-' : _rupiah(paid);
-    final balance = order == null ? '-' : _rupiah(remainingAmount);
-    final lastPayment = orderPayments.isEmpty ? null : orderPayments.first;
-    if (template == 'Pesanan siap diambil') {
-      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
-    } else if (template == 'Pengingat pembayaran') {
-      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n' + (lastPayment == null ? '' : 'Pembayaran terakhir: ' + _rupiah(lastPayment.amount) + ' (' + lastPayment.method + ') pada ' + OptikPdfService.date(lastPayment.paymentDate) + '\n') + 'Jika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih 🙏';
-    } else if (template == 'Tindak lanjut pelanggan') {
-      message.text = 'Halo ' + name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏';
-    } else {
-      message.text = 'Halo ' + name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' + (order == null ? '' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n') + 'Jika ada pertanyaan, silakan balas pesan ini. Terima kasih 🙏';
-    }
-  }
-
 
   Future<void> _openWhatsApp() async {
     final customer = selectedCustomer;
@@ -797,50 +907,63 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   @override
   Widget build(BuildContext context) {
     final customerOptions = <Customer>{...widget.customers, ...widget.orders.map((o) => o.customer)}.toList();
-    final orderOptions = widget.orders.where((o) => selectedCustomer == null || o.customer.phone == selectedCustomer!.phone).toList();
+    final invoiceOptions = customerOrders;
+    final invoiceIsValid = invoiceOptions.any((row) =>
+      _cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice);
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
-        const _Intro('WhatsApp Semi-Otomatis', 'Pilih pelanggan dan template. Chat dibuka dengan pesan siap ditinjau dan dikirim oleh petugas.', Icons.chat_outlined),
+        const _Intro('WhatsApp Semi-Otomatis', 'Pilih pelanggan dan template. Nomor invoice dan dokumen resmi disinkronkan dari Google Sheets.', Icons.chat_outlined),
         const SizedBox(height: 16),
         _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           DropdownButtonFormField<Customer>(
             value: customerOptions.contains(selectedCustomer) ? selectedCustomer : null,
             isExpanded: true,
-            decoration: InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
             items: customerOptions.map((c) => DropdownMenuItem(value: c, child: Text(c.name + ' • ' + c.phone, overflow: TextOverflow.ellipsis))).toList(),
             onChanged: _chooseCustomer,
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<OptikOrder>(
-            value: orderOptions.contains(selectedOrder) ? selectedOrder : null,
+          DropdownButtonFormField<String>(
+            value: invoiceIsValid ? selectedInvoice : null,
             isExpanded: true,
-            decoration: InputDecoration(labelText: 'Pilih invoice (opsional)', border: OutlineInputBorder()),
-            items: orderOptions.map((o) => DropdownMenuItem(value: o, child: Text(o.invoiceNumber + ' • ' + o.customer.name, overflow: TextOverflow.ellipsis))).toList(),
-            onChanged: (value) => setState(() { selectedOrder = value; _buildMessage(); }),
+            decoration: InputDecoration(
+              labelText: 'Pilih invoice (opsional)',
+              helperText: loadingOfficialData ? 'Mengambil nomor invoice resmi…' : (syncError == null ? 'Diambil dari DATA_PESANAN' : 'Sinkronisasi gagal; tekan muat ulang'),
+              border: const OutlineInputBorder(),
+            ),
+            items: invoiceOptions.map((row) {
+              final number = _cell(row, ['No Invoice', 'Nomor Invoice']);
+              final name = _cell(row, ['Nama', 'Nama Pelanggan']);
+              return DropdownMenuItem<String>(value: number, child: Text(number + (name.isEmpty ? '' : ' • ' + name), overflow: TextOverflow.ellipsis));
+            }).toList(),
+            onChanged: (value) => setState(() { selectedInvoice = value; _buildMessage(); }),
           ),
+          if (loadingOfficialData) const LinearProgressIndicator(),
+          if (syncError != null)
+            TextButton.icon(onPressed: _loadOfficialData, icon: const Icon(Icons.refresh), label: const Text('Muat ulang data invoice')),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: template,
-            decoration: InputDecoration(labelText: 'Template pesan', border: OutlineInputBorder()),
+            decoration: const InputDecoration(labelText: 'Template pesan', border: OutlineInputBorder()),
             items: const ['Konfirmasi pesanan', 'Pesanan siap diambil', 'Pengingat pembayaran', 'Tindak lanjut pelanggan'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
             onChanged: (value) => setState(() { template = value ?? 'Konfirmasi pesanan'; _buildMessage(); }),
           ),
           const SizedBox(height: 12),
-          TextField(controller: message, minLines: 6, maxLines: 10,
-            decoration: InputDecoration(labelText: 'Pesan (bisa diedit sebelum dikirim)', alignLabelWithHint: true, border: OutlineInputBorder())),
+          TextField(controller: message, minLines: 6, maxLines: 14,
+            decoration: const InputDecoration(labelText: 'Pesan (bisa diedit sebelum dikirim)', alignLabelWithHint: true, border: OutlineInputBorder())),
           const SizedBox(height: 14),
           SizedBox(width: double.infinity, child: FilledButton.icon(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFF168C54), padding: const EdgeInsets.symmetric(vertical: 14)),
             onPressed: _openWhatsApp, icon: const Icon(Icons.chat), label: const Text('Buka WhatsApp & Tinjau Pesan'))),
           const SizedBox(height: 8),
-          SizedBox(width: double.infinity, child: OutlinedButton.icon(
-            onPressed: null,
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            label: const Text('PDF resmi menunggu sinkronisasi Apps Script'),
-          )),
+          OutlinedButton.icon(
+            onPressed: loadingOfficialData ? null : _loadOfficialData,
+            icon: const Icon(Icons.sync),
+            label: const Text('Sinkronkan invoice & kuitansi resmi'),
+          ),
           const SizedBox(height: 8),
-          const Text('PDF resmi tidak dibuat oleh aplikasi. Dokumen akan dibagikan dari tautan Drive Apps Script setelah integrasi transaksi tersedia.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const Text('PDF resmi tidak dibuat oleh aplikasi. Tautan yang tersedia diambil dari catatan resmi Google Sheets/Drive.', style: TextStyle(fontSize: 11, color: Colors.black54)),
           const SizedBox(height: 8),
           const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa pesan lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
         ])),
@@ -932,8 +1055,8 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
     });
     try {
       final tables = await Future.wait([
-        SheetsReadService.readTable('DATA_PESANAN'),
-        SheetsReadService.readTable('DATA_PEMBAYARAN'),
+        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
       ]);
       if (!mounted) return;
       setState(() {
