@@ -16,7 +16,20 @@ class ApiResponse {
     required this.data,
   });
 
-  bool get isSuccessful => statusCode >= 200 && statusCode < 300;
+  /// Apps Script ContentService can return an application-level failure as
+  /// JSON with HTTP 200. Treat an explicit {ok:false} as a failed request.
+  bool get isSuccessful {
+    if (statusCode < 200 || statusCode >= 300) return false;
+    if (data is Map && data['ok'] == false) return false;
+    return true;
+  }
+
+  String? get errorMessage {
+    if (data is Map && data['error'] != null) {
+      return data['error'].toString();
+    }
+    return null;
+  }
 }
 
 class ApiService {
