@@ -701,7 +701,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       for (final row in rows) {
         final number = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
         if (number.isEmpty) continue;
-        final name = _customerNameFromRow(row);
+        final name = _cell(row, [
+          'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
+          'Nama Customer', 'Customer', 'Nama Konsumen',
+        ]);
         final totalText = _cell(row, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
         final paidText = _cell(row, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
         final remainingText = _cell(row, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
