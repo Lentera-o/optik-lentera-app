@@ -364,29 +364,47 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   Future<void> save() async {
     if (submitting) return;
-    final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-    if (invoice.text.trim().isEmpty || value <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
+    final total = amount(frame) + amount(lens) + amount(otherPrice);
+    if (customer.text.trim().isEmpty || total <= 0 || amount(dp) > total) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
       return;
     }
-    final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
 
     setState(() => submitting = true);
-    final opened = await ApiService.openPaymentForm({
-      '1667531169': invoice.text,
-      '266758159': date,
-      '448728880': value.toString(),
-      '1530690867': method,
-      '1651033565': category,
-      '284716454': paymentNote.text,
+    final opened = await ApiService.openOrderForm({
+      '1324477027': customer.text,
+      '539015243': phone.text,
+      '1777754745': address.text,
+      '542463507': doctor.text,
+      '1271316087': odSph.text,
+      '1616866281': odCyl.text,
+      '1784427947': odAxis.text,
+      '1558365892': odAdd.text,
+      '940199491': odPd.text,
+      '480078014': osSph.text,
+      '66061879': osCyl.text,
+      '493870905': osAxis.text,
+      '42654846': osAdd.text,
+      '950234578': osPd.text,
+      '684419252': lensType.text,
+      '1481958730': rxNote.text,
+      '686343109': frameDescription.text,
+      '1727076794': amount(frame).toString(),
+      '1326678958': lensDescription.text,
+      '97131819': amount(lens).toString(),
+      '2101353430': otherDescription.text,
+      '1643782415': amount(otherPrice).toString(),
+      '1449005528': amount(dp).toString(),
+      '1188539863': invoiceNote.text,
+      '1492024415': method,
     });
 
     if (!mounted) return;
     setState(() => submitting = false);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(opened
-          ? 'Formulir pembayaran dibuka. Periksa data lalu tekan Kirim di Google Forms. Setelah itu, muat ulang daftar invoice untuk memverifikasi kuitansi.'
-          : 'Google Forms tidak dapat dibuka. Tidak ada pembayaran yang dikirim oleh aplikasi. Periksa koneksi lalu coba buka kembali.'),
+          ? 'Formulir pesanan dibuka. Periksa seluruh data lalu tekan Kirim di Google Forms. Setelah itu, muat ulang Riwayat Pesanan untuk memverifikasi invoice.'
+          : 'Google Forms tidak dapat dibuka. Aplikasi tidak mengirim transaksi. Periksa koneksi lalu coba kembali.'),
       duration: const Duration(seconds: 10),
     ));
   }
@@ -708,21 +726,8 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     }
     final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
 
-    final beforeReceipts = <String>{};
-    var paymentSnapshotAvailable = false;
-    try {
-      final existing = await SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true);
-      paymentSnapshotAvailable = true;
-      for (final row in existing) {
-        final receipt = _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']);
-        if (receipt.isNotEmpty) beforeReceipts.add(receipt);
-      }
-    } catch (_) {
-      // Tanpa snapshot, tidak mungkin membuktikan bahwa kuitansi yang muncul adalah transaksi baru.
-    }
-
     setState(() => submitting = true);
-    final accepted = await ApiService.openPaymentForm({
+    final opened = await ApiService.openPaymentForm({
       '1667531169': invoice.text,
       '266758159': date,
       '448728880': value.toString(),
@@ -731,44 +736,13 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       '284716454': paymentNote.text,
     });
 
-    String? verifiedReceipt;
-    if (accepted && paymentSnapshotAvailable) {
-      for (var attempt = 0; attempt < 6; attempt++) {
-        await Future.delayed(const Duration(seconds: 2));
-        try {
-          final rows = await SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true);
-          for (final row in rows) {
-            final rowInvoice = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
-            final receipt = _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']);
-            final amountText = _cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran']);
-            final rowAmount = _money(amountText);
-            if (rowInvoice == invoice.text.trim() && receipt.isNotEmpty &&
-                !beforeReceipts.contains(receipt) && rowAmount == value) {
-              verifiedReceipt = receipt;
-              break;
-            }
-          }
-        } catch (_) {
-          // Coba lagi sampai batas polling tercapai.
-        }
-        if (verifiedReceipt != null) break;
-      }
-    }
-
     if (!mounted) return;
     setState(() => submitting = false);
-    if (verifiedReceipt != null) {
-      await _loadOfficialInvoices();
-    }
-    if (!mounted) return;
-    final message = !accepted
-        ? 'Google Forms belum mengonfirmasi penerimaan pembayaran. Periksa koneksi sebelum mencoba lagi.'
-        : verifiedReceipt != null
-            ? 'Pembayaran terverifikasi di DATA_PEMBAYARAN. Kuitansi: $verifiedReceipt'
-            : 'Google Forms menerima jawaban, tetapi kuitansi baru belum terlihat di DATA_PEMBAYARAN. Jangan kirim ulang dulu; sinkronkan kembali beberapa saat lagi.';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      duration: const Duration(seconds: 8),
+      content: Text(opened
+          ? 'Formulir pembayaran dibuka. Periksa data lalu tekan Kirim di Google Forms. Setelah itu, muat ulang daftar invoice untuk memverifikasi kuitansi.'
+          : 'Google Forms tidak dapat dibuka. Aplikasi tidak mengirim pembayaran. Periksa koneksi lalu coba kembali.'),
+      duration: const Duration(seconds: 10),
     ));
   }
 
