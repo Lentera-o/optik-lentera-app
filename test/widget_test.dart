@@ -6,7 +6,7 @@ import 'package:optik_lentera/main.dart';
 void main() {
   testWidgets('OPTIK LENTERA dashboard tampil', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const OptikLenteraApp());
+    await tester.pumpWidget(const MaterialApp(home: MainScreen()));
     await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
     expect(find.text('OPTIK LENTERA'), findsWidgets);
