@@ -121,7 +121,7 @@ function olApiVerifyGoogleIdToken_(token) {
   // Prescription, phone, and payment data are sensitive: authorize staff explicitly.
   // Fail closed when the allowlist is missing or empty.
   const allowedEmails = String(props.getProperty('OL_ALLOWED_EMAILS') || '')
-    .split(/[;,\\s]+/)
+    .split(/[;,\s]+/)
     .map(value => value.trim().toLowerCase())
     .filter(Boolean);
   if (!allowedEmails.length) {
