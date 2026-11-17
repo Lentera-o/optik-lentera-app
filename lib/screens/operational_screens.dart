@@ -737,7 +737,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       return;
     }
     if (value > remaining) {
-      final formatted = remaining.toString().replaceAllMapped(RegExp(r'\\B(?=(\\d{3})+(?!\\d))'), (match) => '.');
+      final formatted = remaining.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => '.');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran melebihi sisa tagihan Rp $formatted.')));
       return;
     }
