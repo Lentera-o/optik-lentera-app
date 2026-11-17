@@ -6,6 +6,7 @@
 String normalizeWhatsAppPhone(String raw) {
   var value = raw.trim().replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '');
   if (value.isEmpty) return '';
+  final hasInternationalPrefix = value.startsWith('+') || value.startsWith('00');
 
   // Expand spreadsheet scientific notation using integer arithmetic so
   // long digit strings are not rounded by double precision.
@@ -34,9 +35,9 @@ String normalizeWhatsAppPhone(String raw) {
   if (digits.startsWith('62')) {
     // Tolerate the common national trunk zero after Indonesia's country code.
     digits = '62' + digits.substring(2).replaceFirst(RegExp(r'^0+'), '');
-  } else if (digits.startsWith('0')) {
+  } else if (!hasInternationalPrefix && digits.startsWith('0')) {
     digits = '62' + digits.substring(1);
-  } else if (digits.startsWith('8')) {
+  } else if (!hasInternationalPrefix && digits.startsWith('8')) {
     // Bare 8... is the common Indonesian mobile format. Other country
     // codes (e.g. 1, 3, 4, 5, 6, 7, 9) remain untouched.
     digits = '62' + digits;
