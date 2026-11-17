@@ -207,7 +207,7 @@ class _GoogleSignInPageState extends State<_GoogleSignInPage> {
                   const Text('OPTIK LENTERA',
                     style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, letterSpacing: 1.3, color: gold)),
                   const SizedBox(height: 8),
-                  const Text('Masuk dengan akun Google petugas yang terdaftar.',
+                  const Text('Masuk dengan akun Google untuk melanjutkan.',
                     textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF746B62))),
                   const SizedBox(height: 28),
                   SizedBox(
