@@ -40,6 +40,12 @@ function doPost(e) {
     // Verify Google identity before taking the spreadsheet lock.
     const actor = olApiVerifyGoogleIdToken_(request.idToken);
     const action = String(request.action || '');
+    if (action === 'readTable') {
+      if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
+        throw new Error('Parameter pembacaan tidak valid.');
+      }
+      return olApiReadTable_(request.data, actor);
+    }
     const requestId = String(request.requestId || '');
     if (!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)) {
       throw new Error('ID permintaan tidak valid.');
@@ -235,6 +241,37 @@ function olApiMethod_(value, required) {
   if (!method && !required) return '';
   if (allowed.indexOf(method) < 0) throw new Error('Metode pembayaran tidak valid.');
   return method;
+}
+
+
+/** Read only the two operational tables after Google ID-token verification. */
+function olApiReadTable_(data, actor) {
+  const sheetName = String(data.sheetName || '').trim();
+  const allowed = [OL.SHEET_ORDER, OL.SHEET_PAY];
+  if (allowed.indexOf(sheetName) < 0) throw new Error('Tab yang diminta tidak diizinkan.');
+
+  const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
+  const sh = ss.getSheetByName(sheetName);
+  if (!sh) throw new Error('Tab ' + sheetName + ' tidak ditemukan.');
+  const lastRow = sh.getLastRow();
+  const lastCol = sh.getLastColumn();
+  if (lastRow < 1 || lastCol < 1) {
+    return olApiJson_({ ok: true, action: 'readTable', sheetName: sheetName, rows: [], processedBy: actor.email });
+  }
+  if (lastRow > 5001 || lastCol > 100) {
+    throw new Error('Ukuran tabel melebihi batas aman pembacaan API.');
+  }
+  const values = sh.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+  const headers = values[0].map((value, index) => {
+    const header = String(value || '').trim();
+    return header || ('Kolom ' + (index + 1));
+  });
+  const rows = values.slice(1).filter(row => row.some(value => String(value || '').trim() !== '')).map(row => {
+    const record = {};
+    headers.forEach((header, index) => { record[header] = String(row[index] || ''); });
+    return record;
+  });
+  return olApiJson_({ ok: true, action: 'readTable', sheetName: sheetName, rows: rows, processedBy: actor.email });
 }
 
 function olApiJson_(value) {
