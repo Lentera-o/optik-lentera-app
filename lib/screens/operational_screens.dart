@@ -321,12 +321,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
       setState(() {
         _officialOrderHistory = rows.where((row) =>
           _historyCell(row, [
-            'No Invoice', 'Nomor Invoice', 'No. Invoice',
-            'Invoice', 'Nomor Tagihan',
+            'No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice',
+            'Nomor Tagihan', 'No Tagihan', 'No Faktur', 'Nomor Faktur',
+            'Kode Invoice', 'Invoice ID', 'ID Invoice',
           ]).isNotEmpty &&
           _historyCell(row, [
-            'Nama', 'Nama Pelanggan', 'Pelanggan',
-            'Nama Customer', 'Nama Konsumen',
+            'Nama', 'Nama Pelanggan', 'Pelanggan', 'Nama Customer',
+            'Nama Konsumen', 'Nama Pemesan', 'Nama Lengkap', 'Nama Pasien',
+            'Nama Klien', 'Nama Penerima',
           ]).isNotEmpty
         ).toList();
         _historyLoading = false;
