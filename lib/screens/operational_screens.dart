@@ -32,7 +32,28 @@ class _CustomerScreenState extends State<CustomerScreen> {
   String? error;
   String norm(String s) => s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   String cell(Map<String, String> row, List<String> aliases) {
-    for (final a in aliases) { for (final e in row.entries) { if (norm(e.key) == norm(a) && e.value.trim().isNotEmpty) return e.value.trim(); } }
+    // Exact column names take priority; then accept harmless word-order and
+    // punctuation variations used by the existing DATA_PESANAN sheet.
+    for (final alias in aliases) {
+      for (final entry in row.entries) {
+        if (norm(entry.key) == norm(alias) && entry.value.trim().isNotEmpty) {
+          return entry.value.trim();
+        }
+      }
+    }
+    for (final alias in aliases) {
+      final tokens = RegExp(r'[a-z0-9]+').allMatches(alias.toLowerCase())
+          .map((match) => match.group(0)!)
+          .where((token) => token.length > 1)
+          .toList();
+      if (tokens.length < 2) continue;
+      for (final entry in row.entries) {
+        final header = norm(entry.key);
+        if (entry.value.trim().isNotEmpty && tokens.every(header.contains)) {
+          return entry.value.trim();
+        }
+      }
+    }
     return '';
   }
   String phoneKey(String s) {
@@ -52,7 +73,18 @@ class _CustomerScreenState extends State<CustomerScreen> {
       ]);
       if (!mounted) return;
       setState(() {
-        orders = data[0].where((r) => cell(r, ['No Invoice','Nomor Invoice','Invoice']).isNotEmpty && cell(r, ['Nama','Nama Pelanggan','Pelanggan']).isNotEmpty).toList();
+        orders = data[0].where((r) =>
+          cell(r, [
+            'No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice',
+            'Nomor Tagihan', 'No Tagihan', 'No Faktur', 'Nomor Faktur',
+            'Kode Invoice', 'Invoice ID', 'ID Invoice',
+          ]).isNotEmpty &&
+          cell(r, [
+            'Nama', 'Nama Pelanggan', 'Pelanggan', 'Nama Customer',
+            'Nama Konsumen', 'Nama Pemesan', 'Nama Lengkap', 'Nama Pasien',
+            'Nama Klien', 'Nama Penerima',
+          ]).isNotEmpty
+        ).toList();
         payments = data[1].where((r) => r.values.any((v) => v.trim().isNotEmpty)).toList();
         loading = false;
       });
@@ -95,8 +127,18 @@ class _CustomerScreenState extends State<CustomerScreen> {
   Widget build(BuildContext context) {
     final groups = <String,List<Map<String,String>>>{}, names = <String,String>{}, phones = <String,String>{};
     for (final r in orders) {
-      final n = cell(r,['Nama','Nama Pelanggan','Pelanggan']);
-      final p = cell(r,['No WhatsApp','Nomor WhatsApp','No Telepon','Nomor Telepon','Telepon','HP']);
+      final n = cell(r,[
+        'Nama', 'Nama Pelanggan', 'Pelanggan', 'Nama Customer',
+        'Nama Konsumen', 'Nama Pemesan', 'Nama Lengkap', 'Nama Pasien',
+        'Nama Klien', 'Nama Penerima',
+      ]);
+      final p = cell(r,[
+        'No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA',
+        'Nomor WA', 'WhatsApp', 'Kontak WhatsApp', 'Nomor WhatsApp Pelanggan',
+        'No Telepon', 'Nomor Telepon', 'Telepon', 'No HP', 'Nomor HP',
+        'No. HP', 'Handphone', 'HP', 'No HP/WA', 'Nomor HP/WA',
+        'HP/WA', 'Phone', 'Mobile', 'Nomor Kontak', 'Kontak Pelanggan',
+      ]);
       final pk = phoneKey(p);
       final key = pk.isNotEmpty ? 'p:' + pk : 'n:' + n.toLowerCase().trim();
       groups.putIfAbsent(key,()=>[]).add(r); names[key]=n; phones[key]=p;
@@ -1053,7 +1095,6 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
           key.contains('aktif') ||
           key.contains('verifikasi') ||
           key.contains('kirim') ||
-          key.contains('pesan') ||
           key.contains('catatan') ||
           key.contains('izin')) return 0;
 
