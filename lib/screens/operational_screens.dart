@@ -1230,8 +1230,14 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         'Nama Customer', 'Customer', 'Nama Konsumen',
       ]);
       final rowPhone = _canonicalPhone(phone);
-      final samePhone = customerPhone.isNotEmpty && rowPhone == customerPhone;
-      return samePhone || name.trim().toLowerCase() == customer.name.trim().toLowerCase();
+      final sameName = name.trim().toLowerCase() == customer.name.trim().toLowerCase();
+      // A valid phone is the primary identity. Fall back to name only when
+      // either side has no phone, avoiding invoices from a different person
+      // who happens to share the same name.
+      if (customerPhone.isNotEmpty && rowPhone.isNotEmpty) {
+        return rowPhone == customerPhone;
+      }
+      return sameName;
     }).toList();
     // Pilih transaksi terbaru lebih dahulu agar invoice/kuitansi tidak tertukar
     // ketika pelanggan mempunyai beberapa transaksi dalam waktu berdekatan.
@@ -1263,7 +1269,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     final totalAmount = order == null ? 0 : _money(_cell(order, ['Total', 'Total Harga', 'Total Tagihan']));
     final payments = selectedOfficialPayments;
     final paymentSum = payments.fold<int>(0, (sum, row) =>
-      sum + _money(_cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Nominal Pembayaran'])));
+      sum + _money(_cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Nominal Pembayaran', 'Nominal Bayar', 'Nominal', 'Total Bayar'])));
     final paidValue = order == null ? 0 : (_cell(order, ['Total Dibayar', 'Total Dibayar Kumulatif']).isNotEmpty
         ? _money(_cell(order, ['Total Dibayar', 'Total Dibayar Kumulatif'])) : paymentSum);
     final remainingValue = order == null ? 0 : (totalAmount - paidValue).clamp(0, totalAmount);
@@ -1283,7 +1289,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + documentLinks + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
     } else if (template == 'Pengingat pembayaran') {
       final paymentText = latestPayment == null ? '' : '\nPembayaran terakhir: ' +
-        _rupiah(_money(_cell(latestPayment, ['Jumlah Bayar', 'Jumlah Pembayaran']))) +
+        _rupiah(_money(_cell(latestPayment, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Nominal Pembayaran', 'Nominal Bayar', 'Nominal', 'Total Bayar']))) +
         ' (' + _cell(latestPayment, ['Metode', 'Metode Pembayaran']) + ')';
       message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paid + '\nSisa tagihan: ' + balance + paymentText + documentLinks + '\nJika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih 🙏';
     } else if (template == 'Tindak lanjut pelanggan') {
