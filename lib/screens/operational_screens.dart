@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
@@ -1918,6 +1919,182 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
     ),
   );
 }
+
+
+class _DocumentNotice {
+  final String id, type, title, detail, url;
+  const _DocumentNotice({required this.id, required this.type, required this.title, required this.detail, required this.url});
+}
+
+class DocumentNotificationsScreen extends StatefulWidget {
+  const DocumentNotificationsScreen({super.key});
+  @override
+  State<DocumentNotificationsScreen> createState() => _DocumentNotificationsScreenState();
+}
+
+class _DocumentNotificationsScreenState extends State<DocumentNotificationsScreen> {
+  List<_DocumentNotice> _notices = [];
+  Map<String, String> _statuses = {};
+  bool _loading = true;
+  String? _error;
+
+  String _key(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  String _cell(Map<String, String> row, List<String> aliases) {
+    for (final alias in aliases) {
+      final target = _key(alias);
+      for (final entry in row.entries) {
+        if (_key(entry.key) == target && entry.value.trim().isNotEmpty) return entry.value.trim();
+      }
+    }
+    return '';
+  }
+
+  String _url(Map<String, String> row, List<String> aliases) {
+    final candidates = <String>[
+      _cell(row, aliases),
+      ...row.entries.where((e) => RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false).hasMatch(e.key)).map((e) => e.value),
+    ];
+    final pattern = RegExp(r'https?://[^\s<>"\x27]+', caseSensitive: false);
+    for (final candidate in candidates) {
+      for (final match in pattern.allMatches(candidate.trim())) {
+        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+ {bool strong = false}) => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 3),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(width: 112, child: Text(label, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: _ink))),
+      const Text(': ', style: TextStyle(fontSize: 11)),
+      Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: strong ? _darkGold : _ink))),
+    ],
+  ),
+);
+
+), '');
+        final uri = Uri.tryParse(raw);
+        if (uri != null && uri.scheme == 'https' &&
+            (uri.host == 'drive.google.com' || uri.host.endsWith('.google.com')) &&
+            (uri.path.contains('/file/') || uri.path.contains('/document/') || uri.queryParameters.containsKey('id'))) {
+          return uri.toString();
+        }
+      }
+    }
+    return '';
+  }
+
+  @override
+  void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    if (mounted) setState(() { _loading = true; _error = null; });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final decoded = jsonDecode(prefs.getString('ol_document_notice_status') ?? '{}');
+      final statuses = decoded is Map
+          ? decoded.map((key, value) => MapEntry(key.toString(), value.toString()))
+          : <String, String>{};
+      final tables = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
+      ]);
+      final notices = <_DocumentNotice>[];
+      for (final order in tables[0]) {
+        final invoice = _cell(order, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice', 'Nomor Tagihan']);
+        if (invoice.isEmpty) continue;
+        final url = _url(order, ['Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice', 'Invoice PDF', 'URL Invoice PDF']);
+        if (url.isEmpty) continue;
+        final name = _cell(order, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+        notices.add(_DocumentNotice(id: 'invoice:' + invoice, type: 'Invoice',
+          title: name.isEmpty ? invoice : name, detail: invoice, url: url));
+      }
+      for (final payment in tables[1]) {
+        final receipt = _cell(payment, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']);
+        final invoice = _cell(payment, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice']);
+        final url = _url(payment, ['PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF', 'Kuitansi PDF', 'URL Kuitansi PDF']);
+        if (url.isEmpty) continue;
+        final id = receipt.isNotEmpty ? receipt : invoice + '_' + _cell(payment, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran']) + '_' + _cell(payment, ['Jumlah Bayar', 'Jumlah Pembayaran']);
+        if (id.replaceAll('_', '').isEmpty) continue;
+        notices.add(_DocumentNotice(id: 'receipt:' + id, type: 'Kuitansi',
+          title: receipt.isEmpty ? (invoice.isEmpty ? 'Kuitansi pembayaran' : invoice) : receipt,
+          detail: invoice.isEmpty ? 'Dokumen pembayaran resmi' : 'Invoice ' + invoice, url: url));
+      }
+      if (!mounted) return;
+      setState(() { _notices = notices; _statuses = statuses; _loading = false; });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() { _error = error.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _setStatus(_DocumentNotice notice, String status) async {
+    final next = Map<String, String>.from(_statuses)..[notice.id] = status;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ol_document_notice_status', jsonEncode(next));
+    if (mounted) setState(() => _statuses = next);
+  }
+
+  Future<void> _open(_DocumentNotice notice) async {
+    final uri = Uri.tryParse(notice.url);
+    final opened = uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened) await _setStatus(notice, 'review');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(opened
+      ? 'Tautan dibuka. Periksa PDF; tandai terkirim hanya setelah WhatsApp benar-benar dikirim.'
+      : 'Tautan gagal dibuka. Dokumen perlu diperiksa.')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = _notices.where((n) => _statuses[n.id] != 'sent').length;
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(padding: const EdgeInsets.all(18), children: [
+        const _Intro('Notifikasi Dokumen', 'Pengingat dari tautan PDF resmi pada Google Sheets. Pengiriman WhatsApp tetap manual.', Icons.notifications_active_outlined),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: Text(pending.toString() + ' dokumen perlu ditindaklanjuti', style: const TextStyle(color: _darkGold, fontWeight: FontWeight.w700))),
+          IconButton(onPressed: _loading ? null : _load, tooltip: 'Segarkan', icon: const Icon(Icons.sync)),
+        ]),
+        if (_loading) const Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator()))
+        else if (_error != null) _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Data notifikasi belum dapat dibaca.'),
+          Text(_error!, style: const TextStyle(fontSize: 11, color: Colors.deepOrange)),
+          TextButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Coba lagi')),
+        ]))
+        else if (_notices.isEmpty) const _Empty('Belum ada tautan PDF invoice atau kuitansi resmi pada data yang terbaca.')
+        else ..._notices.map((notice) {
+          final status = _statuses[notice.id] ?? 'ready';
+          final sent = status == 'sent';
+          final review = status == 'review';
+          return Card(color: Colors.white, margin: const EdgeInsets.only(bottom: 10), child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(notice.type == 'Invoice' ? Icons.receipt_long_outlined : Icons.payments_outlined, color: _darkGold),
+                const SizedBox(width: 9),
+                Expanded(child: Text(notice.type + ' • ' + notice.title, style: const TextStyle(fontWeight: FontWeight.bold, color: _ink))),
+                Text(sent ? 'Terkirim' : review ? 'Perlu cek' : 'Siap ditinjau',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: sent ? Colors.green : review ? Colors.deepOrange : _darkGold)),
+              ]),
+              const SizedBox(height: 5),
+              Text(notice.detail, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+              const SizedBox(height: 9),
+              Wrap(spacing: 8, runSpacing: 4, children: [
+                OutlinedButton.icon(onPressed: () => _open(notice), icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('Periksa PDF')),
+                if (!sent) TextButton.icon(onPressed: () => _setStatus(notice, 'sent'),
+                  icon: const Icon(Icons.check_circle_outline), label: const Text('Tandai terkirim'))
+                else TextButton.icon(onPressed: () => _setStatus(notice, 'ready'),
+                  icon: const Icon(Icons.undo), label: const Text('Batalkan status')),
+              ]),
+              if (!sent) const Text('Status terkirim hanya dicatat setelah petugas mengirim sendiri melalui WhatsApp.',
+                style: TextStyle(fontSize: 10, color: Colors.black45)),
+            ]),
+          ));
+        }),
+      ]),
+    );
+  }
+}
+
 
 Widget _docLine(String label, String value, {bool strong = false}) => Padding(
   padding: const EdgeInsets.symmetric(vertical: 3),
