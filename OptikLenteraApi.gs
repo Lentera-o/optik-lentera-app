@@ -6,6 +6,7 @@
  * numbering, spreadsheet, and PDF functions; it does not replace triggers.
  *
  * Required Script Properties:
+ *   OL_SPREADSHEET_ID           = ID spreadsheet operasional OPTIK LENTERA
  *   OL_GOOGLE_WEB_CLIENT_ID     = OAuth Web client ID used as ID-token audience
  *   OL_ALLOWED_EMAILS           = comma-separated authorized staff email addresses
  *
