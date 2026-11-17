@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/sheets_read_service.dart';
 
 const _gold = Color(0xFFB99555);
@@ -81,6 +84,72 @@ class _ReportsScreenState extends State<ReportsScreen> {
     ? '${selected.month.toString().padLeft(2, '0')}/${selected.year}'
     : '${selected.day.toString().padLeft(2, '0')}/${selected.month.toString().padLeft(2, '0')}/${selected.year}';
 
+  String _csvValue(String value) {
+    var safe = value.replaceAll('\r', ' ').replaceAll('\n', ' ');
+    if (RegExp(r'^\s*[=+@]').hasMatch(safe) ||
+        RegExp(r'^\s*-[0-9]').hasMatch(safe)) {
+      safe = "'$safe";
+    }
+    return '"\${safe.replaceAll('"', '""')}"';
+  }
+
+  Future<void> exportReport(List<Map<String, String>> periodOrders,
+      List<Map<String, String>> periodPayments) async {
+    if (periodOrders.isEmpty && periodPayments.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak ada data pada periode ini untuk diekspor.')),
+      );
+      return;
+    }
+    try {
+      final orderHeaders = <String>{};
+      final paymentHeaders = <String>{};
+      for (final row in periodOrders) { orderHeaders.addAll(row.keys); }
+      for (final row in periodPayments) { paymentHeaders.addAll(row.keys); }
+      final headers = <String>['Jenis Data', ...orderHeaders, ...paymentHeaders.where((h) => !orderHeaders.contains(h))];
+      final lines = <String>[headers.map(_csvValue).join(',')];
+      void appendRow(String type, Map<String, String> row) {
+        lines.add([
+          _csvValue(type),
+          ...headers.skip(1).map((header) => _csvValue(row[header] ?? '')),
+        ].join(','));
+      }
+      for (final row in periodOrders) { appendRow('PESANAN', row); }
+      for (final row in periodPayments) { appendRow('PEMBAYARAN', row); }
+
+      final summary = [
+        'LAPORAN OPTIK LENTERA',
+        'Periode,\${label()}',
+        'Jumlah Order,\${periodOrders.length}',
+        'Nilai Penjualan,\${salesFor(periodOrders)}',
+        'Jumlah Pembayaran,\${periodPayments.length}',
+        'Uang Masuk,\${receivedFor(periodPayments)}',
+        '',
+        ...lines,
+      ].join('\r\n');
+      final bytes = <int>[0xEF, 0xBB, 0xBF, ...utf8.encode(summary)];
+      final mode = monthly ? 'Bulanan' : 'Harian';
+      final safeLabel = label().replaceAll('/', '-');
+      final fileName = 'Laporan_Optik_Lentera_\${mode}_\${safeLabel}.csv';
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile.fromData(bytes, mimeType: 'text/csv', name: fileName)],
+        fileNameOverrides: [fileName],
+        subject: 'Laporan Optik Lentera $mode $safeLabel',
+        text: 'Ekspor laporan Optik Lentera periode $safeLabel.',
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ekspor laporan gagal: $e')),
+      );
+    }
+  }
+
+  String salesFor(List<Map<String, String>> rows) =>
+      rows.fold<int>(0, (sum, row) => sum + orderTotal(row)).toString();
+  String receivedFor(List<Map<String, String>> rows) =>
+      rows.fold<int>(0, (sum, row) => sum + paymentAmount(row)).toString();
+
   Future<void> pickDate() async {
     final d = await showDatePicker(context: context, initialDate: selected,
       firstDate: DateTime(2020), lastDate: DateTime(2100));
@@ -147,6 +216,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
         const SizedBox(height: 9),
         Row(children: [metric('Jumlah order', '${periodOrders.length}', Icons.shopping_bag_outlined),
           const SizedBox(width: 9), metric('Uang masuk', rp(received), Icons.payments_outlined)]),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: FilledButton.icon(
+          onPressed: () => exportReport(periodOrders, periodPayments),
+          icon: const Icon(Icons.download_rounded),
+          label: const Text('Unduh / Ekspor Data Laporan (CSV)'),
+          style: FilledButton.styleFrom(backgroundColor: _dark, foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14)),
+        )),
         const SizedBox(height: 9),
         Row(children: [metric('Nilai penjualan', rp(sales), Icons.point_of_sale_outlined),
           const SizedBox(width: 9), metric('Sisa tagihan order', rp(balanceTotal), Icons.account_balance_wallet_outlined)]),
