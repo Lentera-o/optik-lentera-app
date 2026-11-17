@@ -1158,6 +1158,16 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
 
   Future<void> _loadOfficialData({bool silent = false}) async {
     if (loadingOfficialData) return;
+    String rowSignature(Map<String, String>? row) =>
+        row == null ? '' : row.entries.map((e) => e.key + '=' + e.value).join('|');
+    String rowsSignature(List<Map<String, String>> rows) =>
+        rows.map(rowSignature).join('||');
+    final previousInvoice = selectedInvoice;
+    final previousCustomer = selectedCustomer == null
+        ? ''
+        : selectedCustomer!.name + '|' + selectedCustomer!.phone + '|' + selectedCustomer!.address;
+    final previousOrder = rowSignature(selectedOfficialOrder);
+    final previousPayments = rowsSignature(selectedOfficialPayments);
     if (mounted && !silent) {
       setState(() { loadingOfficialData = true; syncError = null; });
     } else {
@@ -1222,7 +1232,16 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
           _lastNewestInvoice = newestInvoice;
         }
         _lastSyncedAt = DateTime.now();
-        _buildMessage();
+        final currentCustomer = selectedCustomer == null
+            ? ''
+            : selectedCustomer!.name + '|' + selectedCustomer!.phone + '|' + selectedCustomer!.address;
+        final messageSourceChanged = previousInvoice != selectedInvoice ||
+            previousCustomer != currentCustomer ||
+            previousOrder != rowSignature(selectedOfficialOrder) ||
+            previousPayments != rowsSignature(selectedOfficialPayments);
+        // Do not overwrite a staff-edited WhatsApp draft on a routine poll.
+        // Rebuild only when the selected invoice/customer/payment data changed.
+        if (messageSourceChanged) _buildMessage();
       });
     } catch (error) {
       if (!mounted) return;
