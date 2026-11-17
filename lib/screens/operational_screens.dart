@@ -1958,19 +1958,7 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
     final pattern = RegExp(r'https?://[^\s<>"\x27]+', caseSensitive: false);
     for (final candidate in candidates) {
       for (final match in pattern.allMatches(candidate.trim())) {
-        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+ {bool strong = false}) => Padding(
-  padding: const EdgeInsets.symmetric(vertical: 3),
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SizedBox(width: 112, child: Text(label, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: _ink))),
-      const Text(': ', style: TextStyle(fontSize: 11)),
-      Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(fontSize: 11, fontWeight: strong ? FontWeight.bold : FontWeight.normal, color: strong ? _darkGold : _ink))),
-    ],
-  ),
-);
-
-), '');
+        final raw = match.group(0)!.replaceFirst(RegExp(r'[.,;)]+$'), '');
         final uri = Uri.tryParse(raw);
         if (uri != null && uri.scheme == 'https' &&
             (uri.host == 'drive.google.com' || uri.host.endsWith('.google.com')) &&
