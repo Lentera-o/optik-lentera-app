@@ -263,7 +263,8 @@ class _MainScreenState extends State<MainScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () => setState(() => selectedIndex = 7),
+            tooltip: 'Notifikasi dokumen',
             icon: const Icon(Icons.notifications_none),
             color: darkGold,
           ),
@@ -290,6 +291,7 @@ class _MainScreenState extends State<MainScreen> {
           4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
           5 => const InvoiceReceiptScreen(),
           6 => const ReportsScreen(),
+          7 => const DocumentNotificationsScreen(),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
