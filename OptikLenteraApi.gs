@@ -9,8 +9,8 @@
  *   OL_GOOGLE_WEB_CLIENT_ID     = OAuth Web client ID used as ID-token audience
  *
  * Deploy the existing Web App as "Execute as me". The endpoint may be
- * reachable publicly, but every write is rejected unless its Google ID token
- * is valid and its email is ACTIVE in PENGATURAN_PETUGAS.
+ * reachable publicly. Every write requires a valid Google ID token issued
+ * for this app; no per-staff email allowlist is applied.
  *
  * Request JSON:
  * {
@@ -54,8 +54,6 @@ function doPost(e) {
     const lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
-      // Re-check active staff status immediately before any write.
-      olApiAssertActiveStaff_(actor.email);
       if (action === 'createOrder') {
         return olApiCreateOrder_(request.data, requestId, actor);
       }
@@ -111,14 +109,7 @@ function olApiVerifyGoogleIdToken_(token) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error('Akun Google tidak memiliki email yang valid.');
   }
-  olApiAssertActiveStaff_(email);
   return { email: email, name: String(claims.name || '') };
-}
-
-function olApiAssertActiveStaff_(email) {
-  const normalized = String(email || '').trim().toLowerCase();
-  const active = olGetStaffEmails_().some(person => person.email === normalized);
-  if (!active) throw new Error('Akun ini tidak terdaftar sebagai petugas AKTIF OPTIK LENTERA.');
 }
 
 function olApiCreateOrder_(data, requestId, actor) {
