@@ -454,7 +454,9 @@ class _DashboardContentState extends State<DashboardContent> {
       ]);
       final officialOrders = tables[0].where((row) => _cell(row, [
         'No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice',
-        'Nomor Tagihan', 'No Tagihan',
+        'Nomor Tagihan', 'No Tagihan', 'No Faktur', 'Nomor Faktur',
+        'Kode Invoice', 'Invoice ID', 'ID Invoice', 'No Nota', 'Nomor Nota',
+        'No Transaksi', 'Nomor Transaksi',
       ]).isNotEmpty).toList();
       final officialPayments = tables[1].where((row) =>
         row.values.any((value) => value.trim().isNotEmpty)).toList();
