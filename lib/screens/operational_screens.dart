@@ -506,7 +506,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     });
     try {
       final tables = await Future.wait([
-        SheetsReadService.readTable('DATA_PESANAN'),
+        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
       ]);
       final rows = tables[0];
@@ -914,9 +914,24 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     final rows = officialPayments.where((row) =>
       _paymentBelongsToInvoice(row, selectedInvoice ?? '')
     ).toList();
-    rows.sort((a, b) => _cell(b, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])
-        .compareTo(_cell(a, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])));
+    rows.sort((a, b) => _dateValue(_cell(b, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran']))
+        .compareTo(_dateValue(_cell(a, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran']))));
     return rows;
+  }
+
+  DateTime _dateValue(String raw) {
+    final value = raw.trim();
+    final iso = DateTime.tryParse(value);
+    if (iso != null) return iso;
+    final match = RegExp(r'^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})').firstMatch(value);
+    if (match != null) {
+      final day = int.tryParse(match.group(1) ?? '') ?? 1;
+      final month = int.tryParse(match.group(2) ?? '') ?? 1;
+      var year = int.tryParse(match.group(3) ?? '') ?? 2000;
+      if (year < 100) year += 2000;
+      return DateTime(year, month, day);
+    }
+    return DateTime(2000);
   }
 
   String _canonicalPhone(String value) {
@@ -930,13 +945,24 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     final customer = selectedCustomer;
     if (customer == null) return [];
     final customerPhone = _canonicalPhone(customer.phone);
-    return officialOrders.where((row) {
+    final matches = officialOrders.where((row) {
       final phone = _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']);
       final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
       final rowPhone = _canonicalPhone(phone);
       final samePhone = customerPhone.isNotEmpty && rowPhone == customerPhone;
       return samePhone || name.trim().toLowerCase() == customer.name.trim().toLowerCase();
     }).toList();
+    // Pilih transaksi terbaru lebih dahulu agar invoice/kuitansi tidak tertukar
+    // ketika pelanggan mempunyai beberapa transaksi dalam waktu berdekatan.
+    matches.sort((a, b) {
+      final dateA = _dateValue(_cell(a, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp']));
+      final dateB = _dateValue(_cell(b, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp']));
+      final byDate = dateB.compareTo(dateA);
+      if (byDate != 0) return byDate;
+      return _cell(b, ['No Invoice', 'Nomor Invoice']).compareTo(
+        _cell(a, ['No Invoice', 'Nomor Invoice']));
+    });
+    return matches;
   }
 
   void _chooseCustomer(Customer? customer) {
