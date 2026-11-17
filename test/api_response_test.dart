@@ -1,7 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:optik_lentera/services/api_service.dart';
+import 'package:optik_lentera/services/sheets_read_service.dart';
 
 void main() {
+  test('uses the verified OPTIK LENTERA operational spreadsheet ID', () {
+    expect(SheetsReadService.spreadsheetId,
+        '1umMSjgI7T124eT8vaEHQRNsXSmDr2snJM6kEBs-6xz0');
+  });
+
   group('ApiResponse', () {
     test('HTTP success with Apps Script ok true is successful', () {
       const response = ApiResponse(
