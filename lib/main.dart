@@ -412,6 +412,7 @@ class DashboardContent extends StatefulWidget {
 class _DashboardContentState extends State<DashboardContent> {
   List<Map<String, String>> _officialOrders = [];
   List<Map<String, String>> _officialPayments = [];
+  int? _rawOrderResponseCount;
   bool _summaryLoading = true;
   String? _summaryError;
   DateTime? _lastSyncedAt;
@@ -458,10 +459,19 @@ class _DashboardContentState extends State<DashboardContent> {
       ]).isNotEmpty).toList();
       final officialPayments = tables[1].where((row) =>
         row.values.any((value) => value.trim().isNotEmpty)).toList();
+      int? rawOrderResponseCount;
+      try {
+        final rawResponses = await SheetsReadService.readTable('Jawaban Formulir', forceRefresh: true);
+        rawOrderResponseCount = rawResponses.where((row) =>
+          row.values.any((value) => value.trim().isNotEmpty)).length;
+      } catch (_) {
+        // Keep the official dashboard usable if the raw response tab is not published.
+      }
       if (!mounted) return;
       setState(() {
         _officialOrders = officialOrders;
         _officialPayments = officialPayments;
+        _rawOrderResponseCount = rawOrderResponseCount;
         _summaryLoading = false;
         _lastSyncedAt = DateTime.now();
       });
@@ -598,6 +608,21 @@ class _DashboardContentState extends State<DashboardContent> {
             Padding(padding: const EdgeInsets.only(bottom: 8),
               child: Text('Data total transaksi belum tersinkron: ' + _summaryError!,
                 style: const TextStyle(fontSize: 10, color: Colors.deepOrange))),
+          if (_rawOrderResponseCount != null && !_summaryLoading)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Form pesanan masuk: ' + _rawOrderResponseCount.toString() +
+                ' • Invoice resmi: ' + orderCount.toString(),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: _rawOrderResponseCount! > orderCount
+                    ? Colors.deepOrange : Colors.black54,
+                  fontWeight: _rawOrderResponseCount! > orderCount
+                    ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
           if (_lastSyncedAt != null)
             Padding(padding: const EdgeInsets.only(bottom: 8),
               child: Text('Terakhir diperbarui: ' +
