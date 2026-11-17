@@ -426,9 +426,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       final paymentRows = tables[1];
       final mappedPayments = paymentRows.map((row) => <String, String>{
         'invoice': _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']),
-        'receipt': _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']),
+        'receipt': _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi', 'No. Kuitansi', 'No Kwitansi', 'Nomor Kwitansi', 'Nomor Bukti', 'No Bukti']),
         'date': _cell(row, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran']),
-        'amount': _cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran']),
+        'amount': _cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Jumlah pembayaran', 'Nominal', 'Nominal Pembayaran', 'Total Bayar']),
         'method': _cell(row, ['Metode', 'Metode Pembayaran', 'Metode pembayaran']),
         'note': _cell(row, ['Catatan', 'Keterangan Pembayaran', 'Catatan Pembayaran']),
       }).where((item) => item['invoice']!.isNotEmpty).toList();
@@ -747,6 +747,16 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   String _rupiah(int value) => 'Rp ' + value.toString().replaceAllMapped(
     RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
 
+  bool _paymentBelongsToInvoice(Map<String, String> payment, String invoice) {
+    final linkedInvoice = _cell(payment, [
+      'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
+      'Invoice', 'Invoice Number', 'Nomor Tagihan',
+    ]);
+    if (linkedInvoice.isNotEmpty) return linkedInvoice == invoice;
+    // Some response sheets use a different heading; exact cell matching is a safe fallback.
+    return payment.values.any((value) => value.trim() == invoice);
+  }
+
   String _documentUrl(Map<String, String> row, List<String> aliases) {
     final values = <String>[
       _cell(row, aliases),
@@ -794,7 +804,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         officialPayments = payments;
         loadingOfficialData = false;
         if (selectedInvoice != null &&
-            !orders.any((row) => _cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice)) {
+            !orders.any((row) => _paymentBelongsToInvoice(row, selectedInvoice ?? ''))) {
           selectedInvoice = null;
         }
         _buildMessage();
@@ -814,7 +824,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
 
   List<Map<String, String>> get selectedOfficialPayments {
     final rows = officialPayments.where((row) =>
-      _cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice
+      _paymentBelongsToInvoice(row, selectedInvoice ?? '')
     ).toList();
     rows.sort((a, b) => _cell(b, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])
         .compareTo(_cell(a, ['Tanggal', 'Tanggal Bayar', 'Tanggal Pembayaran'])));
@@ -1157,7 +1167,7 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
           ...orders.map((order) {
             final invoice = _cell(order, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
             final relatedPayments = payments.where((payment) =>
-              _cell(payment, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) == invoice
+              _paymentBelongsToInvoice(payment, invoice)
             ).toList();
             final invoicePdf = _documentUrl(order, [
               'Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice',
