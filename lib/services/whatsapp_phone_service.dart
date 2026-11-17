@@ -60,12 +60,12 @@ String extractWhatsAppPhone(String raw) {
 
 /// Checks an international number before opening wa.me.
 bool isValidWhatsAppPhone(String normalized) {
-  if (normalized.length < 8 || normalized.length > 15) return false;
+  if (normalized.length < 10 || normalized.length > 15) return false;
 
   // Indonesian WhatsApp accounts can use mobile and fixed-line/business numbers.
   if (normalized.startsWith('62')) {
     final nationalNumber = normalized.substring(2);
-    return nationalNumber.length >= 6 &&
+    return nationalNumber.length >= 8 &&
         nationalNumber.length <= 13 &&
         RegExp(r'^[1-9]').hasMatch(nationalNumber);
   }
