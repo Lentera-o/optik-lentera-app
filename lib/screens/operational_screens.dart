@@ -811,6 +811,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   void initState() {
     super.initState();
     _loadOfficialInvoices();
+    _restorePendingPayment();
   }
 
   Future<void> _loadOfficialInvoices() async {
@@ -924,13 +925,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       }
       _pendingPaymentLoaded = true;
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadOfficialInvoices();
-    _restorePendingPayment();
   }
 
   Future<void> save() async {
