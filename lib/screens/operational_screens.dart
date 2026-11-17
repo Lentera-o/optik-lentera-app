@@ -1351,9 +1351,9 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
     // with the same name while still handling a customer's updated phone.
     List<Map<String, String>> matches = phoneMatches;
     if (matches.isEmpty) {
-      final nameKey = customer.name.trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ');
+      final nameKey = customer.name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
       final nameMatches = eligible.where((row) =>
-        _customerNameFromRow(row).trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ') == nameKey
+        _customerNameFromRow(row).trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ') == nameKey
       ).toList();
       final distinctPhones = nameMatches
           .map((row) => _canonicalPhone(_phoneFromRow(row)))
