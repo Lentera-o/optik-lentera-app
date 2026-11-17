@@ -1164,11 +1164,14 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
             key.contains('telepon')))) return 125;
       if (key.contains('hpwa') || key.contains('wa pelanggan')) return 120;
       if (key.contains('handphone') || key.contains('nomorhp') ||
+          key.contains('nomorponsel') || key.contains('cellphone') ||
           key == 'hp' || key == 'nohp') return 110;
       if (key.contains('telepon') || key.contains('nomortelp') ||
           key.contains('notelp') || key == 'telp') return 100;
-      if (key == 'phone' || key.contains('mobile') ||
-          key.contains('nomorkontak')) return 95;
+      if (key == 'phone' || key.contains('phonepelanggan') ||
+          key.contains('customerphone') || key.contains('mobile') ||
+          key.contains('contactnumber') || key.contains('nomorkontak') ||
+          key == 'contact' || key == 'kontak') return 95;
       return 0;
     }
 
