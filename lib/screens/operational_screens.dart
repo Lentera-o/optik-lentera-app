@@ -1395,7 +1395,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       return;
     }
     if (!isValidWhatsAppPhone(phone)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Nomor WhatsApp yang terbaca (' + phone + ') belum valid. Periksa kembali angka pada data pelanggan.'),
       ));
       return;
