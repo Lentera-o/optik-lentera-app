@@ -390,10 +390,12 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   String? invoiceSyncError;
 
   String _cell(Map<String, String> row, List<String> aliases) {
+    String normalize(String value) =>
+        value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
     for (final alias in aliases) {
+      final target = normalize(alias);
       for (final entry in row.entries) {
-        if (entry.key.trim().toLowerCase() == alias.toLowerCase() &&
-            entry.value.trim().isNotEmpty) {
+        if (normalize(entry.key) == target && entry.value.trim().isNotEmpty) {
           return entry.value.trim();
         }
       }
@@ -986,10 +988,12 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
   String? loadError;
 
   String _cell(Map<String, String> row, List<String> aliases) {
+    String normalize(String value) =>
+        value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
     for (final alias in aliases) {
+      final target = normalize(alias);
       for (final entry in row.entries) {
-        if (entry.key.trim().toLowerCase() == alias.toLowerCase() &&
-            entry.value.trim().isNotEmpty) {
+        if (normalize(entry.key) == target && entry.value.trim().isNotEmpty) {
           return entry.value.trim();
         }
       }
