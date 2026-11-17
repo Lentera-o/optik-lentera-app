@@ -1409,20 +1409,33 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   ) {
     if (customer == null) return [];
     final customerPhone = _canonicalPhone(customer.phone);
-    final matches = source.where((row) {
-      if (_invoiceNumber(row).isEmpty) return false;
-      final phone = _phoneFromRow(row);
-      final name = _customerNameFromRow(row);
-      final rowPhone = _canonicalPhone(phone);
-      final sameName = name.trim().toLowerCase() == customer.name.trim().toLowerCase();
-      // A valid phone is the primary identity. Fall back to name only when
-      // either side has no phone, avoiding invoices from a different person
-      // who happens to share the same name.
-      if (customerPhone.isNotEmpty && rowPhone.isNotEmpty) {
-        return rowPhone == customerPhone;
+    final eligible = source.where((row) => _invoiceNumber(row).isNotEmpty).toList();
+
+    // First use the same canonical phone identity as the order history.
+    final phoneMatches = customerPhone.isEmpty
+        ? <Map<String, String>>[]
+        : eligible.where((row) =>
+            _canonicalPhone(_phoneFromRow(row)) == customerPhone
+        ).toList();
+
+    // If the phone on an older order changed, keep the customer connected to
+    // their official order history by name only when that name does not point
+    // to multiple different phone identities. This avoids mixing two people
+    // with the same name while still handling a customer's updated phone.
+    List<Map<String, String>> matches = phoneMatches;
+    if (matches.isEmpty) {
+      final nameKey = customer.name.trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ');
+      final nameMatches = eligible.where((row) =>
+        _customerNameFromRow(row).trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ') == nameKey
+      ).toList();
+      final distinctPhones = nameMatches
+          .map((row) => _canonicalPhone(_phoneFromRow(row)))
+          .where((phone) => phone.isNotEmpty)
+          .toSet();
+      if (distinctPhones.length <= 1) {
+        matches = nameMatches;
       }
-      return sameName;
-    }).toList();
+    }
     // Pilih transaksi terbaru lebih dahulu agar invoice/kuitansi tidak tertukar
     // ketika pelanggan mempunyai beberapa transaksi dalam waktu berdekatan.
     matches.sort((a, b) {
