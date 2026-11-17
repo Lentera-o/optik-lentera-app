@@ -2035,7 +2035,13 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
 
   Future<void> _open(_DocumentNotice notice) async {
     final uri = Uri.tryParse(notice.url);
-    final opened = uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
+    var opened = false;
+    try {
+      opened = uri != null &&
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
     if (!opened) await _setStatus(notice, 'review');
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(opened
