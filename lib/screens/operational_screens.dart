@@ -57,10 +57,13 @@ class _CustomerScreenState extends State<CustomerScreen> {
     return '';
   }
   String phoneKey(String s) {
-    var v = s.replaceAll(RegExp(r'[^0-9]'), '');
-    if (v.startsWith('0')) v = v.substring(1);
-    if (v.startsWith('62')) v = v.substring(2);
-    return v;
+    // Use the same parser as WhatsApp links so +62, 08, bare 8, and
+    // spreadsheet cells containing labels/links group under one customer.
+    final normalized = extractWhatsAppPhone(s);
+    if (normalized.isEmpty) return '';
+    return normalized.startsWith('62')
+        ? normalized.substring(2)
+        : normalized;
   }
   int money(String s) => int.tryParse(s.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
   String rupiah(String s) => 'Rp ' + money(s).toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
