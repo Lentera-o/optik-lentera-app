@@ -1046,8 +1046,11 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
           key.contains('izin')) return 0;
 
       if (key.contains('whatsapp') || key.contains('kontakwa')) return 130;
-      if (key == 'wa' || key.startsWith('wa') ||
-          key.contains('nomorwa') || key.contains('nowa')) return 125;
+      if (key == 'wa' || key.contains('nomorwa') || key.contains('nowa') ||
+          (key.startsWith('wa') &&
+           (key.contains('pelanggan') || key.contains('customer') ||
+            key.contains('kontak') || key.contains('hp') ||
+            key.contains('telepon')))) return 125;
       if (key.contains('hpwa') || key.contains('wa pelanggan')) return 120;
       if (key.contains('handphone') || key.contains('nomorhp') ||
           key == 'hp' || key == 'nohp') return 110;
