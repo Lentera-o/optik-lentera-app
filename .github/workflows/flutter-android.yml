@@ -37,10 +37,32 @@ jobs:
             echo "::error::Set the repository variable OL_GOOGLE_WEB_CLIENT_ID to the public Google OAuth Web Client ID before building a usable tester APK."
             exit 1
           fi
+      - name: Configure stable Android release signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+      - name: Warn when stable Android signing is not configured
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
+        run: echo "::warning::APK will use a temporary CI debug certificate. Google Android OAuth SHA-1 and app updates are not stable until owner-managed signing secrets are configured."
       - name: Build release APK
         env:
           OL_GOOGLE_WEB_CLIENT_ID: ${{ vars.OL_GOOGLE_WEB_CLIENT_ID }}
         run: flutter build apk --release --dart-define=OL_GOOGLE_WEB_CLIENT_ID="$OL_GOOGLE_WEB_CLIENT_ID"
+      - name: Report APK signing certificate
+        run: |
+          BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
