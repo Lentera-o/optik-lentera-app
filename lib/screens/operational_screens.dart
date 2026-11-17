@@ -121,7 +121,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       return;
     }
     widget.onAdd(OptikOrder(
-      invoiceNumber: 'DRAFT-' + DateTime.now().millisecondsSinceEpoch.toString(),
+      invoiceNumber: 'DRAFT-' + DateTime.now().microsecondsSinceEpoch.toString(),
       orderDate: DateTime.now(),
       customer: Customer(name: customer.text.trim(), phone: phone.text.trim(), address: address.text.trim()),
       prescription: EyePrescription(
