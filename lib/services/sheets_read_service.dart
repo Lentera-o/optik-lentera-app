@@ -143,7 +143,7 @@ class SheetsReadService {
         row.add(field.toString());
         field.clear();
       } else if (char == '\n' || char == '\r') {
-        if (char == '\\r' && i + 1 < input.length && input[i + 1] == '\n') {
+        if (char == '\r' && i + 1 < input.length && input[i + 1] == '\n') {
           i++;
         }
         row.add(field.toString());
