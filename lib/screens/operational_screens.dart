@@ -822,7 +822,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     } else if (template == 'Pengingat pembayaran') {
       message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n' + (lastPayment == null ? '' : 'Pembayaran terakhir: ' + _rupiah(lastPayment.amount) + ' (' + lastPayment.method + ') pada ' + OptikPdfService.date(lastPayment.paymentDate) + '\n') + 'Jika sudah melakukan pembayaran, mohon abaikan pesan ini.\n' + documentSection + 'Terima kasih 🙏';
     } else if (template == 'Tindak lanjut pelanggan') {
-      message.text = 'Halo ' + name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏';
+      message.text = 'Halo ' + name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami.\n' + documentSection + 'Terima kasih 🙏';
     } else {
       message.text = 'Halo ' + name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' + (order == null ? '' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n') + 'Jika ada pertanyaan, silakan balas pesan ini.\n' + documentSection + 'Terima kasih 🙏';
     }
