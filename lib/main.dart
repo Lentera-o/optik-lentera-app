@@ -269,14 +269,7 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.notifications_none),
             color: darkGold,
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: pink,
-              child: Icon(Icons.person_outline, color: darkGold),
-            ),
-          ),
+          const _GoogleProfileButton(),
         ],
       ),
       body: SafeArea(
@@ -344,6 +337,110 @@ class _MainScreenState extends State<MainScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+class _GoogleProfileButton extends StatelessWidget {
+  const _GoogleProfileButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = GoogleAuthService.instance;
+    return AnimatedBuilder(
+      animation: auth,
+      builder: (context, _) {
+        final account = auth.account;
+        final photoUrl = account?.photoUrl;
+        final name = account?.displayName?.trim() ?? '';
+        final email = account?.email ?? '';
+        final fallback = name.isNotEmpty ? name : email;
+        final initial = fallback.isNotEmpty
+            ? fallback.substring(0, 1).toUpperCase()
+            : 'P';
+
+        CircleAvatar buildAvatar(double radius) => CircleAvatar(
+          radius: radius,
+          backgroundColor: pink,
+          backgroundImage: photoUrl == null || photoUrl.isEmpty
+              ? null
+              : NetworkImage(photoUrl),
+          child: photoUrl == null || photoUrl.isEmpty
+              ? Text(
+                  initial,
+                  style: const TextStyle(
+                    color: darkGold,
+                    fontWeight: FontWeight.w800,
+                  ),
+                )
+              : null,
+        );
+
+        return PopupMenuButton<String>(
+          tooltip: 'Profil akun Google',
+          onSelected: (value) async {
+            if (value == 'signout') {
+              await auth.signOut();
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              enabled: false,
+              child: SizedBox(
+                width: 224,
+                child: Row(
+                  children: [
+                    buildAvatar(21),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            name.isEmpty ? 'Pengguna Google' : name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: ink,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            email,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.black54,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const PopupMenuDivider<String>(),
+            const PopupMenuItem<String>(
+              value: 'signout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, color: darkGold, size: 19),
+                  SizedBox(width: 10),
+                  Text('Keluar dari akun Google'),
+                ],
+              ),
+            ),
+          ],
+          child: Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: buildAvatar(18),
+          ),
+        );
+      },
     );
   }
 }
