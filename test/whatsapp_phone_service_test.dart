@@ -40,7 +40,7 @@ void main() {
     });
 
     test('normalizes international numbers with punctuation', () {
-      expect(normalizeWhatsAppPhone('+81 (0) 90-1234-5678'), '8109012345678');
+      expect(normalizeWhatsAppPhone('+81 (0) 90-1234-5678'), '819012345678');
     });
 
     test('returns empty for blank input', () {
