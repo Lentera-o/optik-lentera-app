@@ -7,10 +7,12 @@
  *
  * Required Script Properties:
  *   OL_GOOGLE_WEB_CLIENT_ID     = OAuth Web client ID used as ID-token audience
+ *   OL_ALLOWED_EMAILS           = comma-separated authorized staff email addresses
  *
  * Deploy the existing Web App as "Execute as me". The endpoint may be
- * reachable publicly. Every read and write requires a valid Google ID token
- * issued for this app; no per-staff email allowlist is applied.
+ * reachable publicly, but every action requires a valid Google ID token AND
+ * an email present in OL_ALLOWED_EMAILS. The API fails closed if the allowlist
+ * is missing or empty.
  *
  * Request JSON:
  * {
@@ -115,6 +117,19 @@ function olApiVerifyGoogleIdToken_(token) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error('Akun Google tidak memiliki email yang valid.');
   }
+  // Prescription, phone, and payment data are sensitive: authorize staff explicitly.
+  // Fail closed when the allowlist is missing or empty.
+  const allowedEmails = String(props.getProperty('OL_ALLOWED_EMAILS') || '')
+    .split(/[;,\\s]+/)
+    .map(value => value.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowedEmails.length) {
+    throw new Error('Daftar akun petugas belum dikonfigurasi administrator.');
+  }
+  if (allowedEmails.indexOf(email) < 0) {
+    throw new Error('Akun Google ini belum diizinkan menggunakan OPTIK LENTERA.');
+  }
+
   return { email: email, name: String(claims.name || '') };
 }
 
