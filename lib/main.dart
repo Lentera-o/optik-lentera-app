@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/api_service.dart';
+import 'services/sheets_read_service.dart';
 import 'models/optik_models.dart';
 import 'screens/operational_screens.dart';
 import 'screens/reports_screen.dart';
@@ -282,8 +283,6 @@ class _MainScreenState extends State<MainScreen> {
             : switch (selectedIndex) {
           0 => DashboardContent(
             onOpenModule: (index) => setState(() => selectedIndex = index),
-            orderCount: orders.length,
-            paymentTotal: payments.fold<int>(0, (sum, item) => sum + item.amount),
           ),
           1 => TransactionScreen(customers: customers, orders: orders, onAdd: _addOrder),
           2 => CustomerScreen(customers: customers, onAdd: _addCustomer),
@@ -402,14 +401,83 @@ class _MoreMenuTile extends StatelessWidget {
   );
 }
 
-class DashboardContent extends StatelessWidget {
+class DashboardContent extends StatefulWidget {
   final ValueChanged<int> onOpenModule;
-  final int orderCount;
-  final int paymentTotal;
-  const DashboardContent({super.key, required this.onOpenModule, required this.orderCount, required this.paymentTotal});
+  const DashboardContent({super.key, required this.onOpenModule});
+
+  @override
+  State<DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends State<DashboardContent> {
+  List<Map<String, String>> _officialOrders = [];
+  List<Map<String, String>> _officialPayments = [];
+  bool _summaryLoading = true;
+  String? _summaryError;
+  DateTime? _lastSyncedAt;
+
+  String _cell(Map<String, String> row, List<String> aliases) {
+    String key(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    for (final alias in aliases) {
+      final target = key(alias);
+      for (final entry in row.entries) {
+        if (key(entry.key) == target && entry.value.trim().isNotEmpty) return entry.value.trim();
+      }
+    }
+    for (final alias in aliases) {
+      final tokens = RegExp(r'[a-z0-9]+').allMatches(alias.toLowerCase())
+          .map((match) => match.group(0)!).where((token) => token.length > 1).toList();
+      if (tokens.length < 2) continue;
+      for (final entry in row.entries) {
+        final header = key(entry.key);
+        if (entry.value.trim().isNotEmpty && tokens.every(header.contains)) return entry.value.trim();
+      }
+    }
+    return '';
+  }
+
+  int _money(String value) =>
+      int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOfficialSummary();
+  }
+
+  Future<void> _loadOfficialSummary() async {
+    if (mounted) setState(() { _summaryLoading = true; _summaryError = null; });
+    try {
+      final tables = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
+      ]);
+      final officialOrders = tables[0].where((row) => _cell(row, [
+        'No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice',
+        'Nomor Tagihan', 'No Tagihan',
+      ]).isNotEmpty).toList();
+      final officialPayments = tables[1].where((row) =>
+        row.values.any((value) => value.trim().isNotEmpty)).toList();
+      if (!mounted) return;
+      setState(() {
+        _officialOrders = officialOrders;
+        _officialPayments = officialPayments;
+        _summaryLoading = false;
+        _lastSyncedAt = DateTime.now();
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() { _summaryLoading = false; _summaryError = error.toString(); });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final orderCount = _officialOrders.length;
+    final paymentTotal = _officialPayments.fold<int>(0, (sum, row) =>
+      sum + _money(_cell(row, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Nominal Pembayaran', 'Nominal', 'Total Bayar'])));
+    final countText = _summaryLoading ? '…' : orderCount.toString();
+    final paymentText = _summaryLoading ? '…' : 'Rp ' + paymentTotal.toString();
     final modules = [
       _ModuleData('Data Pelanggan', Icons.people_alt_outlined),
       _ModuleData('Pemeriksaan Mata', Icons.visibility_outlined),
@@ -424,17 +492,17 @@ class DashboardContent extends StatelessWidget {
 
     void openModule(String title) {
       if (title == 'Data Pelanggan') {
-        onOpenModule(2);
+        widget.onOpenModule(2);
       } else if (title == 'Pemesanan' || title == 'Pemeriksaan Mata') {
-        onOpenModule(1);
+        widget.onOpenModule(1);
       } else if (title == 'Pembayaran') {
-        onOpenModule(4);
+        widget.onOpenModule(4);
       } else if (title == 'Invoice & Kuitansi') {
-        onOpenModule(5);
+        widget.onOpenModule(5);
       } else if (title == 'WhatsApp Semi-Otomatis') {
-        onOpenModule(3);
+        widget.onOpenModule(3);
       } else if (title == 'Laporan') {
-        onOpenModule(6);
+        widget.onOpenModule(6);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('\$title sedang disiapkan.')),
@@ -498,7 +566,7 @@ class DashboardContent extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                       ),
-                      onPressed: () => onOpenModule(1),
+                      onPressed: () => widget.onOpenModule(1),
                       icon: const Icon(Icons.add_circle_outline, size: 18),
                       label: const Text('Buat transaksi', style: TextStyle(fontWeight: FontWeight.w700)),
                     ),
@@ -512,15 +580,37 @@ class DashboardContent extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Ringkasan aktivitas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
-              Text('DATA SESI INI', style: TextStyle(fontSize: 9, letterSpacing: 1, fontWeight: FontWeight.w700, color: darkGold)),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(_summaryLoading ? 'MENYINKRONKAN' : (_summaryError == null ? 'DATA GOOGLE SHEETS' : 'GAGAL SINKRON'),
+                  style: TextStyle(fontSize: 9, letterSpacing: .5, fontWeight: FontWeight.w700,
+                    color: _summaryError == null ? darkGold : Colors.red.shade700)),
+                IconButton(
+                  tooltip: 'Perbarui total transaksi resmi',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _summaryLoading ? null : _loadOfficialSummary,
+                  icon: const Icon(Icons.sync, size: 17, color: darkGold),
+                ),
+              ]),
             ],
           ),
           const SizedBox(height: 12),
+          if (_summaryError != null)
+            Padding(padding: const EdgeInsets.only(bottom: 8),
+              child: Text('Data total transaksi belum tersinkron: ' + _summaryError!,
+                style: const TextStyle(fontSize: 10, color: Colors.deepOrange))),
+          if (_lastSyncedAt != null)
+            Padding(padding: const EdgeInsets.only(bottom: 8),
+              child: Text('Terakhir diperbarui: ' +
+                _lastSyncedAt!.day.toString().padLeft(2, '0') + '/' +
+                _lastSyncedAt!.month.toString().padLeft(2, '0') + ' ' +
+                _lastSyncedAt!.hour.toString().padLeft(2, '0') + ':' +
+                _lastSyncedAt!.minute.toString().padLeft(2, '0'),
+                style: const TextStyle(fontSize: 9, color: Colors.black45))),
           Row(
             children: [
               Expanded(child: _DashboardMetric(
-                title: 'Pesanan tersimpan',
-                value: orderCount.toString(),
+                title: 'Total transaksi resmi',
+                value: countText,
                 icon: Icons.shopping_bag_outlined,
                 tint: const Color(0xFFF5E9D6),
               )),
@@ -539,11 +629,11 @@ class DashboardContent extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFF80612F), onTap: () => onOpenModule(2)),
+              _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFF80612F), onTap: () => widget.onOpenModule(2)),
               const SizedBox(width: 10),
-              _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFF43866A), onTap: () => onOpenModule(3)),
+              _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFF43866A), onTap: () => widget.onOpenModule(3)),
               const SizedBox(width: 10),
-              _QuickAction(title: 'Pembayaran', subtitle: 'Catat pelunasan', icon: Icons.account_balance_wallet_outlined, color: const Color(0xFFAD7180), onTap: () => onOpenModule(4)),
+              _QuickAction(title: 'Pembayaran', subtitle: 'Catat pelunasan', icon: Icons.account_balance_wallet_outlined, color: const Color(0xFFAD7180), onTap: () => widget.onOpenModule(4)),
             ],
           ),
           const SizedBox(height: 22),
