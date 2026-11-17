@@ -1234,6 +1234,59 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   String _canonicalPhone(String value) =>
       normalizeWhatsAppPhone(value);
 
+  String _orderDetailText(Map<String, String>? order) {
+    if (order == null) return '';
+    final lines = <String>[];
+
+    void add(String label, List<String> aliases, {bool money = false}) {
+      final value = _cell(order, aliases);
+      if (value.isEmpty) return;
+      lines.add(label + ': ' + (money ? _rupiah(_money(value)) : value));
+    }
+
+    add('Tanggal pesanan', ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp', 'Cap waktu']);
+    add('Pemeriksa', ['Dokter', 'Nama Dokter', 'Dokter / Optometris', 'Optometris', 'Pemeriksa', 'Nama Pemeriksa']);
+    add('Frame', ['Deskripsi Frame', 'Model Frame', 'Merek Frame', 'Detail Frame', 'Nama Frame', 'Frame']);
+    add('Harga frame', ['Harga Frame', 'Harga Bingkai', 'Biaya Frame', 'Nominal Frame'], money: true);
+    add('Lensa', ['Deskripsi Lensa', 'Detail Lensa', 'Keterangan Lensa', 'Spesifikasi Lensa', 'Jenis Lensa', 'Tipe Lensa', 'Model Lensa']);
+    add('Harga lensa', ['Harga Lensa', 'Biaya Lensa', 'Nominal Lensa'], money: true);
+    add('Tambahan', ['Keterangan Lain', 'Deskripsi Lain', 'Rincian Lain', 'Biaya Lain']);
+    add('Harga tambahan', ['Harga Lain', 'Harga Lainnya', 'Biaya Lainnya', 'Nominal Lain', 'Nominal Biaya Lain'], money: true);
+
+    String rxValue(List<String> aliases) => _cell(order, aliases);
+    final odFields = <String, List<String>>{
+      'SPH': ['OD SPH', 'SPH OD', 'Mata Kanan SPH', 'SPH Kanan', 'SPH Mata Kanan', 'Sphere OD', 'OD Sphere'],
+      'CYL': ['OD CYL', 'CYL OD', 'Mata Kanan CYL', 'CYL Kanan', 'CYL Mata Kanan', 'Cylinder OD', 'OD Cylinder'],
+      'AXIS': ['OD AXIS', 'AXIS OD', 'Mata Kanan AXIS', 'AXIS Kanan', 'AXIS Mata Kanan', 'Axis Kanan'],
+      'ADD': ['OD ADD', 'ADD OD', 'Mata Kanan ADD', 'ADD Kanan', 'ADD Mata Kanan'],
+      'PD': ['OD PD', 'PD OD', 'PD Kanan', 'PD Mata Kanan', 'Pupil Distance Kanan'],
+    };
+    final osFields = <String, List<String>>{
+      'SPH': ['OS SPH', 'SPH OS', 'Mata Kiri SPH', 'SPH Kiri', 'SPH Mata Kiri', 'Sphere OS', 'OS Sphere'],
+      'CYL': ['OS CYL', 'CYL OS', 'Mata Kiri CYL', 'CYL Kiri', 'CYL Mata Kiri', 'Cylinder OS', 'OS Cylinder'],
+      'AXIS': ['OS AXIS', 'AXIS OS', 'Mata Kiri AXIS', 'AXIS Kiri', 'AXIS Mata Kiri'],
+      'ADD': ['OS ADD', 'ADD OS', 'Mata Kiri ADD', 'ADD Kiri', 'ADD Mata Kiri'],
+      'PD': ['OS PD', 'PD OS', 'PD Kiri', 'PD Mata Kiri', 'Pupil Distance Kiri'],
+    };
+    String eyeText(Map<String, List<String>> fields) {
+      final values = <String>[];
+      for (final entry in fields.entries) {
+        final value = rxValue(entry.value);
+        if (value.isNotEmpty) values.add(entry.key + ' ' + value);
+      }
+      return values.join(' • ');
+    }
+
+    final od = eyeText(odFields);
+    final os = eyeText(osFields);
+    if (od.isNotEmpty) lines.add('Resep OD: ' + od);
+    if (os.isNotEmpty) lines.add('Resep OS: ' + os);
+    add('Catatan resep', ['Catatan Resep', 'Keterangan Resep', 'Catatan Pemeriksaan', 'Catatan Optik', 'Catatan Resep Mata']);
+    add('Catatan pesanan', ['Catatan Invoice', 'Catatan Pesanan', 'Catatan Tambahan', 'Keterangan']);
+
+    return lines.isEmpty ? '' : '\n\nDetail pesanan:\n' + lines.join('\n');
+  }
+
   List<Map<String, String>> get customerOrders {
     final customer = selectedCustomer;
     if (customer == null) return [];
@@ -1301,13 +1354,14 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     ]);
     final documentLinks = (invoicePdf.isEmpty ? '' : '\nPDF Invoice: ' + invoicePdf) +
         (receiptPdf.isEmpty ? '' : '\nPDF Kuitansi: ' + receiptPdf);
+    final orderDetails = _orderDetailText(order);
     if (template == 'Pesanan siap diambil') {
       message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + documentLinks + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
     } else if (template == 'Pengingat pembayaran') {
       final paymentText = latestPayment == null ? '' : '\nPembayaran terakhir: ' +
         _rupiah(_money(_cell(latestPayment, ['Jumlah Bayar', 'Jumlah Pembayaran', 'Nominal Pembayaran', 'Nominal Bayar', 'Nominal', 'Total Bayar']))) +
         ' (' + _cell(latestPayment, ['Metode', 'Metode Pembayaran']) + ')';
-      message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paid + '\nSisa tagihan: ' + balance + paymentText + documentLinks + '\nJika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih 🙏';
+      message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paid + '\nSisa tagihan: ' + balance + paymentText + orderDetails + documentLinks + '\nJika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih 🙏';
     } else if (template == 'Tindak lanjut pelanggan') {
       message.text = 'Halo ' + customer.name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏' + documentLinks;
     } else {
@@ -1318,7 +1372,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   }
 
   String _phoneForWhatsApp(String raw) =>
-      normalizeWhatsAppPhone(raw);
+      extractWhatsAppPhone(raw);
 
   Future<void> _openWhatsApp() async {
     final customer = selectedCustomer;
@@ -1326,7 +1380,11 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih pelanggan terlebih dahulu.')));
       return;
     }
-    final phone = _phoneForWhatsApp(customer.phone);
+    final invoicePhone = selectedOfficialOrder == null
+        ? ''
+        : _phoneForWhatsApp(_phoneFromRow(selectedOfficialOrder!));
+    final customerPhone = _phoneForWhatsApp(customer.phone);
+    final phone = invoicePhone.isNotEmpty ? invoicePhone : customerPhone;
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Nomor WhatsApp belum terbaca dari data pelanggan. Periksa kolom No WA / WhatsApp / HP di DATA_PESANAN.'),
@@ -1335,7 +1393,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     }
     if (!isValidWhatsAppPhone(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Format nomor WhatsApp belum valid. Gunakan 08..., 628..., atau +62... tanpa nomor yang terpotong.'),
+        content: Text('Nomor WhatsApp yang terbaca (' + phone + ') belum valid. Periksa kembali angka pada data pelanggan.'),
       ));
       return;
     }
