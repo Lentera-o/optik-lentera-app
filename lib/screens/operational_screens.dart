@@ -16,50 +16,137 @@ class CustomerScreen extends StatefulWidget {
   @override
   State<CustomerScreen> createState() => _CustomerScreenState();
 }
-
 class _CustomerScreenState extends State<CustomerScreen> {
-  final name = TextEditingController();
-  final phone = TextEditingController();
-  final address = TextEditingController();
-
-  @override
-  void dispose() { name.dispose(); phone.dispose(); address.dispose(); super.dispose(); }
-
-  void save() {
-    if (name.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama pelanggan wajib diisi.')));
-      return;
+  final name = TextEditingController(), phone = TextEditingController(), address = TextEditingController(), search = TextEditingController();
+  List<Map<String, String>> orders = [], payments = [];
+  bool loading = true;
+  String? error;
+  String norm(String s) => s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  String cell(Map<String, String> row, List<String> aliases) {
+    for (final a in aliases) { for (final e in row.entries) { if (norm(e.key) == norm(a) && e.value.trim().isNotEmpty) return e.value.trim(); } }
+    return '';
+  }
+  String phoneKey(String s) {
+    var v = s.replaceAll(RegExp(r'[^0-9]'), '');
+    if (v.startsWith('0')) v = v.substring(1);
+    if (v.startsWith('62')) v = v.substring(2);
+    return v;
+  }
+  int money(String s) => int.tryParse(s.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
+  String rupiah(String s) => 'Rp ' + money(s).toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
+  Future<void> loadHistory() async {
+    if (mounted) setState(() { loading = true; error = null; });
+    try {
+      final data = await Future.wait([
+        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        orders = data[0].where((r) => cell(r, ['No Invoice','Nomor Invoice','Invoice']).isNotEmpty && cell(r, ['Nama','Nama Pelanggan','Pelanggan']).isNotEmpty).toList();
+        payments = data[1].where((r) => r.values.any((v) => v.trim().isNotEmpty)).toList();
+        loading = false;
+      });
+    } catch (e) { if (!mounted) return; setState(() { error = e.toString(); loading = false; }); }
+  }
+  bool paymentFor(Map<String,String> p, String invoice) {
+    final v = cell(p, ['No Invoice','Nomor Invoice','No. Invoice','Invoice','Nomor Tagihan']);
+    return v.isNotEmpty ? v == invoice : p.values.any((x) => x.trim() == invoice);
+  }
+  String documentUrl(Map<String,String> row, List<String> aliases) {
+    final candidates = <String>[cell(row, aliases), ...row.entries.where((e) => RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive:false).hasMatch(e.key)).map((e)=>e.value), ...row.values];
+    for (final c in candidates) {
+      final m = RegExp(r'https?://[^\s<>" ]+', caseSensitive:false).firstMatch(c.trim());
+      if (m != null) {
+        final raw = m.group(0)!.replaceFirst(RegExp(r'[.,;)]+$'), '');
+        final uri = Uri.tryParse(raw);
+        if (uri != null && (uri.host == 'drive.google.com' || uri.host.endsWith('.google.com'))) return uri.toString();
+      }
     }
-    widget.onAdd(Customer(name: name.text.trim(), phone: phone.text.trim(), address: address.text.trim()));
+    return '';
+  }
+  Future<void> openDocument(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dokumen tidak dapat dibuka.')));
+  }
+  void save() {
+    if (name.text.trim().isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama pelanggan wajib diisi.'))); return; }
+    widget.onAdd(Customer(name:name.text.trim(), phone:phone.text.trim(), address:address.text.trim()));
     name.clear(); phone.clear(); address.clear();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pelanggan ditambahkan untuk sesi ini.')));
   }
+  @override
+  void initState() { super.initState(); loadHistory(); }
+  @override
+  void dispose() { name.dispose(); phone.dispose(); address.dispose(); search.dispose(); super.dispose(); }
 
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(18), children: [
-    const _Intro('Data Pelanggan', 'Catat identitas dan kontak pelanggan.', Icons.people_outline),
-    const SizedBox(height: 16),
-    _Panel(child: Column(children: [
-      _field(name, 'Nama pelanggan *'),
-      _field(phone, 'Nomor WhatsApp / telepon', type: TextInputType.phone),
-      _field(address, 'Alamat'),
-      SizedBox(width: double.infinity, child: FilledButton.icon(
-        style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.person_add_alt_1), label: const Text('Tambah pelanggan'),
-      )),
-    ])),
-    const SizedBox(height: 18),
-    Text('Daftar pelanggan: ${widget.customers.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
-    if (widget.customers.isEmpty)
-      const _Empty('Belum ada pelanggan di sesi ini.')
-    else
-      ...widget.customers.reversed.map((c) => Card(color: Colors.white, child: ListTile(
-        leading: const Icon(Icons.person_outline, color: _darkGold),
-        title: Text(c.name),
-        subtitle: Text([c.phone, c.address].where((v) => v.isNotEmpty).join(' • ')),
-      ))),
-    const _LocalNote(),
-  ]);
+  Widget build(BuildContext context) {
+    final groups = <String,List<Map<String,String>>>{}, names = <String,String>{}, phones = <String,String>{};
+    for (final r in orders) {
+      final n = cell(r,['Nama','Nama Pelanggan','Pelanggan']);
+      final p = cell(r,['No WhatsApp','Nomor WhatsApp','No Telepon','Nomor Telepon','Telepon','HP']);
+      final pk = phoneKey(p);
+      final key = pk.isNotEmpty ? 'p:' + pk : 'n:' + n.toLowerCase().trim();
+      groups.putIfAbsent(key,()=>[]).add(r); names[key]=n; phones[key]=p;
+    }
+    final q = search.text.trim().toLowerCase();
+    final keys = groups.keys.where((k)=>q.isEmpty || (names[k]??'').toLowerCase().contains(q) || (phones[k]??'').contains(q) || groups[k]!.any((r)=>cell(r,['No Invoice','Nomor Invoice']).toLowerCase().contains(q))).toList()
+      ..sort((a,b)=>(names[a]??'').compareTo(names[b]??''));
+    return RefreshIndicator(onRefresh:loadHistory, child:ListView(padding:const EdgeInsets.all(18), children:[
+      const _Intro('Data & Riwayat Pelanggan','Profil pelanggan dan seluruh transaksi resmi.',Icons.people_outline),
+      const SizedBox(height:16),
+      _Panel(child:Column(children:[
+        _field(name,'Nama pelanggan *'), _field(phone,'Nomor WhatsApp / telepon',type:TextInputType.phone), _field(address,'Alamat'),
+        SizedBox(width:double.infinity,child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:_darkGold),onPressed:save,icon:const Icon(Icons.person_add_alt_1),label:const Text('Tambah pelanggan'))),
+      ])),
+      const SizedBox(height:18),
+      Text('RIWAYAT TRANSAKSI RESMI · ${orders.length} invoice',style:const TextStyle(fontWeight:FontWeight.bold,color:_ink)),
+      const SizedBox(height:8),
+      TextField(controller:search,onChanged:(_)=>setState((){}),decoration:InputDecoration(hintText:'Cari nama, nomor WhatsApp, atau invoice',prefixIcon:const Icon(Icons.search),suffixIcon:search.text.isEmpty?null:IconButton(onPressed:(){search.clear();setState((){});},icon:const Icon(Icons.close)))),
+      const SizedBox(height:10),
+      if(loading) const Padding(padding:EdgeInsets.all(28),child:Center(child:CircularProgressIndicator()))
+      else if(error!=null) _Panel(child:Column(children:[const Text('Riwayat pelanggan belum dapat dimuat.'),Text(error!,style:const TextStyle(fontSize:11,color:Colors.deepOrange)),TextButton.icon(onPressed:loadHistory,icon:const Icon(Icons.refresh),label:const Text('Coba lagi'))]))
+      else if(keys.isEmpty) const _Empty('Belum ada riwayat transaksi yang cocok.')
+      else ...keys.map((key){
+        final customerOrders=groups[key]!;
+        final paymentCount=payments.where((p)=>customerOrders.any((o)=>paymentFor(p,cell(o,['No Invoice','Nomor Invoice','Invoice'])))).length;
+        return Card(color:Colors.white,child:ExpansionTile(
+          leading:const CircleAvatar(backgroundColor:Color(0xFFF8EEF0),child:Icon(Icons.person_outline,color:_darkGold)),
+          title:Text(names[key]??'Pelanggan',style:const TextStyle(fontWeight:FontWeight.w800,color:_ink)),
+          subtitle:Text('${phones[key]??'-'} · ${customerOrders.length} invoice · ${paymentCount} pembayaran'),
+          childrenPadding:const EdgeInsets.fromLTRB(14,0,14,14),
+          children:customerOrders.map((o){
+            final invoice=cell(o,['No Invoice','Nomor Invoice','Invoice']);
+            final related=payments.where((p)=>paymentFor(p,invoice)).toList();
+            final pdf=documentUrl(o,['Link Invoice PDF','PDF Invoice','Link PDF Invoice','Invoice PDF','URL Invoice PDF']);
+            return Container(width:double.infinity,margin:const EdgeInsets.only(top:10),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xFFFFFCF8),borderRadius:BorderRadius.circular(12),border:Border.all(color:_gold.withValues(alpha:.2))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text(invoice,style:const TextStyle(fontWeight:FontWeight.w800,color:_darkGold)),
+              Text('Tanggal: ${cell(o,['Tanggal','Tanggal Pesanan','Tanggal Order','Timestamp'])}'),
+              Text('Total: ${rupiah(cell(o,['Total','Total Harga','Total Tagihan']))}'),
+              Text('Dibayar: ${rupiah(cell(o,['Total Dibayar','Total Dibayar Kumulatif']))} · Sisa: ${rupiah(cell(o,['Sisa Tagihan','Sisa']))}'),
+              if(pdf.isNotEmpty) Align(alignment:Alignment.centerLeft,child:TextButton.icon(onPressed:()=>openDocument(pdf),icon:const Icon(Icons.picture_as_pdf_outlined),label:const Text('Buka invoice PDF'))),
+              const Divider(height:14),
+              const Text('RIWAYAT PEMBAYARAN / KUITANSI',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800,color:_darkGold)),
+              if(related.isEmpty) const Text('Belum ada pembayaran tercatat.',style:TextStyle(fontSize:11,color:Colors.black54))
+              else ...related.map((p){
+                final amount=cell(p,['Jumlah Bayar','Jumlah Pembayaran','Nominal Pembayaran','Nominal']);
+                final receipt=documentUrl(p,['PDF Kuitansi','Link PDF Kuitansi','Link Kuitansi','Link Kuitansi PDF','Kuitansi PDF','URL Kuitansi PDF']);
+                return ListTile(dense:true,contentPadding:EdgeInsets.zero,leading:const Icon(Icons.payments_outlined,color:_darkGold),title:Text(rupiah(amount),style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text('${cell(p,['Tanggal Bayar','Tanggal Pembayaran','Tanggal','Timestamp'])} · ${cell(p,['Metode','Metode Pembayaran'])}'),trailing:receipt.isEmpty?null:IconButton(tooltip:'Buka kuitansi PDF',onPressed:()=>openDocument(receipt),icon:const Icon(Icons.picture_as_pdf_outlined,color:_darkGold)));
+              }),
+            ]));
+          }).toList(),
+        ));
+      }),
+      const SizedBox(height:18),
+      Text('Pelanggan tersimpan di aplikasi: ${widget.customers.length}',style:const TextStyle(fontWeight:FontWeight.bold,color:_ink)),
+      if(widget.customers.isEmpty) const _Empty('Belum ada profil pelanggan yang ditambahkan melalui aplikasi.')
+      else ...widget.customers.reversed.map((c)=>Card(color:Colors.white,child:ListTile(leading:const Icon(Icons.person_outline,color:_darkGold),title:Text(c.name),subtitle:Text([c.phone,c.address].where((v)=>v.isNotEmpty).join(' • '))))),
+      const _LocalNote(),
+    ]));
+  }
 }
 
 class TransactionScreen extends StatefulWidget {
