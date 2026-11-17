@@ -364,99 +364,30 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   Future<void> save() async {
     if (submitting) return;
-    final total = amount(frame) + amount(lens) + amount(otherPrice);
-    if (customer.text.trim().isEmpty || total <= 0 || amount(dp) > total) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
+    final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    if (invoice.text.trim().isEmpty || value <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
       return;
     }
-
-    // Snapshot invoice sebelum pengiriman agar hasil yang diverifikasi benar-benar baru.
-    final beforeInvoices = <String>{};
-    var invoiceSnapshotAvailable = false;
-    try {
-      final existing = await SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true);
-      invoiceSnapshotAvailable = true;
-      for (final row in existing) {
-        for (final key in ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) {
-          final value = row.entries.where((e) => e.key.trim().toLowerCase() == key.toLowerCase()).map((e) => e.value.trim()).firstWhere((v) => v.isNotEmpty, orElse: () => '');
-          if (value.isNotEmpty) { beforeInvoices.add(value); break; }
-        }
-      }
-    } catch (_) {
-      // Form tetap dapat dikirim; status pemrosesan nanti tidak akan diklaim terverifikasi.
-    }
+    final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
 
     setState(() => submitting = true);
-    final accepted = await ApiService.openOrderForm({
-      '1324477027': customer.text,
-      '539015243': phone.text,
-      '1777754745': address.text,
-      '542463507': doctor.text,
-      '1271316087': odSph.text,
-      '1616866281': odCyl.text,
-      '1784427947': odAxis.text,
-      '1558365892': odAdd.text,
-      '940199491': odPd.text,
-      '480078014': osSph.text,
-      '66061879': osCyl.text,
-      '493870905': osAxis.text,
-      '42654846': osAdd.text,
-      '950234578': osPd.text,
-      '684419252': lensType.text,
-      '1481958730': rxNote.text,
-      '686343109': frameDescription.text,
-      '1727076794': amount(frame).toString(),
-      '1326678958': lensDescription.text,
-      '97131819': amount(lens).toString(),
-      '2101353430': otherDescription.text,
-      '1643782415': amount(otherPrice).toString(),
-      '1449005528': amount(dp).toString(),
-      '1188539863': invoiceNote.text,
-      '1492024415': method,
+    final opened = await ApiService.openPaymentForm({
+      '1667531169': invoice.text,
+      '266758159': date,
+      '448728880': value.toString(),
+      '1530690867': method,
+      '1651033565': category,
+      '284716454': paymentNote.text,
     });
-
-    String? verifiedInvoice;
-    if (accepted && invoiceSnapshotAvailable) {
-      for (var attempt = 0; attempt < 6; attempt++) {
-        await Future.delayed(const Duration(seconds: 2));
-        try {
-          final rows = await SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true);
-          for (final row in rows) {
-            String cell(List<String> aliases) {
-              for (final alias in aliases) {
-                for (final entry in row.entries) {
-                  if (entry.key.trim().toLowerCase() == alias.toLowerCase() && entry.value.trim().isNotEmpty) return entry.value.trim();
-                }
-              }
-              return '';
-            }
-            final number = cell(['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
-            final name = cell(['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
-            final rowTotal = int.tryParse(cell(['Total', 'Total Harga', 'Total Tagihan', 'Total harga']).replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
-            if (number.isNotEmpty && !beforeInvoices.contains(number) &&
-                name.toLowerCase() == customer.text.trim().toLowerCase() &&
-                rowTotal == total) {
-              verifiedInvoice = number;
-              break;
-            }
-          }
-        } catch (_) {
-          // Coba lagi sampai batas polling tercapai.
-        }
-        if (verifiedInvoice != null) break;
-      }
-    }
 
     if (!mounted) return;
     setState(() => submitting = false);
-    final message = !accepted
-        ? 'Google Forms belum mengonfirmasi penerimaan pesanan. Periksa koneksi sebelum mencoba lagi.'
-        : verifiedInvoice != null
-            ? 'Pesanan terverifikasi di DATA_PESANAN. Invoice: $verifiedInvoice'
-            : 'Google Forms menerima jawaban, tetapi invoice baru belum terlihat di DATA_PESANAN. Jangan kirim ulang dulu; sinkronkan kembali beberapa saat lagi.';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      duration: const Duration(seconds: 8),
+      content: Text(opened
+          ? 'Formulir pembayaran dibuka. Periksa data lalu tekan Kirim di Google Forms. Setelah itu, muat ulang daftar invoice untuk memverifikasi kuitansi.'
+          : 'Google Forms tidak dapat dibuka. Tidak ada pembayaran yang dikirim oleh aplikasi. Periksa koneksi lalu coba buka kembali.'),
+      duration: const Duration(seconds: 10),
     ));
   }
 
