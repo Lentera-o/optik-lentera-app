@@ -1,20 +1,29 @@
-/// Normalizes Indonesian phone numbers for WhatsApp deep links.
+/// Normalizes phone numbers for WhatsApp deep links.
 ///
-/// Accepts local and international formats such as 0812..., 812..., +62 812...,
-/// 62 (0) 812..., and 0062 812.... Also handles numeric spreadsheet cells
-/// serialized in scientific notation or with a trailing .0.
+/// Explicit international prefixes (+ or 00) retain their country code.
+/// Indonesian national formats (08..., 8..., 0...) are converted to 62.
+/// Other international country codes are never rewritten.
 String normalizeWhatsAppPhone(String raw) {
-  var value = raw.trim().replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '');
+  var value = raw.trim().replaceAll(RegExp(r'[\\u200B-\\u200D\\uFEFF]'), '');
   if (value.isEmpty) return '';
 
-  final scientificNotation =
-      RegExp(r'^\+?\d+(?:\.\d+)?[eE][+-]?\d+$');
-  if (scientificNotation.hasMatch(value)) {
-    final numeric = double.tryParse(value.replaceFirst('+', ''));
-    if (numeric == null || !numeric.isFinite || numeric <= 0) return '';
-    value = numeric.toStringAsFixed(0);
+  // Expand spreadsheet scientific notation using integer arithmetic so
+  // long digit strings are not rounded by double precision.
+  final scientific = RegExp(r'^\\+?(\\d+)(?:\\.(\\d+))?[eE]([+-]?\\d+)$')
+      .firstMatch(value);
+  if (scientific != null) {
+    final whole = scientific.group(1)!;
+    final fraction = scientific.group(2) ?? '';
+    final exponent = int.tryParse(scientific.group(3)!);
+    if (exponent == null || exponent.abs() > 30) return '';
+    final digits = whole + fraction;
+    final decimalPosition = whole.length + exponent;
+    if (decimalPosition <= 0) return '';
+    value = decimalPosition >= digits.length
+        ? digits + '0' * (decimalPosition - digits.length)
+        : digits.substring(0, decimalPosition);
   } else {
-    value = value.replaceFirst(RegExp(r'\.0+$'), '');
+    value = value.replaceFirst(RegExp(r'\\.0+$'), '');
   }
 
   var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
@@ -23,12 +32,13 @@ String normalizeWhatsAppPhone(String raw) {
   }
 
   if (digits.startsWith('62')) {
-    final nationalNumber =
-        digits.substring(2).replaceFirst(RegExp(r'^0+'), '');
-    digits = '62' + nationalNumber;
+    // Tolerate the common national trunk zero after Indonesia's country code.
+    digits = '62' + digits.substring(2).replaceFirst(RegExp(r'^0+'), '');
   } else if (digits.startsWith('0')) {
     digits = '62' + digits.substring(1);
   } else if (digits.startsWith('8')) {
+    // Bare 8... is the common Indonesian mobile format. Other country
+    // codes (e.g. 1, 3, 4, 5, 6, 7, 9) remain untouched.
     digits = '62' + digits;
   }
 
@@ -42,7 +52,7 @@ String extractWhatsAppPhone(String raw) {
   if (isValidWhatsAppPhone(direct)) return direct;
 
   final linkMatch = RegExp(
-    r'(?:wa\.me/|phone=)(\+?[0-9]{8,15})',
+    r'(?:wa\\.me/|phone=)(\\+?[0-9]{8,15})',
     caseSensitive: false,
   ).firstMatch(raw);
   if (linkMatch != null) {
@@ -50,7 +60,9 @@ String extractWhatsAppPhone(String raw) {
     if (isValidWhatsAppPhone(linked)) return linked;
   }
 
-  final pattern = RegExp(r'(?:\+|00)?\d(?:[\s().-]*\d){7,14}');
+  // Scan complete digit groups. Separators are allowed inside a number;
+  // punctuation/labels delimit separate contacts and extensions.
+  final pattern = RegExp(r'(?:\\+|00)?\\d(?:[\\s().-]*\\d){6,14}');
   for (final match in pattern.allMatches(raw)) {
     final candidate = normalizeWhatsAppPhone(match.group(0) ?? '');
     if (isValidWhatsAppPhone(candidate)) return candidate;
@@ -58,18 +70,19 @@ String extractWhatsAppPhone(String raw) {
   return '';
 }
 
-/// Checks an international number before opening wa.me.
+/// Accepts global international numbers (E.164 digit count: 8–15).
+/// Indonesian numbers receive an additional national-number sanity check.
 bool isValidWhatsAppPhone(String normalized) {
-  if (normalized.length < 10 || normalized.length > 15) return false;
+  if (!RegExp(r'^\\d{8,15}$').hasMatch(normalized) ||
+      !RegExp(r'^[1-9]').hasMatch(normalized)) {
+    return false;
+  }
 
-  // Indonesian WhatsApp accounts can use mobile and fixed-line/business numbers.
   if (normalized.startsWith('62')) {
     final nationalNumber = normalized.substring(2);
     return nationalNumber.length >= 8 &&
         nationalNumber.length <= 13 &&
         RegExp(r'^[1-9]').hasMatch(nationalNumber);
   }
-
-  // Other international numbers must not begin with a trunk zero.
-  return RegExp(r'^[1-9]').hasMatch(normalized);
+  return true;
 }
