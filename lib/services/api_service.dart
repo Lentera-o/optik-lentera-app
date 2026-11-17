@@ -52,9 +52,28 @@ class ApiService {
         .timeout(AppConfig.apiTimeout);
     request.headers.contentType = ContentType.json;
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+    // Apps Script ContentService may return a 302 to a one-time
+    // script.googleusercontent.com URL. Handle it explicitly: dart:io
+    // automatically follows GET/HEAD redirects, not ordinary POST redirects.
+    request.followRedirects = false;
     request.write(jsonEncode({...payload, 'token': AppConfig.apiToken}));
 
     final response = await request.close().timeout(AppConfig.apiTimeout);
+    if (response.isRedirect) {
+      final location = response.headers.value(HttpHeaders.locationHeader);
+      await response.drain();
+      if (location == null || location.isEmpty) {
+        throw StateError('Backend mengirim redirect tanpa alamat tujuan.');
+      }
+      final redirectedUri = uri.resolve(location);
+      final redirectedRequest = await _client
+          .getUrl(redirectedUri)
+          .timeout(AppConfig.apiTimeout);
+      redirectedRequest.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      final redirectedResponse =
+          await redirectedRequest.close().timeout(AppConfig.apiTimeout);
+      return _readResponse(redirectedResponse);
+    }
     return _readResponse(response);
   }
 
