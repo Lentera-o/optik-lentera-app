@@ -90,7 +90,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         RegExp(r'^\s*-[0-9]').hasMatch(safe)) {
       safe = "'$safe";
     }
-    return '"\${safe.replaceAll('"', '""')}"';
+    return '"' + safe.replaceAll('"', '""') + '"';
   }
 
   Future<void> exportReport(List<Map<String, String>> periodOrders,
@@ -119,18 +119,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
       final summary = [
         'LAPORAN OPTIK LENTERA',
-        'Periode,\${label()}',
-        'Jumlah Order,\${periodOrders.length}',
-        'Nilai Penjualan,\${salesFor(periodOrders)}',
-        'Jumlah Pembayaran,\${periodPayments.length}',
-        'Uang Masuk,\${receivedFor(periodPayments)}',
+        'Periode,' + label(),
+        'Jumlah Order,' + periodOrders.length.toString(),
+        'Nilai Penjualan,' + salesFor(periodOrders),
+        'Jumlah Pembayaran,' + periodPayments.length.toString(),
+        'Uang Masuk,' + receivedFor(periodPayments),
         '',
         ...lines,
       ].join('\r\n');
       final bytes = <int>[0xEF, 0xBB, 0xBF, ...utf8.encode(summary)];
       final mode = monthly ? 'Bulanan' : 'Harian';
       final safeLabel = label().replaceAll('/', '-');
-      final fileName = 'Laporan_Optik_Lentera_\${mode}_\${safeLabel}.csv';
+      final fileName = 'Laporan_Optik_Lentera_' + mode + '_' + safeLabel + '.csv';
       await SharePlus.instance.share(ShareParams(
         files: [XFile.fromData(bytes, mimeType: 'text/csv', name: fileName)],
         fileNameOverrides: [fileName],
