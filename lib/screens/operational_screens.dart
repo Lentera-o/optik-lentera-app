@@ -1195,23 +1195,30 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     Object? orderError;
     Object? paymentError;
 
-    try {
-      fetchedOrders = await SheetsReadService.readTable(
-        'DATA_PESANAN',
-        forceRefresh: true,
-      );
-    } catch (error) {
-      orderError = error;
+    Future<void> loadOrders() async {
+      try {
+        fetchedOrders = await SheetsReadService.readTable(
+          'DATA_PESANAN',
+          forceRefresh: true,
+        );
+      } catch (error) {
+        orderError = error;
+      }
     }
 
-    try {
-      fetchedPayments = await SheetsReadService.readTable(
-        'DATA_PEMBAYARAN',
-        forceRefresh: true,
-      );
-    } catch (error) {
-      paymentError = error;
+    Future<void> loadPayments() async {
+      try {
+        fetchedPayments = await SheetsReadService.readTable(
+          'DATA_PEMBAYARAN',
+          forceRefresh: true,
+        );
+      } catch (error) {
+        paymentError = error;
+      }
     }
+
+    // Fetch both tabs concurrently, but catch each failure independently.
+    await Future.wait([loadOrders(), loadPayments()]);
 
     if (!mounted) return;
 
@@ -1514,15 +1521,20 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       ));
       return;
     }
-    // Try WhatsApp's official API URL first, then the short wa.me link.
-    // Some Android builds route one URL correctly while the other is handled
-    // by a browser or a different installed WhatsApp client.
+    // Prefer WhatsApp's native URI so Android opens the installed app
+    // instead of treating a successful browser launch as a WhatsApp handoff.
+    // If the app is unavailable, fall back to the official universal links.
     final links = <Uri>[
+      Uri(
+        scheme: 'whatsapp',
+        host: 'send',
+        queryParameters: {'phone': phone, 'text': message.text},
+      ),
+      Uri.https('wa.me', '/' + phone, {'text': message.text}),
       Uri.https('api.whatsapp.com', '/send', {
         'phone': phone,
         'text': message.text,
       }),
-      Uri.https('wa.me', '/' + phone, {'text': message.text}),
     ];
     Object? lastError;
     for (final uri in links) {
