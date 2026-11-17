@@ -1621,6 +1621,12 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
         (order == null ? 'Nomor invoice belum ditemukan pada data resmi.' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paid + '\nSisa tagihan: ' + balance) +
         orderDetails + documentLinks + '\nJika ada pertanyaan, silakan balas pesan ini. Terima kasih 🙏';
     }
+
+    // Official brand closing is appended once to every semi-automatic template.
+    const officialClosing = '\n\nTerima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA. Kemewahan dalam Pelayanan, Kesederhanaan dalam Biaya.';
+    if (!message.text.trim().endsWith(officialClosing.trim())) {
+      message.text = message.text.trimRight() + officialClosing;
+    }
   }
 
   String _phoneForWhatsApp(String raw) => extractWhatsAppPhone(raw);
