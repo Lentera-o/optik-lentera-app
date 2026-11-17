@@ -722,8 +722,23 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   Future<void> save() async {
     if (submitting) return;
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final selected = selectedOfficialOrder;
     if (invoice.text.trim().isEmpty || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
+      return;
+    }
+    if (selected == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih invoice resmi yang masih terdaftar. Muat ulang daftar invoice bila perlu.')));
+      return;
+    }
+    final remaining = _money(selected['remaining'] ?? '');
+    if (remaining <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice ini sudah lunas. Tidak dapat menerima pembayaran tambahan.')));
+      return;
+    }
+    if (value > remaining) {
+      final formatted = remaining.toString().replaceAllMapped(RegExp(r'\\B(?=(\\d{3})+(?!\\d))'), (match) => '.');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran melebihi sisa tagihan Rp $formatted.')));
       return;
     }
     final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
