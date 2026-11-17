@@ -1049,7 +1049,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       final phoneColumn = key == 'wa' || key == 'hp' || key == 'nohp' ||
           key == 'phone' || key == 'mobile' || key.contains('whatsapp') ||
           key.contains('nomorwa') || key.contains('telepon') || key.contains('telp') ||
-          key.contains('handphone') || key.contains('nomorhp') || key.contains('kontak');
+          key.contains('handphone') || key.contains('nomorhp') ||
+          key.contains('nomorkontak') || key.contains('kontakwhatsapp');
       if (phoneColumn && entry.value.trim().isNotEmpty) {
         return entry.value.trim();
       }
