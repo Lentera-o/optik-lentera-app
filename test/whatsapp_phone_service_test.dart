@@ -36,7 +36,9 @@ void main() {
     test('preserves international country codes instead of forcing Indonesia', () {
       expect(normalizeWhatsAppPhone('+1 (415) 555-2671'), '14155552671');
       expect(normalizeWhatsAppPhone('+44 20 7946 0958'), '442079460958');
+      expect(normalizeWhatsAppPhone('+86 138 0013 8000'), '8613800138000');
       expect(normalizeWhatsAppPhone('0033 6 12 34 56 78'), '33612345678');
+      expect(normalizeWhatsAppPhone('0086 138 0013 8000'), '8613800138000');
     });
 
     test('normalizes international numbers with punctuation', () {
