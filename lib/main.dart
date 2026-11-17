@@ -423,7 +423,7 @@ class _GoogleProfileButton extends StatelessWidget {
                 ),
               ),
             ),
-            const PopupMenuDivider<String>(),
+            const PopupMenuDivider(),
             const PopupMenuItem<String>(
               value: 'signout',
               child: Row(
