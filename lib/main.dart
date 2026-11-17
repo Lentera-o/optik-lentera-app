@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_config.dart';
 import 'services/api_service.dart';
 import 'models/optik_models.dart';
 import 'screens/operational_screens.dart';
@@ -163,11 +164,59 @@ class _MainScreenState extends State<MainScreen> {
   void _addOrder(OptikOrder value) {
     setState(() => orders.add(value));
     _saveLocalData();
+    _syncOrderToServer(value);
+  }
+
+  Future<void> _syncOrderToServer(OptikOrder value) async {
+    if (!ApiService.isConfigured) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pesanan tersimpan lokal. Token API belum dipasang untuk sinkronisasi.')),
+      );
+      return;
+    }
+    try {
+      final result = await ApiService.createOrder(value);
+      final invoice = result['invoiceNumber']?.toString() ?? '';
+      if (invoice.isEmpty) throw StateError('Backend tidak mengembalikan nomor invoice.');
+      final index = orders.indexWhere((item) => item.invoiceNumber == value.invoiceNumber);
+      if (index >= 0) {
+        setState(() => orders[index] = orders[index].copyWith(invoiceNumber: invoice));
+        await _saveLocalData();
+      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pesanan tersinkron ke Google Sheets: $invoice')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pesanan tetap tersimpan lokal; sinkronisasi gagal: $error')),
+      );
+    }
   }
 
   void _addPayment(OptikPayment value) {
     setState(() => payments.add(value));
     _saveLocalData();
+    _syncPaymentToServer(value);
+  }
+
+  Future<void> _syncPaymentToServer(OptikPayment value) async {
+    if (!ApiService.isConfigured) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pembayaran tersimpan lokal. Token API belum dipasang untuk sinkronisasi.')),
+      );
+      return;
+    }
+    try {
+      final result = await ApiService.createPayment(value);
+      final receipt = result['receiptNumber']?.toString() ?? '';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(receipt.isEmpty ? 'Pembayaran tersinkron ke Google Sheets.' : 'Pembayaran tersinkron: kuitansi $receipt')),
+      );
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pembayaran tetap tersimpan lokal; sinkronisasi gagal: $error')),
+      );
+    }
   }
 
   final List<String> navigation = [
