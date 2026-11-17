@@ -1,6 +1,6 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:cross_file/cross_file.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/sheets_read_service.dart';
 
@@ -90,7 +90,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         RegExp(r'^\s*-[0-9]').hasMatch(safe)) {
       safe = "'$safe";
     }
-    return '"' + safe.replaceAll('"', '""') + '"';
+    final quote = String.fromCharCode(34);
+    return quote + safe.replaceAll(quote, quote + quote) + quote;
   }
 
   Future<void> exportReport(List<Map<String, String>> periodOrders,
@@ -127,7 +128,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         '',
         ...lines,
       ].join('\r\n');
-      final bytes = <int>[0xEF, 0xBB, 0xBF, ...utf8.encode(summary)];
+      final bytes = Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(summary)]);
       final mode = monthly ? 'Bulanan' : 'Harian';
       final safeLabel = label().replaceAll('/', '-');
       final fileName = 'Laporan_Optik_Lentera_' + mode + '_' + safeLabel + '.csv';
