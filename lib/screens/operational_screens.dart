@@ -1029,6 +1029,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   String _invoiceNumber(Map<String, String> row) => _cell(row, [
     'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
     'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice',
+    'No Faktur', 'Nomor Faktur', 'Kode Invoice', 'Invoice ID', 'ID Invoice',
+    'No Nota', 'Nomor Nota', 'No Transaksi', 'Nomor Transaksi',
   ]);
 
   String _phoneFromRow(Map<String, String> row) {
@@ -1044,7 +1046,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
           key.contains('izin')) return 0;
 
       if (key.contains('whatsapp') || key.contains('kontakwa')) return 130;
-      if (key == 'wa' || key.contains('nomorwa') || key.contains('nowa')) return 125;
+      if (key == 'wa' || key.startsWith('wa') ||
+          key.contains('nomorwa') || key.contains('nowa')) return 125;
       if (key.contains('hpwa') || key.contains('wa pelanggan')) return 120;
       if (key.contains('handphone') || key.contains('nomorhp') ||
           key == 'hp' || key == 'nohp') return 110;
