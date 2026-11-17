@@ -57,9 +57,24 @@ class ApiService {
 
   /// Mengirim jawaban langsung ke endpoint Google Forms agar petugas tidak
   /// perlu berpindah ke browser. Form tetap menjadi sumber resmi trigger lama.
-  static Future<bool> submitForm({
+  /// Opens the official Google Form prefilled for staff review.
+  /// Submission is always performed manually by the staff member in Google Forms.
+  static Future<bool> openPrefilledForm({
     required String formId,
     required Map<String, String> answers,
+  }) async {
+    final query = <String, String>{'usp': 'pp_url'};
+    for (final entry in answers.entries) {
+      if (entry.value.trim().isNotEmpty) {
+        query['entry.${entry.key}'] = entry.value.trim();
+      }
+    }
+    final uri = Uri.https(
+      'docs.google.com',
+      '/forms/d/e/$formId/viewform',
+      query,
+    );
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
   }) async {
     try {
       final formUri = Uri.https(
@@ -145,11 +160,13 @@ class ApiService {
   static const String paymentFormId =
       '1FAIpQLScckA6mmAbrektSRO1-9rRE9ObwRErwmb5LLTo5ZTq24DEbEQ';
 
+  /// Opens the order form; staff must review and submit it manually.
   static Future<bool> openOrderForm(Map<String, String> answers) =>
-      submitForm(formId: orderFormId, answers: answers);
+      openPrefilledForm(formId: orderFormId, answers: answers);
 
+  /// Opens the payment form; staff must review and submit it manually.
   static Future<bool> openPaymentForm(Map<String, String> answers) =>
-      submitForm(formId: paymentFormId, answers: answers);
+      openPrefilledForm(formId: paymentFormId, answers: answers);
 
   static Future<ApiResponse> _send(String method, Uri uri) async {
     final request = await _client.openUrl(method, uri)
