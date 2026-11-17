@@ -185,6 +185,86 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final osPd = TextEditingController();
   String method = 'Tunai';
   int? selectedCustomerIndex;
+  List<Map<String, String>> _officialOrderHistory = [];
+  bool _historyLoading = false;
+  String? _historyError;
+  String? _selectedHistoryInvoice;
+
+  String _headerKey(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  String _historyCell(Map<String, String> row, List<String> aliases) {
+    for (final alias in aliases) {
+      final wanted = _headerKey(alias);
+      for (final entry in row.entries) {
+        if (_headerKey(entry.key) == wanted && entry.value.trim().isNotEmpty) {
+          return entry.value.trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  Future<void> _loadOfficialOrderHistory() async {
+    if (mounted) setState(() => _historyLoading = true);
+    try {
+      final rows = await SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true);
+      if (!mounted) return;
+      setState(() {
+        _officialOrderHistory = rows.where((row) =>
+          _historyCell(row, ['No Invoice', 'Nomor Invoice', 'Invoice']).isNotEmpty &&
+          _historyCell(row, ['Nama', 'Nama Pelanggan', 'Pelanggan']).isNotEmpty
+        ).toList();
+        _historyLoading = false;
+        _historyError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _historyLoading = false; _historyError = e.toString(); });
+    }
+  }
+
+  void _prefillFromOfficialOrder(String? invoice) {
+    if (invoice == null) return;
+    Map<String, String>? row;
+    for (final candidate in _officialOrderHistory) {
+      if (_historyCell(candidate, ['No Invoice', 'Nomor Invoice', 'Invoice']) == invoice) {
+        row = candidate;
+        break;
+      }
+    }
+    if (row == null) return;
+    setState(() {
+      _selectedHistoryInvoice = invoice;
+      customer.text = _historyCell(row!, ['Nama', 'Nama Pelanggan', 'Pelanggan']);
+      phone.text = _historyCell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']);
+      address.text = _historyCell(row, ['Alamat', 'Alamat Pelanggan']);
+      doctor.text = _historyCell(row, ['Dokter', 'Dokter / Optometris', 'Optometris', 'Pemeriksa']);
+      odSph.text = _historyCell(row, ['OD SPH', 'SPH OD', 'Mata Kanan SPH', 'SPH Kanan']);
+      odCyl.text = _historyCell(row, ['OD CYL', 'CYL OD', 'Mata Kanan CYL', 'CYL Kanan']);
+      odAxis.text = _historyCell(row, ['OD AXIS', 'AXIS OD', 'Mata Kanan AXIS', 'AXIS Kanan']);
+      odAdd.text = _historyCell(row, ['OD ADD', 'ADD OD', 'Mata Kanan ADD', 'ADD Kanan']);
+      odPd.text = _historyCell(row, ['OD PD', 'PD OD', 'PD Kanan']);
+      osSph.text = _historyCell(row, ['OS SPH', 'SPH OS', 'Mata Kiri SPH', 'SPH Kiri']);
+      osCyl.text = _historyCell(row, ['OS CYL', 'CYL OS', 'Mata Kiri CYL', 'CYL Kiri']);
+      osAxis.text = _historyCell(row, ['OS AXIS', 'AXIS OS', 'Mata Kiri AXIS', 'AXIS Kiri']);
+      osAdd.text = _historyCell(row, ['OS ADD', 'ADD OS', 'Mata Kiri ADD', 'ADD Kiri']);
+      osPd.text = _historyCell(row, ['OS PD', 'PD OS', 'PD Kiri']);
+      lensType.text = _historyCell(row, ['Jenis Lensa', 'Tipe Lensa', 'Lensa']);
+      rxNote.text = _historyCell(row, ['Catatan Resep', 'Keterangan Resep', 'Catatan Pemeriksaan']);
+      frameDescription.text = _historyCell(row, ['Deskripsi Frame', 'Model Frame', 'Frame']);
+      frame.text = _historyCell(row, ['Harga Frame', 'Harga Bingkai', 'Biaya Frame']);
+      lensDescription.text = _historyCell(row, ['Deskripsi Lensa', 'Detail Lensa']);
+      lens.text = _historyCell(row, ['Harga Lensa', 'Biaya Lensa']);
+      otherDescription.text = _historyCell(row, ['Keterangan Lain', 'Deskripsi Lain', 'Biaya Lain']);
+      otherPrice.text = _historyCell(row, ['Harga Lain', 'Biaya Lainnya', 'Nominal Lain']);
+      invoiceNote.text = _historyCell(row, ['Catatan Invoice', 'Catatan Pesanan', 'Keterangan']);
+      // DP intentionally stays empty: repeat orders must not inherit a previous invoice payment.
+      dp.clear();
+      selectedCustomerIndex = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Data pelanggan dan rincian dari $invoice dimuat. Periksa dan sesuaikan sebelum membuat pesanan baru.')),
+    );
+  }
 
   void selectSavedCustomer(int? index) {
     setState(() {
@@ -201,6 +281,12 @@ class _TransactionScreenState extends State<TransactionScreen> {
   bool submitting = false;
 
   int amount(TextEditingController c) => int.tryParse(c.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOfficialOrderHistory();
+  }
 
   @override
   void dispose() {
@@ -311,6 +397,30 @@ class _TransactionScreenState extends State<TransactionScreen> {
     const _Intro('Pemesanan & Pemeriksaan', 'Input pesanan dan resep mata OD/OS.', Icons.receipt_long_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Expanded(child: Text('ULANG PESANAN / AMBIL DATA LAMA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.w800, fontSize: 12))),
+        IconButton(tooltip: 'Muat ulang data pesanan', onPressed: _historyLoading ? null : _loadOfficialOrderHistory, icon: const Icon(Icons.refresh)),
+      ]),
+      if (_historyLoading) const LinearProgressIndicator()
+      else if (_historyError != null) Text('Data pesanan lama belum dapat dimuat: $_historyError', style: const TextStyle(color: Colors.deepOrange, fontSize: 11))
+      else if (_officialOrderHistory.isEmpty) const Text('Belum ada rincian pesanan resmi yang tersedia untuk dipilih.', style: TextStyle(fontSize: 11, color: Colors.black54))
+      else DropdownButtonFormField<String>(
+        value: _selectedHistoryInvoice,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'Pilih invoice / pesanan terdahulu',
+          helperText: 'Nama, kontak, resep, dan rincian barang akan diambil dari pesanan tersebut.',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        items: _officialOrderHistory.reversed.map((row) {
+          final number = _historyCell(row, ['No Invoice', 'Nomor Invoice', 'Invoice']);
+          final person = _historyCell(row, ['Nama', 'Nama Pelanggan', 'Pelanggan']);
+          final date = _historyCell(row, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp']);
+          return DropdownMenuItem<String>(value: number, child: Text('$number · $person · $date', overflow: TextOverflow.ellipsis));
+        }).toList(),
+        onChanged: _prefillFromOfficialOrder,
+      ),
+      const SizedBox(height: 12),
       if (widget.customers.isNotEmpty) ...[
         DropdownButtonFormField<int>(
           value: selectedCustomerIndex,
