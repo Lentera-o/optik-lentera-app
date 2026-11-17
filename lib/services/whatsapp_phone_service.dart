@@ -4,12 +4,12 @@
 /// Indonesian national formats (08..., 8..., 0...) are converted to 62.
 /// Other international country codes are never rewritten.
 String normalizeWhatsAppPhone(String raw) {
-  var value = raw.trim().replaceAll(RegExp(r'[\\u200B-\\u200D\\uFEFF]'), '');
+  var value = raw.trim().replaceAll(RegExp(r'[\u200B-\u200D\uFEFF]'), '');
   if (value.isEmpty) return '';
 
   // Expand spreadsheet scientific notation using integer arithmetic so
   // long digit strings are not rounded by double precision.
-  final scientific = RegExp(r'^\\+?(\\d+)(?:\\.(\\d+))?[eE]([+-]?\\d+)$')
+  final scientific = RegExp(r'^\+?(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$')
       .firstMatch(value);
   if (scientific != null) {
     final whole = scientific.group(1)!;
@@ -23,7 +23,7 @@ String normalizeWhatsAppPhone(String raw) {
         ? digits + List<String>.filled(decimalPosition - digits.length, '0').join()
         : digits.substring(0, decimalPosition);
   } else {
-    value = value.replaceFirst(RegExp(r'\\.0+$'), '');
+    value = value.replaceFirst(RegExp(r'\.0+$'), '');
   }
 
   var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
@@ -52,7 +52,7 @@ String extractWhatsAppPhone(String raw) {
   if (isValidWhatsAppPhone(direct)) return direct;
 
   final linkMatch = RegExp(
-    r'(?:wa\\.me/|phone=)(\\+?[0-9]{8,15})',
+    r'(?:wa\.me/|phone=)(\+?[0-9]{8,15})',
     caseSensitive: false,
   ).firstMatch(raw);
   if (linkMatch != null) {
@@ -62,7 +62,7 @@ String extractWhatsAppPhone(String raw) {
 
   // Scan complete digit groups. Separators are allowed inside a number;
   // punctuation/labels delimit separate contacts and extensions.
-  final pattern = RegExp(r'(?:\\+|00)?\\d(?:[\\s().-]*\\d){6,14}');
+  final pattern = RegExp(r'(?:\+|00)?\d(?:[\s().-]*\d){6,14}');
   for (final match in pattern.allMatches(raw)) {
     final candidate = normalizeWhatsAppPhone(match.group(0) ?? '');
     if (isValidWhatsAppPhone(candidate)) return candidate;
@@ -73,7 +73,7 @@ String extractWhatsAppPhone(String raw) {
 /// Accepts global international numbers (E.164 digit count: 8–15).
 /// Indonesian numbers receive an additional national-number sanity check.
 bool isValidWhatsAppPhone(String normalized) {
-  if (!RegExp(r'^\\d{8,15}$').hasMatch(normalized) ||
+  if (!RegExp(r'^\d{8,15}$').hasMatch(normalized) ||
       !RegExp(r'^[1-9]').hasMatch(normalized)) {
     return false;
   }
