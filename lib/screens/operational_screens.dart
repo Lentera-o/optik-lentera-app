@@ -410,6 +410,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
   }
 
   bool submitting = false;
+  String? _pendingOrderRequestId;
+  String? _pendingOrderPayload;
 
   int amount(TextEditingController c) => int.tryParse(c.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
@@ -437,10 +439,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     try {
       final idToken = await GoogleAuthService.instance.requireIdToken();
       final orderDate = DateTime.now();
-      final response = await ApiService.createOrder(
-        idToken: idToken,
-        requestId: _newTransactionRequestId(),
-        data: {
+      final orderPayload = <String, dynamic>{
           'orderDate': orderDate.toIso8601String(),
           'name': customer.text.trim(),
           'phone': phone.text.trim(),
@@ -467,7 +466,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
           'initialPayment': amount(dp),
           'initialPaymentMethod': method,
           'note': invoiceNote.text.trim(),
-        },
+        };
+      final orderFingerprint = jsonEncode(orderPayload);
+      if (_pendingOrderPayload != orderFingerprint) {
+        _pendingOrderPayload = orderFingerprint;
+        _pendingOrderRequestId = _newTransactionRequestId();
+      }
+      final response = await ApiService.createOrder(
+        idToken: idToken,
+        requestId: _pendingOrderRequestId!,
+        data: orderPayload,
       );
       if (!response.isSuccessful) {
         throw Exception(response.errorMessage ?? 'Pesanan gagal disimpan ke server.');
@@ -477,6 +485,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       if (invoiceNumber.isEmpty) {
         throw Exception('Server menerima respons tanpa nomor invoice. Periksa DATA_PESANAN sebelum mengulang transaksi.');
       }
+      _pendingOrderRequestId = null;
+      _pendingOrderPayload = null;
       widget.onAdd(OptikOrder(
         invoiceNumber: invoiceNumber,
         orderDate: orderDate,
@@ -838,6 +848,8 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   }
 
   bool submitting = false;
+  String? _pendingPaymentRequestId;
+  String? _pendingPaymentPayload;
 
   Future<void> save() async {
     if (submitting) return;
@@ -866,23 +878,31 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     setState(() => submitting = true);
     try {
       final idToken = await GoogleAuthService.instance.requireIdToken();
+      final paymentPayload = <String, dynamic>{
+        'invoice': invoice.text.trim(),
+        'paymentDate': date,
+        'amount': value,
+        'method': method,
+        'category': category,
+        'note': paymentNote.text.trim(),
+      };
+      final paymentFingerprint = jsonEncode(paymentPayload);
+      if (_pendingPaymentPayload != paymentFingerprint) {
+        _pendingPaymentPayload = paymentFingerprint;
+        _pendingPaymentRequestId = _newTransactionRequestId();
+      }
       final response = await ApiService.createPayment(
         idToken: idToken,
-        requestId: _newTransactionRequestId(),
-        data: {
-          'invoice': invoice.text.trim(),
-          'paymentDate': date,
-          'amount': value,
-          'method': method,
-          'category': category,
-          'note': paymentNote.text.trim(),
-        },
+        requestId: _pendingPaymentRequestId!,
+        data: paymentPayload,
       );
       if (!response.isSuccessful) {
         throw Exception(response.errorMessage ?? 'Pembayaran gagal disimpan ke server.');
       }
       final result = response.data;
       final receipt = result is Map ? (result['receipt']?.toString() ?? '') : '';
+      _pendingPaymentRequestId = null;
+      _pendingPaymentPayload = null;
       widget.onAdd(OptikPayment(
         invoiceNumber: invoice.text.trim(),
         paymentDate: paymentDate,
