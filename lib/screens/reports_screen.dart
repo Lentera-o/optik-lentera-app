@@ -29,6 +29,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
         if (norm(e.key) == norm(alias) && e.value.trim().isNotEmpty) return e.value.trim();
       }
     }
+    for (final alias in aliases) {
+      final tokens = RegExp(r'[a-z0-9]+').allMatches(alias.toLowerCase())
+          .map((match) => match.group(0)!)
+          .where((token) => token.length > 1)
+          .toList();
+      if (tokens.length < 2) continue;
+      for (final e in row.entries) {
+        if (e.value.trim().isNotEmpty && tokens.every(norm(e.key).contains)) {
+          return e.value.trim();
+        }
+      }
+    }
     return '';
   }
   int money(String s) => int.tryParse(s.replaceAll(RegExp(r'[^0-9-]'), '')) ?? 0;
@@ -172,7 +184,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final periodOrders = orders.where((r) =>
-      cell(r, ['No Invoice', 'Nomor Invoice', 'Invoice']).isNotEmpty &&
+      cell(r, [
+        'No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice',
+        'Nomor Tagihan', 'No Tagihan', 'No Faktur', 'Nomor Faktur',
+        'Kode Invoice', 'Invoice ID', 'ID Invoice',
+      ]).isNotEmpty &&
       inPeriod(rowDate(r, false))).toList();
     final periodPayments = payments.where((r) => inPeriod(rowDate(r, true))).toList();
     final sales = periodOrders.fold<int>(0, (s, r) => s + orderTotal(r));
