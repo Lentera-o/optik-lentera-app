@@ -18,6 +18,40 @@ const _ink = Color(0xFF39342F);
 String _newTransactionRequestId() =>
     '${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(1 << 32)}';
 
+const _pendingOrderStorageKey = 'ol_pending_order_v1';
+const _pendingPaymentStorageKey = 'ol_pending_payment_v1';
+
+Future<Map<String, dynamic>?> _readPendingTransaction(String key) async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(key);
+  if (raw == null || raw.isEmpty) return null;
+  try {
+    final value = jsonDecode(raw);
+    return value is Map ? Map<String, dynamic>.from(value) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> _writePendingTransaction(
+  String key, {
+  required String requestId,
+  required String fingerprint,
+  required String date,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(key, jsonEncode({
+    'requestId': requestId,
+    'fingerprint': fingerprint,
+    'date': date,
+  }));
+}
+
+Future<void> _clearPendingTransaction(String key) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove(key);
+}
+
 class CustomerScreen extends StatefulWidget {
   final List<Customer> customers;
   final ValueChanged<Customer> onAdd;
@@ -416,6 +450,18 @@ class _TransactionScreenState extends State<TransactionScreen> {
   String? _pendingOrderRequestId;
   String? _pendingOrderPayload;
   DateTime? _pendingOrderDate;
+  bool _pendingOrderLoaded = false;
+
+  Future<void> _restorePendingOrder() async {
+    final saved = await _readPendingTransaction(_pendingOrderStorageKey);
+    if (!mounted) return;
+    setState(() {
+      _pendingOrderRequestId = saved?['requestId']?.toString();
+      _pendingOrderPayload = saved?['fingerprint']?.toString();
+      _pendingOrderDate = DateTime.tryParse(saved?['date']?.toString() ?? '');
+      _pendingOrderLoaded = true;
+    });
+  }
 
   int amount(TextEditingController c) => int.tryParse(c.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
@@ -423,6 +469,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   void initState() {
     super.initState();
     _loadOfficialOrderHistory();
+    _restorePendingOrder();
   }
 
   @override
@@ -441,6 +488,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
     setState(() => submitting = true);
     try {
+      if (!_pendingOrderLoaded) await _restorePendingOrder();
       final idToken = await GoogleAuthService.instance.requireIdToken();
       final orderDate = _pendingOrderDate ??= DateTime.now();
       final orderPayload = <String, dynamic>{
@@ -472,10 +520,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
           'note': invoiceNote.text.trim(),
         };
       final orderFingerprint = jsonEncode(orderPayload);
-      if (_pendingOrderPayload != orderFingerprint) {
+      if (_pendingOrderPayload != orderFingerprint || _pendingOrderRequestId == null) {
         _pendingOrderPayload = orderFingerprint;
         _pendingOrderRequestId = _newTransactionRequestId();
       }
+      await _writePendingTransaction(
+        _pendingOrderStorageKey,
+        requestId: _pendingOrderRequestId!,
+        fingerprint: orderFingerprint,
+        date: orderDate.toIso8601String(),
+      );
       final response = await ApiService.createOrder(
         idToken: idToken,
         requestId: _pendingOrderRequestId!,
@@ -492,6 +546,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _pendingOrderRequestId = null;
       _pendingOrderPayload = null;
       _pendingOrderDate = null;
+      await _clearPendingTransaction(_pendingOrderStorageKey);
       widget.onAdd(OptikOrder(
         invoiceNumber: invoiceNumber,
         orderDate: orderDate,
@@ -756,6 +811,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   void initState() {
     super.initState();
     _loadOfficialInvoices();
+    _restorePendingPayment();
   }
 
   Future<void> _loadOfficialInvoices() async {
@@ -855,6 +911,21 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   bool submitting = false;
   String? _pendingPaymentRequestId;
   String? _pendingPaymentPayload;
+  bool _pendingPaymentLoaded = false;
+
+  Future<void> _restorePendingPayment() async {
+    final saved = await _readPendingTransaction(_pendingPaymentStorageKey);
+    if (!mounted) return;
+    final restoredDate = DateTime.tryParse(saved?['date']?.toString() ?? '');
+    setState(() {
+      _pendingPaymentRequestId = saved?['requestId']?.toString();
+      _pendingPaymentPayload = saved?['fingerprint']?.toString();
+      if (restoredDate != null) {
+        paymentDate = DateTime(restoredDate.year, restoredDate.month, restoredDate.day);
+      }
+      _pendingPaymentLoaded = true;
+    });
+  }
 
   Future<void> save() async {
     if (submitting) return;
@@ -878,10 +949,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran melebihi sisa tagihan Rp $formatted.')));
       return;
     }
-    final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
-
     setState(() => submitting = true);
     try {
+      if (!_pendingPaymentLoaded) await _restorePendingPayment();
+      final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
       final idToken = await GoogleAuthService.instance.requireIdToken();
       final paymentPayload = <String, dynamic>{
         'invoice': invoice.text.trim(),
@@ -892,10 +963,16 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         'note': paymentNote.text.trim(),
       };
       final paymentFingerprint = jsonEncode(paymentPayload);
-      if (_pendingPaymentPayload != paymentFingerprint) {
+      if (_pendingPaymentPayload != paymentFingerprint || _pendingPaymentRequestId == null) {
         _pendingPaymentPayload = paymentFingerprint;
         _pendingPaymentRequestId = _newTransactionRequestId();
       }
+      await _writePendingTransaction(
+        _pendingPaymentStorageKey,
+        requestId: _pendingPaymentRequestId!,
+        fingerprint: paymentFingerprint,
+        date: date,
+      );
       final response = await ApiService.createPayment(
         idToken: idToken,
         requestId: _pendingPaymentRequestId!,
@@ -908,6 +985,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       final receipt = result is Map ? (result['receipt']?.toString() ?? '') : '';
       _pendingPaymentRequestId = null;
       _pendingPaymentPayload = null;
+      await _clearPendingTransaction(_pendingPaymentStorageKey);
       widget.onAdd(OptikPayment(
         invoiceNumber: invoice.text.trim(),
         paymentDate: paymentDate,
