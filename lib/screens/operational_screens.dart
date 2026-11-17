@@ -1629,8 +1629,21 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
                   ),
               ]),
             ),
-          if (syncError != null)
-            TextButton.icon(onPressed: _loadOfficialData, icon: const Icon(Icons.refresh), label: const Text('Muat ulang data invoice')),
+          if (syncError != null) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Peringatan sinkronisasi: ' + syncError! +
+                '\nBaris yang gagal diambil dapat masih menampilkan data dari sinkronisasi sebelumnya.',
+                style: const TextStyle(fontSize: 10, color: Colors.redAccent),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: loadingOfficialData ? null : _loadOfficialData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Coba ambil ulang data resmi'),
+            ),
+          ],
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: template,
