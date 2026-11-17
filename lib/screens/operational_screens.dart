@@ -923,6 +923,9 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   final message = TextEditingController();
   List<Map<String, String>> officialOrders = [];
   List<Map<String, String>> officialPayments = [];
+  // Keep customer objects stable between rebuilds: DropdownButton matches values by ==.
+  List<Customer> officialCustomers = [];
+  late final List<Customer> _orderCustomers;
   bool loadingOfficialData = false;
   String? syncError;
 
@@ -980,7 +983,30 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   @override
   void initState() {
     super.initState();
+    _orderCustomers = widget.orders.map((order) => order.customer).toList();
     _loadOfficialData();
+  }
+
+  String _customerKey(Customer customer) {
+    final phone = _canonicalPhone(customer.phone);
+    return phone.isNotEmpty ? 'phone:$phone' : 'name:${customer.name.trim().toLowerCase()}';
+  }
+
+  List<Customer> get _customerOptions {
+    final unique = <String, Customer>{};
+    // Official Sheet records are authoritative and supply customers absent from local app data.
+    for (final customer in officialCustomers) {
+      unique.putIfAbsent(_customerKey(customer), () => customer);
+    }
+    for (final customer in widget.customers) {
+      unique.putIfAbsent(_customerKey(customer), () => customer);
+    }
+    for (final customer in _orderCustomers) {
+      unique.putIfAbsent(_customerKey(customer), () => customer);
+    }
+    final result = unique.values.toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return result;
   }
 
   Future<void> _loadOfficialData() async {
@@ -998,13 +1024,33 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         row.values.any((value) => value.trim().isNotEmpty)
       ).toList();
       if (!mounted) return;
+      final sheetCustomersByKey = <String, Customer>{};
+      for (final row in orders) {
+        final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan']);
+        if (name.isEmpty) continue;
+        final customer = Customer(
+          name: name,
+          phone: _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']),
+          address: _cell(row, ['Alamat', 'Alamat Pelanggan']),
+        );
+        final phone = _canonicalPhone(customer.phone);
+        final key = phone.isNotEmpty ? 'phone:$phone' : 'name:${name.trim().toLowerCase()}';
+        sheetCustomersByKey.putIfAbsent(key, () => customer);
+      }
       setState(() {
         officialOrders = orders;
         officialPayments = payments;
+        officialCustomers = sheetCustomersByKey.values.toList();
         loadingOfficialData = false;
-        if (selectedInvoice != null &&
-            !orders.any((row) => _paymentBelongsToInvoice(row, selectedInvoice ?? ''))) {
-          selectedInvoice = null;
+        if (selectedCustomer != null) {
+          final matches = customerOrders;
+          final stillValid = matches.any((row) =>
+            _cell(row, ['No Invoice', 'Nomor Invoice', 'Invoice']) == selectedInvoice);
+          if (!stillValid) {
+            selectedInvoice = matches.isEmpty
+                ? null
+                : _cell(matches.first, ['No Invoice', 'Nomor Invoice', 'Invoice']);
+          }
         }
         _buildMessage();
       });
@@ -1152,7 +1198,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final customerOptions = <Customer>{...widget.customers, ...widget.orders.map((o) => o.customer)}.toList();
+    final customerOptions = _customerOptions;
     final invoiceOptions = customerOrders;
     final invoiceIsValid = invoiceOptions.any((row) =>
       _cell(row, ['No Invoice', 'Nomor Invoice']) == selectedInvoice);
@@ -1167,7 +1213,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             isExpanded: true,
             decoration: const InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
             items: customerOptions.map((c) => DropdownMenuItem(value: c, child: Text(c.name + ' • ' + c.phone, overflow: TextOverflow.ellipsis))).toList(),
-            onChanged: _chooseCustomer,
+            onChanged: customerOptions.isEmpty ? null : _chooseCustomer,
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
