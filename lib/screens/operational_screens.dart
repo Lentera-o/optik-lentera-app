@@ -439,7 +439,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     setState(() => submitting = true);
     try {
       final idToken = await GoogleAuthService.instance.requireIdToken();
-      final orderDate = DateTime.now();
+      final orderDate = _pendingOrderDate ??= DateTime.now();
       final orderPayload = <String, dynamic>{
           'orderDate': orderDate.toIso8601String(),
           'name': customer.text.trim(),
