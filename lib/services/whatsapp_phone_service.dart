@@ -20,7 +20,7 @@ String normalizeWhatsAppPhone(String raw) {
     final decimalPosition = whole.length + exponent;
     if (decimalPosition <= 0) return '';
     value = decimalPosition >= digits.length
-        ? digits + '0' * (decimalPosition - digits.length)
+        ? digits + List<String>.filled(decimalPosition - digits.length, '0').join()
         : digits.substring(0, decimalPosition);
   } else {
     value = value.replaceFirst(RegExp(r'\\.0+$'), '');
