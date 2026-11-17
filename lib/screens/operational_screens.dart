@@ -624,7 +624,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       for (var attempt = 0; attempt < 6; attempt++) {
         await Future.delayed(const Duration(seconds: 2));
         try {
-          final rows = await SheetsReadService.readTable('DATA_PEMBAYARAN');
+          final rows = await SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true);
           for (final row in rows) {
             final rowInvoice = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
             final receipt = _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']);
