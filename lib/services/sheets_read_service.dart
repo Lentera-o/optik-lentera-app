@@ -93,9 +93,15 @@ class SheetsReadService {
         uri: uri,
       );
     }
-    if (body.trim().isEmpty || body.trimLeft().startsWith('<!DOCTYPE html')) {
+    final normalizedBody = body.trimLeft().toLowerCase();
+    final contentType = response.headers.contentType?.mimeType.toLowerCase() ?? '';
+    if (body.trim().isEmpty ||
+        contentType.contains('html') ||
+        normalizedBody.startsWith('<!doctype html') ||
+        normalizedBody.startsWith('<html') ||
+        normalizedBody.startsWith('google.visualization.query.setresponse')) {
       throw const FormatException(
-        'Spreadsheet tidak mengembalikan CSV. Periksa akses Viewer publik.',
+        'Google Sheets tidak mengembalikan CSV yang dapat dibaca. Periksa izin Viewer dan nama tab sumber.',
       );
     }
 
