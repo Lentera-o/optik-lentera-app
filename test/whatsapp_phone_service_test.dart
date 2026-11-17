@@ -33,6 +33,16 @@ void main() {
       expect(normalizeWhatsAppPhone('8.123456789E+10'), expected);
     });
 
+    test('preserves international country codes instead of forcing Indonesia', () {
+      expect(normalizeWhatsAppPhone('+1 (415) 555-2671'), '14155552671');
+      expect(normalizeWhatsAppPhone('+44 20 7946 0958'), '442079460958');
+      expect(normalizeWhatsAppPhone('0033 6 12 34 56 78'), '33612345678');
+    });
+
+    test('normalizes international numbers with punctuation', () {
+      expect(normalizeWhatsAppPhone('+81 (0) 90-1234-5678'), '8109012345678');
+    });
+
     test('returns empty for blank input', () {
       expect(normalizeWhatsAppPhone('   '), isEmpty);
     });
@@ -56,6 +66,10 @@ void main() {
       expect(isValidWhatsAppPhone('628123'), isFalse);
     });
 
+    test('accepts shorter valid international numbers', () {
+      expect(isValidWhatsAppPhone('4420794609'), isTrue);
+    });
+
     test('accepts valid international E.164 number', () {
       expect(isValidWhatsAppPhone('14155552671'), isTrue);
     });
@@ -72,6 +86,10 @@ void main() {
 
     test('uses the first valid number when a cell contains two numbers', () {
       expect(extractWhatsAppPhone('0812-3456-7890 / 0856-1234-5678'), '6281234567890');
+    });
+
+    test('extracts international number from labeled cell', () {
+      expect(extractWhatsAppPhone('Telp luar negeri: +44 20 7946 0958'), '442079460958');
     });
 
     test('returns empty when no valid number exists', () {
