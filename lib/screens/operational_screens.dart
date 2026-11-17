@@ -795,9 +795,10 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     final paidText = order == null ? '-' : _rupiah(paid);
     final balance = order == null ? '-' : _rupiah(remainingAmount);
     final lastPayment = orderPayments.isEmpty ? null : orderPayments.first;
-    final officialOrder = officialOrders.where((row) =>
+    final matchingOfficialOrders = officialOrders.where((row) =>
       _officialCell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) == invoice
-    ).firstOrNull;
+    ).toList();
+    final officialOrder = matchingOfficialOrders.isEmpty ? null : matchingOfficialOrders.first;
     final invoicePdf = officialOrder == null ? '' : _officialDocumentUrl(officialOrder, [
       'Link Invoice PDF', 'PDF Invoice', 'Link PDF Invoice', 'Invoice PDF',
       'URL Invoice PDF', 'URL PDF Invoice',
@@ -813,17 +814,17 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       ...receiptLinks.asMap().entries.map((entry) => 'Kuitansi PDF resmi ${entry.key + 1}: ${entry.value}'),
     ];
     final documentSection = documentLinks.isEmpty
-      ? (syncingOfficialData ? 'Dokumen resmi sedang disinkronkan dari Google Sheets.\\n' :
-         'Tautan PDF resmi belum ditemukan pada data invoice/pembayaran.\\n')
-      : documentLinks.join('\\n') + '\\n';
+      ? (syncingOfficialData ? 'Dokumen resmi sedang disinkronkan dari Google Sheets.\n' :
+         'Tautan PDF resmi belum ditemukan pada data invoice/pembayaran.\n')
+      : documentLinks.join('\n') + '\n';
     if (template == 'Pesanan siap diambil') {
-      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + '\nSilakan datang pada jam operasional kami.\\n' + documentSection + 'Terima kasih 🙏';
+      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + '\nSilakan datang pada jam operasional kami.\n' + documentSection + 'Terima kasih 🙏';
     } else if (template == 'Pengingat pembayaran') {
-      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n' + (lastPayment == null ? '' : 'Pembayaran terakhir: ' + _rupiah(lastPayment.amount) + ' (' + lastPayment.method + ') pada ' + OptikPdfService.date(lastPayment.paymentDate) + '\n') + 'Jika sudah melakukan pembayaran, mohon abaikan pesan ini.\\n' + documentSection + 'Terima kasih 🙏';
+      message.text = 'Halo ' + name + ' 👋\nKami dari OPTIK LENTERA mengingatkan bahwa masih terdapat sisa pembayaran pesanan Anda.\nNomor invoice: ' + invoice + '\nTotal tagihan: ' + total + '\nTotal sudah dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n' + (lastPayment == null ? '' : 'Pembayaran terakhir: ' + _rupiah(lastPayment.amount) + ' (' + lastPayment.method + ') pada ' + OptikPdfService.date(lastPayment.paymentDate) + '\n') + 'Jika sudah melakukan pembayaran, mohon abaikan pesan ini.\n' + documentSection + 'Terima kasih 🙏';
     } else if (template == 'Tindak lanjut pelanggan') {
       message.text = 'Halo ' + name + ' 👋\nApa kabar? Kami dari OPTIK LENTERA ingin menanyakan apakah kacamata Anda nyaman digunakan. Jika ada yang perlu disesuaikan, silakan hubungi kami. Terima kasih 🙏';
     } else {
-      message.text = 'Halo ' + name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' + (order == null ? '' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n') + 'Jika ada pertanyaan, silakan balas pesan ini.\\n' + documentSection + 'Terima kasih 🙏';
+      message.text = 'Halo ' + name + ' 👋\nTerima kasih telah mempercayakan kebutuhan kacamata Anda kepada OPTIK LENTERA.\n' + (order == null ? '' : 'Nomor invoice: ' + invoice + '\nTotal pesanan: ' + total + '\nTotal dibayar: ' + paidText + '\nSisa tagihan: ' + balance + '\n') + 'Jika ada pertanyaan, silakan balas pesan ini.\n' + documentSection + 'Terima kasih 🙏';
     }
   }
 
