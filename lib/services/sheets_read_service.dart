@@ -1,23 +1,16 @@
 import 'dart:async';
-import 'dart:convert';
+
+import 'api_service.dart';
+import 'google_auth_service.dart';
 
 /// Authenticated, read-only access to OPTIK LENTERA operational tables.
 /// Uses Google ID-token verification through Apps Script; no public CSV export.
-import 'api_service.dart';
-import 'google_auth_service.dart';
 class SheetsReadService {
   SheetsReadService._();
 
   static const String spreadsheetId =
       '1umMSjgI7T124eT8vaEHQRNsXSmDr2snJM6kEBs-6xz0';
-  static const Duration timeout = Duration(seconds: 18);
   static const Duration cacheTtl = Duration(seconds: 10);
-
-  static final HttpClient _client = HttpClient()
-    ..connectionTimeout = const Duration(seconds: 8)
-    ..idleTimeout = const Duration(seconds: 30)
-    ..maxConnectionsPerHost = 6
-    ..autoUncompress = true;
 
   static final Map<String, _CachedTable> _cache = {};
   static final Map<String, Future<List<Map<String, String>>>> _inFlight = {};
