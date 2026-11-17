@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
@@ -997,6 +998,10 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   late final List<Customer> _orderCustomers;
   bool loadingOfficialData = false;
   String? syncError;
+  Timer? _syncTimer;
+  DateTime? _lastSyncedAt;
+  String? _lastNewestCustomerKey;
+  String? _lastNewestInvoice;
 
   String _cell(Map<String, String> row, List<String> aliases) {
     String normalize(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
@@ -1115,6 +1120,18 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     super.initState();
     _orderCustomers = widget.orders.map((order) => order.customer).toList();
     _loadOfficialData();
+    // Keep the WhatsApp picker current while this screen is open. The Google
+    // Forms/Sheets workflow may receive orders from another device at any time.
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && !loadingOfficialData) _loadOfficialData(silent: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    message.dispose();
+    super.dispose();
   }
 
   String _customerKey(Customer customer) {
@@ -1139,8 +1156,14 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     return result;
   }
 
-  Future<void> _loadOfficialData() async {
-    if (mounted) setState(() { loadingOfficialData = true; syncError = null; });
+  Future<void> _loadOfficialData({bool silent = false}) async {
+    if (loadingOfficialData) return;
+    if (mounted && !silent) {
+      setState(() { loadingOfficialData = true; syncError = null; });
+    } else {
+      loadingOfficialData = true;
+      if (silent) syncError = null;
+    }
     try {
       final tables = await Future.wait([
         SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
@@ -1186,15 +1209,19 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         }
         loadingOfficialData = false;
         if (selectedCustomer != null) {
-          final matches = customerOrders;
-          final stillValid = matches.any((row) =>
-            _invoiceNumber(row) == selectedInvoice);
-          if (!stillValid) {
-            selectedInvoice = matches.isEmpty
-                ? null
-                : _invoiceNumber(matches.first);
-          }
+          final customerKey = _customerKey(selectedCustomer!);
+          final matches = _ordersForCustomer(selectedCustomer, orders);
+          final newestInvoice = matches.isEmpty ? null : _invoiceNumber(matches.first);
+          final stillValid = matches.any((row) => _invoiceNumber(row) == selectedInvoice);
+          final wasFollowingNewest = selectedInvoice == null ||
+              (customerKey == _lastNewestCustomerKey && selectedInvoice == _lastNewestInvoice);
+          // If the picker was following the latest invoice, advance it when a
+          // new row appears. Preserve an older invoice only when staff chose it.
+          if (!stillValid || wasFollowingNewest) selectedInvoice = newestInvoice;
+          _lastNewestCustomerKey = customerKey;
+          _lastNewestInvoice = newestInvoice;
         }
+        _lastSyncedAt = DateTime.now();
         _buildMessage();
       });
     } catch (error) {
@@ -1290,11 +1317,13 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     return lines.isEmpty ? '' : '\n\nDetail pesanan:\n' + lines.join('\n');
   }
 
-  List<Map<String, String>> get customerOrders {
-    final customer = selectedCustomer;
+  List<Map<String, String>> _ordersForCustomer(
+    Customer? customer,
+    List<Map<String, String>> source,
+  ) {
     if (customer == null) return [];
     final customerPhone = _canonicalPhone(customer.phone);
-    final matches = officialOrders.where((row) {
+    final matches = source.where((row) {
       if (_invoiceNumber(row).isEmpty) return false;
       final phone = _phoneFromRow(row);
       final name = _cell(row, [
@@ -1324,11 +1353,16 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     return matches;
   }
 
+  List<Map<String, String>> get customerOrders =>
+      _ordersForCustomer(selectedCustomer, officialOrders);
+
   void _chooseCustomer(Customer? customer) {
     setState(() {
       selectedCustomer = customer;
       final matches = customerOrders;
       selectedInvoice = matches.isEmpty ? null : _invoiceNumber(matches.first);
+      _lastNewestCustomerKey = customer == null ? null : _customerKey(customer);
+      _lastNewestInvoice = selectedInvoice;
       _buildMessage();
     });
   }
@@ -1446,15 +1480,24 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
           if (!loadingOfficialData && syncError == null)
             Padding(
               padding: const EdgeInsets.only(top: 5),
-              child: Text(
-                officialOrders.length.toString() + ' baris pesanan terbaca • ' +
-                officialOrders.where((row) => _invoiceNumber(row).isNotEmpty).length.toString() +
-                ' invoice • ' +
-                officialOrders.where((row) => _phoneFromRow(row).isNotEmpty).length.toString() +
-                ' nomor WA valid • ' + officialPayments.length.toString() +
-                ' pembayaran • ' + customerOptions.length.toString() + ' pelanggan',
-                style: const TextStyle(fontSize: 10, color: Colors.black54),
-              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  officialOrders.length.toString() + ' baris pesanan terbaca • ' +
+                  officialOrders.where((row) => _invoiceNumber(row).isNotEmpty).length.toString() +
+                  ' invoice • ' +
+                  officialOrders.where((row) => _phoneFromRow(row).isNotEmpty).length.toString() +
+                  ' nomor WA valid • ' + officialPayments.length.toString() +
+                  ' pembayaran • ' + customerOptions.length.toString() + ' pelanggan',
+                  style: const TextStyle(fontSize: 10, color: Colors.black54),
+                ),
+                if (_lastSyncedAt != null)
+                  Text('Terakhir disinkronkan: ' +
+                    _lastSyncedAt!.day.toString().padLeft(2, '0') + '/' +
+                    _lastSyncedAt!.month.toString().padLeft(2, '0') + ' ' +
+                    _lastSyncedAt!.hour.toString().padLeft(2, '0') + ':' +
+                    _lastSyncedAt!.minute.toString().padLeft(2, '0'),
+                    style: const TextStyle(fontSize: 9, color: Colors.black45)),
+              ]),
             ),
           if (syncError != null)
             TextButton.icon(onPressed: _loadOfficialData, icon: const Icon(Icons.refresh), label: const Text('Muat ulang data invoice')),
@@ -1476,7 +1519,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
           OutlinedButton.icon(
             onPressed: loadingOfficialData ? null : _loadOfficialData,
             icon: const Icon(Icons.sync),
-            label: const Text('Sinkronkan invoice & kuitansi resmi'),
+            label: const Text('Perbarui data pesanan & pembayaran terbaru'),
           ),
           const SizedBox(height: 8),
           const Text('PDF resmi tidak dibuat oleh aplikasi. Tautan yang tersedia diambil dari catatan resmi Google Sheets/Drive.', style: TextStyle(fontSize: 11, color: Colors.black54)),
