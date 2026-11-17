@@ -36,9 +36,16 @@ class SheetsReadService {
       return cached.rows;
     }
 
-    // Concurrent screens share one network request for the same worksheet.
+    // Normal reads may share an in-flight request. An explicit refresh must
+    // wait for an older request to finish, then fetch again so it cannot return
+    // a snapshot that started before a newly submitted transaction.
     final pending = _inFlight[key];
-    if (pending != null) return pending;
+    if (pending != null) {
+      if (!forceRefresh) return pending;
+      try { await pending; } catch (_) { /* Start a clean retry below. */ }
+      final newerPending = _inFlight[key];
+      if (newerPending != null) return newerPending;
+    }
 
     final future = _downloadTable(key);
     _inFlight[key] = future;
@@ -66,7 +73,9 @@ class SheetsReadService {
     final request = await _client.getUrl(uri).timeout(timeout);
     request.headers
       ..set(HttpHeaders.acceptHeader, 'text/csv,text/plain')
-      ..set(HttpHeaders.acceptEncodingHeader, 'gzip');
+      ..set(HttpHeaders.acceptEncodingHeader, 'gzip')
+      ..set(HttpHeaders.cacheControlHeader, 'no-cache, no-store, max-age=0')
+      ..set(HttpHeaders.pragmaHeader, 'no-cache');
     final response = await request.close().timeout(timeout);
     final body = await utf8.decoder.bind(response).join().timeout(timeout);
 
