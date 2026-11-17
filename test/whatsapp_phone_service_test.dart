@@ -90,6 +90,15 @@ void main() {
       expect(extractWhatsAppPhone('0812-3456-7890 / 0856-1234-5678'), '6281234567890');
     });
 
+    test('extracts international number without plus prefix', () {
+      expect(extractWhatsAppPhone('WhatsApp: 447911123456'), '447911123456');
+      expect(extractWhatsAppPhone('Contact: 14155552671'), '14155552671');
+    });
+
+    test('extracts international number from wa.me link', () {
+      expect(extractWhatsAppPhone('https://wa.me/447911123456'), '447911123456');
+    });
+
     test('extracts international number from labeled cell', () {
       expect(extractWhatsAppPhone('Telp luar negeri: +44 20 7946 0958'), '442079460958');
     });
