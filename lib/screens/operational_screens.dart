@@ -133,7 +133,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     final beforeInvoices = <String>{};
     var invoiceSnapshotAvailable = false;
     try {
-      final existing = await SheetsReadService.readTable('DATA_PESANAN');
+      final existing = await SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true);
       invoiceSnapshotAvailable = true;
       for (final row in existing) {
         for (final key in ['No Invoice', 'Nomor Invoice', 'Nomor invoice']) {
@@ -179,7 +179,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       for (var attempt = 0; attempt < 6; attempt++) {
         await Future.delayed(const Duration(seconds: 2));
         try {
-          final rows = await SheetsReadService.readTable('DATA_PESANAN');
+          final rows = await SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true);
           for (final row in rows) {
             String cell(List<String> aliases) {
               for (final alias in aliases) {
@@ -418,7 +418,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     try {
       final tables = await Future.wait([
         SheetsReadService.readTable('DATA_PESANAN'),
-        SheetsReadService.readTable('DATA_PEMBAYARAN'),
+        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
       ]);
       final rows = tables[0];
       final paymentRows = tables[1];
@@ -510,7 +510,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     final beforeReceipts = <String>{};
     var paymentSnapshotAvailable = false;
     try {
-      final existing = await SheetsReadService.readTable('DATA_PEMBAYARAN');
+      final existing = await SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true);
       paymentSnapshotAvailable = true;
       for (final row in existing) {
         final receipt = _cell(row, ['No Kuitansi', 'Nomor Kuitansi', 'Nomor kuitansi']);
