@@ -1123,7 +1123,7 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
           .map((entry) => entry.value),
       ...row.values,
     ];
-    final urlPattern = RegExp(r'https?://[^\\s<>"]+', caseSensitive: false);
+    final urlPattern = RegExp(r'https?://[^\s<>"]+', caseSensitive: false);
     for (final candidate in candidates) {
       final value = candidate.trim();
       final matches = urlPattern.allMatches(value);
