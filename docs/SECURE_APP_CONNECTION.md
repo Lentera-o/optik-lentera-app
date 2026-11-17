@@ -1,61 +1,51 @@
 # OPTIK LENTERA — Secure app connection checklist
 
-This document describes the remaining setup required before enabling direct in-app transactions. It does not change the live Apps Script deployment or spreadsheet.
+Dokumen ini mencatat implementasi pada branch `feature/read-only-sheet-sync` dan syarat yang masih harus dipenuhi sebelum transaksi langsung diaktifkan pada deployment produksi.
 
-## Current implementation status
+## Status implementasi pada kode Flutter
 
-- The Flutter app still opens prefilled Google Forms for order and payment entry. It does not yet submit transactions directly.
-- `ApiService.createOrder` and `ApiService.createPayment` provide the HTTP transport, but the transaction screens are not wired to them.
-- `OptikLenteraApi.gs` validates Google ID tokens and active staff, then delegates to the existing `olProcessOrder_` / `olProcessPayment_` functions.
-- The legacy processors use the existing invoice, receipt, numbering, and PDF workflows. They store internal event keys to recover retries.
-- The app currently reads spreadsheet tabs through the Google Visualization CSV endpoint. Before production use, verify the spreadsheet's sharing and publish settings; if those expose customer data, replace these reads with authenticated Apps Script reads.
+- Google Sign-In tetap wajib. Aplikasi meminta Google ID token; pemeriksaan token tidak boleh dihapus.
+- Tidak ada kebutuhan allowlist email petugas atau persetujuan manual per email. Identitas Google tetap diverifikasi di backend.
+- Layar pesanan dan pembayaran menggunakan `ApiService.createOrder` dan `ApiService.createPayment`; penyimpanan transaksi dirancang melalui Apps Script, bukan pengiriman Google Forms.
+- Request transaksi membawa `requestId` stabil untuk membantu mencegah pengiriman ulang sebagai transaksi baru ketika pengguna mencoba ulang.
+- Pusat WhatsApp memilih nomor dari invoice/pesanan yang dipilih, dengan normalisasi nomor lokal dan internasional.
+- Analyze, tests, validasi konfigurasi Google Sign-In, build release APK, dan upload artefak pada GitHub Actions run `44166793628` telah berhasil.
 
-## Required Android / Google OAuth setup
+## Status backend — BELUM AKTIF DI PRODUKSI
 
-1. Create and retain a stable Android release signing key outside the repository and CI logs. Do not use the CI debug signing key for production identity.
-2. Record the SHA-1 certificate fingerprint for that release key.
-3. In the same Google Cloud project used for the app, register an Android OAuth client with:
-   - Package: `com.optiklentera.optik_lentera`
-   - SHA-1: the fingerprint of the stable release signing certificate.
-4. Register or identify the Web application OAuth client. The Web client ID is used as the ID-token audience/server client ID.
-5. Configure the Apps Script project's Script Properties:
-   - `OL_GOOGLE_WEB_CLIENT_ID`: exact Web OAuth client ID.
-   - `OL_GOOGLE_ANDROID_CLIENT_ID`: exact Android OAuth client ID.
-6. No staff email allowlist is required. Keep Google ID-token verification enabled; it confirms the account is a valid Google identity for this app.
-7. Keep OAuth client IDs as configuration, not secrets. Never embed a client secret, shared password, or service-account private key in the APK.
-8. Configure Google Sign-In in Flutter to request an ID token for the Web client ID. Confirm that the resulting token has the expected `aud` (Web client) and `azp` (Android client) claims before enabling writes.
+File `OptikLenteraApi.gs` di repository adalah modul tambahan. File tersebut bergantung pada project Apps Script lama yang berisi `OPTIK_LENTERA_FINAL_AMAN.gs` dan fungsi pemrosesan invoice/kuitansi yang sudah ada.
 
-## Transaction request contract
+Fungsi lama yang harus tetap dipertahankan:
+- `olProcessOrder_` dan `olProcessPayment_`
+- penomoran invoice/kuitansi dan pencatatan DP/cicilan/pelunasan
+- pembuatan serta pembaruan PDF invoice dan kuitansi
+- helper pembacaan/penulisan sheet dan verifikasi QR/token
+- semua trigger, tab, data historis, Google Forms, dan folder/file Drive
 
-Order:
-- `action`: `createOrder`
-- `requestId`: one stable unique ID per user submission; reuse it only when retrying that same submission.
-- `idToken`: freshly obtained Google ID token.
-- `data`: `orderDate`, `name`, `phone`, `address`, `doctor`, OD/OS prescription fields, `lensType`, `rxNote`, `frameDescription`, `framePrice`, `lensDescription`, `lensPrice`, `otherDescription`, `otherPrice`, `initialPayment`, `initialPaymentMethod`, `note`.
+**Jangan mengganti seluruh project Apps Script dengan file API ini.** Tambahkan dan integrasikan modul hanya setelah sumber lengkap project lama diverifikasi. Deployment Web App aktif belum diperbarui dari perubahan GitHub ini. Belum ada transaksi produksi yang dijalankan atau diklaim berhasil.
 
-Payment:
-- `action`: `createPayment`
-- `requestId`: one stable unique ID per user submission; reuse it only when retrying that same submission.
-- `idToken`: freshly obtained Google ID token.
-- `data`: `invoice`, `paymentDate`, `amount`, `method`, `category`, `note`.
+## Konfigurasi yang diperlukan di Apps Script
 
-## Release gates
+Script Properties yang harus diverifikasi pada project yang benar:
+- `OL_GOOGLE_WEB_CLIENT_ID`: OAuth Web client ID yang menjadi audience ID token.
+- `OL_SPREADSHEET_ID`: ID spreadsheet operasional yang memang digunakan oleh project lama.
 
-- [ ] Stable release keystore created and stored securely outside source control.
-- [ ] Android OAuth client registered against the release package and SHA-1.
-- [ ] Web OAuth client ID and Android OAuth client ID configured in Apps Script Script Properties.
-- [ ] Google Sign-In implemented and verified on a real Android build.
-- [ ] Google ID-token issuer, audience, expiry, and verified-email checks verified on a real deployment.
-- [ ] Flutter order screen calls `createOrder` and displays returned invoice/PDF details.
-- [ ] Flutter payment screen calls `createPayment` and displays returned receipt/PDF and balance.
-- [ ] Duplicate-submit/retry behavior tested using a non-production test spreadsheet and test Drive folder.
-- [ ] Spreadsheet read access moved behind authenticated Apps Script endpoints, or sharing settings explicitly reviewed and approved.
-- [ ] Apps Script Web App deployment updated only after explicit owner approval.
-- [ ] Final release build signed with the stable release key.
+Deployment Web App harus menggunakan identitas pemilik yang tepat. Google ID token harus diverifikasi issuer, audience, expiry, dan email terverifikasi. Tidak diperlukan allowlist email staf. Jangan memasukkan OAuth client secret atau private key ke APK/repository.
 
-## Safety rules
+## Pemeriksaan sebelum transaksi produksi
 
-- Do not run dummy transactions against production customer records.
-- Do not change spreadsheet sharing, publish settings, triggers, Forms, folders, or Script Properties without owner approval.
-- Do not merge the integration PR or deploy Apps Script changes without owner approval.
-- Do not claim direct in-app transactions are ready until the release gates above have been verified.
+- [ ] Cocokkan seluruh sumber Apps Script lama dan pastikan semua fungsi invoice/kuitansi/DP tetap tersedia.
+- [ ] Periksa kontrak nama kolom `answers` API terhadap `OL_FIELDS`, `OL_PAY_FIELDS`, dan header sheet yang benar.
+- [ ] Verifikasi idempotensi `eventKey` pada kedua processor untuk retry request yang sama.
+- [ ] Verifikasi validasi nominal, saldo tagihan, dan pencegahan pembayaran berlebih pada processor lama.
+- [ ] Pastikan konfigurasi OAuth Web client ID dan spreadsheet ID berada pada project Apps Script yang benar.
+- [ ] Uji dengan spreadsheet dan folder Drive khusus pengujian; jangan membuat transaksi dummy pada data pelanggan produksi.
+- [ ] Uji Google Sign-In pada perangkat Android dengan signing key rilis yang benar.
+- [ ] Uji createOrder, createPayment, retry request, invoice PDF, kuitansi PDF, dan refresh data end-to-end.
+- [ ] Tinjau akses baca Google Sheets. Jangan mengekspos data pelanggan melalui CSV publik; gunakan endpoint terautentikasi atau konfigurasi akses yang secara eksplisit disetujui pemilik.
+- [ ] Perbarui deployment Web App hanya setelah seluruh pemeriksaan lulus dan project lama aman.
+- [ ] Lakukan uji penerimaan pada perangkat sebelum rilis ke operasional.
+
+## Batas keselamatan perubahan
+
+Jangan menghapus atau mengubah tab/data Sheets, konfigurasi Forms, trigger, folder/file Drive, Firebase, template invoice/kuitansi, maupun modul operasional lain sebagai bagian integrasi ini. Jangan merge atau deploy hanya berdasarkan keberhasilan build Flutter. Build sukses tidak membuktikan koneksi Apps Script atau transaksi Sheets berhasil.
