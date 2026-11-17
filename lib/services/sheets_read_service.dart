@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
-/// Fast, read-only access to the published OPTIK LENTERA spreadsheet.
-/// Uses short-lived cache + in-flight request sharing to avoid duplicate downloads.
+/// Authenticated, read-only access to OPTIK LENTERA operational tables.
+/// Uses Google ID-token verification through Apps Script; no public CSV export.
+import 'api_service.dart';
+import 'google_auth_service.dart';
 class SheetsReadService {
   SheetsReadService._();
 
@@ -64,70 +65,28 @@ class SheetsReadService {
     String worksheetName, {
     bool cacheBust = false,
   }) async {
-    final query = <String, String>{
-      'tqx': 'out:csv',
-      'sheet': worksheetName,
-    };
-    // A unique URL prevents intermediary caches from serving the pre-submit CSV.
-    if (cacheBust) {
-      query['_refresh'] = DateTime.now().microsecondsSinceEpoch.toString();
+    if (worksheetName != 'DATA_PESANAN' && worksheetName != 'DATA_PEMBAYARAN') {
+      throw ArgumentError.value(worksheetName, 'worksheetName', 'Tab tidak diizinkan');
     }
-    final uri = Uri.https(
-      'docs.google.com',
-      '/spreadsheets/d/$spreadsheetId/gviz/tq',
-      query,
+    final idToken = await GoogleAuthService.instance.requireIdToken();
+    final response = await ApiService.postAuthorizedRead(
+      action: 'readTable',
+      idToken: idToken,
+      data: {'sheetName': worksheetName},
     );
-
-    final request = await _client.getUrl(uri).timeout(timeout);
-    request.headers
-      ..set(HttpHeaders.acceptHeader, 'text/csv,text/plain')
-      ..set(HttpHeaders.acceptEncodingHeader, 'gzip')
-      ..set(HttpHeaders.cacheControlHeader, 'no-cache, no-store, max-age=0')
-      ..set(HttpHeaders.pragmaHeader, 'no-cache');
-    final response = await request.close().timeout(timeout);
-    final body = await utf8.decoder.bind(response).join().timeout(timeout);
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HttpException(
-        'Google Sheets mengembalikan HTTP ${response.statusCode}.',
-        uri: uri,
+    if (!response.isSuccessful) {
+      throw StateError(response.errorMessage ?? 'Gagal membaca data resmi OPTIK LENTERA.');
+    }
+    final payload = response.data;
+    if (payload is! Map || payload['rows'] is! List) {
+      throw const FormatException('Respons pembacaan Apps Script tidak sesuai format.');
+    }
+    final records = (payload['rows'] as List).map((item) {
+      if (item is! Map) throw const FormatException('Baris spreadsheet tidak valid.');
+      return Map<String, String>.unmodifiable(
+        item.map((key, value) => MapEntry(key.toString(), value?.toString() ?? '')),
       );
-    }
-    final normalizedBody = body.trimLeft().toLowerCase();
-    final contentType = response.headers.contentType?.mimeType.toLowerCase() ?? '';
-    if (body.trim().isEmpty ||
-        contentType.contains('html') ||
-        normalizedBody.startsWith('<!doctype html') ||
-        normalizedBody.startsWith('<html') ||
-        normalizedBody.startsWith('google.visualization.query.setresponse')) {
-      throw const FormatException(
-        'Google Sheets tidak mengembalikan CSV yang dapat dibaca. Periksa izin Viewer dan nama tab sumber.',
-      );
-    }
-
-    final rows = _parseCsv(body);
-    if (rows.isEmpty) return const [];
-
-    final headers = rows.first
-        .map((value) => value.replaceFirst(RegExp(r'^\uFEFF'), '').trim())
-        .toList(growable: false);
-    if (headers.every((header) => header.isEmpty)) {
-      throw const FormatException('Baris judul kolom spreadsheet kosong.');
-    }
-
-    final records = rows.skip(1)
-        .where((row) => row.any((value) => value.trim().isNotEmpty))
-        .map((row) {
-          final record = <String, String>{};
-          for (var i = 0; i < headers.length; i++) {
-            final key = headers[i];
-            if (key.isNotEmpty) {
-              record[key] = i < row.length ? row[i].trim() : '';
-            }
-          }
-          return Map<String, String>.unmodifiable(record);
-        }).toList(growable: false);
-
+    }).toList(growable: false);
     return List<Map<String, String>>.unmodifiable(records);
   }
 
@@ -140,50 +99,7 @@ class SheetsReadService {
     }
   }
 
-  /// Small RFC-4180-compatible CSV reader (quoted commas, quotes and newlines).
-  static List<List<String>> _parseCsv(String input) {
-    final result = <List<String>>[];
-    var row = <String>[];
-    final field = StringBuffer();
-    var quoted = false;
 
-    for (var i = 0; i < input.length; i++) {
-      final char = input[i];
-      if (quoted) {
-        if (char == '"') {
-          if (i + 1 < input.length && input[i + 1] == '"') {
-            field.write('"');
-            i++;
-          } else {
-            quoted = false;
-          }
-        } else {
-          field.write(char);
-        }
-      } else if (char == '"' && field.isEmpty) {
-        quoted = true;
-      } else if (char == ',') {
-        row.add(field.toString());
-        field.clear();
-      } else if (char == '\n' || char == '\r') {
-        if (char == '\r' && i + 1 < input.length && input[i + 1] == '\n') {
-          i++;
-        }
-        row.add(field.toString());
-        field.clear();
-        result.add(row);
-        row = <String>[];
-      } else {
-        field.write(char);
-      }
-    }
-
-    if (field.isNotEmpty || row.isNotEmpty) {
-      row.add(field.toString());
-      result.add(row);
-    }
-    return result;
-  }
 }
 
 class _CachedTable {
