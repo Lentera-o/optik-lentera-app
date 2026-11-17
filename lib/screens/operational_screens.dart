@@ -191,8 +191,12 @@ class _TransactionScreenState extends State<TransactionScreen> {
   String? _historyError;
   String? _selectedHistoryInvoice;
 
-  String _headerKey(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  String _headerKey(String value) =>
+      value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
   String _historyCell(Map<String, String> row, List<String> aliases) {
+    // Prefer exact header matches so similarly named fields (e.g. Frame and
+    // Harga Frame) never get mixed up.
     for (final alias in aliases) {
       final wanted = _headerKey(alias);
       for (final entry in row.entries) {
@@ -201,7 +205,62 @@ class _TransactionScreenState extends State<TransactionScreen> {
         }
       }
     }
+
+    // Then tolerate harmless header variations and word order, e.g.
+    // "SPH OD (Mata Kanan)" or "Nomor WhatsApp Pelanggan".
+    for (final alias in aliases) {
+      final tokens = RegExp(r'[a-z0-9]+')
+          .allMatches(alias.toLowerCase())
+          .map((match) => match.group(0)!)
+          .where((token) => token.length > 1)
+          .toList();
+      if (tokens.length < 2) continue;
+      for (final entry in row.entries) {
+        final header = _headerKey(entry.key);
+        if (entry.value.trim().isNotEmpty &&
+            tokens.every(header.contains)) {
+          return entry.value.trim();
+        }
+      }
+    }
     return '';
+  }
+
+  String _historyPhone(Map<String, String> row) {
+    final raw = _historyCell(row, [
+      'No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp',
+      'No WA', 'Nomor WA', 'No WA Pelanggan', 'Nomor WA Pelanggan',
+      'WhatsApp', 'Kontak WhatsApp', 'Nomor WhatsApp Pelanggan',
+      'No Telepon', 'Nomor Telepon', 'Telepon', 'No HP',
+      'Nomor HP', 'No. HP', 'Handphone', 'HP',
+      'No HP/WA', 'Nomor HP/WA', 'HP/WA', 'Phone', 'Mobile',
+      'Nomor Kontak', 'Kontak Pelanggan',
+    ]);
+    if (raw.isEmpty) {
+      // Some sheet headers use a descriptive label not covered above.
+      for (final entry in row.entries) {
+        final header = _headerKey(entry.key);
+        final isPhoneColumn = header.contains('whatsapp') ||
+            header.contains('nomorwa') || header.contains('notelepon') ||
+            header.contains('nomortelepon') || header.contains('handphone') ||
+            header == 'hp' || header == 'nohp' || header == 'phone' ||
+            header == 'mobile' || header.contains('nomorhp');
+        if (isPhoneColumn && entry.value.trim().isNotEmpty) {
+          return _displayHistoryPhone(entry.value.trim());
+        }
+      }
+      return '';
+    }
+    return _displayHistoryPhone(raw);
+  }
+
+  String _displayHistoryPhone(String raw) {
+    final normalized = normalizeWhatsAppPhone(raw);
+    // Show Indonesian numbers in familiar local form in the editable field.
+    if (normalized.startsWith('62') && normalized.length > 2) {
+      return '0' + normalized.substring(2);
+    }
+    return raw;
   }
 
   Future<void> _loadOfficialOrderHistory() async {
@@ -211,8 +270,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
       if (!mounted) return;
       setState(() {
         _officialOrderHistory = rows.where((row) =>
-          _historyCell(row, ['No Invoice', 'Nomor Invoice', 'Invoice']).isNotEmpty &&
-          _historyCell(row, ['Nama', 'Nama Pelanggan', 'Pelanggan']).isNotEmpty
+          _historyCell(row, [
+            'No Invoice', 'Nomor Invoice', 'No. Invoice',
+            'Invoice', 'Nomor Tagihan',
+          ]).isNotEmpty &&
+          _historyCell(row, [
+            'Nama', 'Nama Pelanggan', 'Pelanggan',
+            'Nama Customer', 'Nama Konsumen',
+          ]).isNotEmpty
         ).toList();
         _historyLoading = false;
         _historyError = null;
@@ -236,29 +301,29 @@ class _TransactionScreenState extends State<TransactionScreen> {
     final selectedRow = row;
     setState(() {
       _selectedHistoryInvoice = invoice;
-      customer.text = _historyCell(selectedRow, ['Nama', 'Nama Pelanggan', 'Pelanggan']);
-      phone.text = _historyCell(selectedRow, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']);
-      address.text = _historyCell(selectedRow, ['Alamat', 'Alamat Pelanggan']);
-      doctor.text = _historyCell(selectedRow, ['Dokter', 'Dokter / Optometris', 'Optometris', 'Pemeriksa']);
-      odSph.text = _historyCell(selectedRow, ['OD SPH', 'SPH OD', 'Mata Kanan SPH', 'SPH Kanan']);
-      odCyl.text = _historyCell(selectedRow, ['OD CYL', 'CYL OD', 'Mata Kanan CYL', 'CYL Kanan']);
-      odAxis.text = _historyCell(selectedRow, ['OD AXIS', 'AXIS OD', 'Mata Kanan AXIS', 'AXIS Kanan']);
-      odAdd.text = _historyCell(selectedRow, ['OD ADD', 'ADD OD', 'Mata Kanan ADD', 'ADD Kanan']);
-      odPd.text = _historyCell(selectedRow, ['OD PD', 'PD OD', 'PD Kanan']);
-      osSph.text = _historyCell(selectedRow, ['OS SPH', 'SPH OS', 'Mata Kiri SPH', 'SPH Kiri']);
-      osCyl.text = _historyCell(selectedRow, ['OS CYL', 'CYL OS', 'Mata Kiri CYL', 'CYL Kiri']);
-      osAxis.text = _historyCell(selectedRow, ['OS AXIS', 'AXIS OS', 'Mata Kiri AXIS', 'AXIS Kiri']);
-      osAdd.text = _historyCell(selectedRow, ['OS ADD', 'ADD OS', 'Mata Kiri ADD', 'ADD Kiri']);
-      osPd.text = _historyCell(selectedRow, ['OS PD', 'PD OS', 'PD Kiri']);
-      lensType.text = _historyCell(selectedRow, ['Jenis Lensa', 'Tipe Lensa', 'Lensa']);
-      rxNote.text = _historyCell(selectedRow, ['Catatan Resep', 'Keterangan Resep', 'Catatan Pemeriksaan']);
-      frameDescription.text = _historyCell(selectedRow, ['Deskripsi Frame', 'Model Frame', 'Frame']);
-      frame.text = _historyCell(selectedRow, ['Harga Frame', 'Harga Bingkai', 'Biaya Frame']);
-      lensDescription.text = _historyCell(selectedRow, ['Deskripsi Lensa', 'Detail Lensa']);
-      lens.text = _historyCell(selectedRow, ['Harga Lensa', 'Biaya Lensa']);
-      otherDescription.text = _historyCell(selectedRow, ['Keterangan Lain', 'Deskripsi Lain', 'Biaya Lain']);
-      otherPrice.text = _historyCell(selectedRow, ['Harga Lain', 'Biaya Lainnya', 'Nominal Lain']);
-      invoiceNote.text = _historyCell(selectedRow, ['Catatan Invoice', 'Catatan Pesanan', 'Keterangan']);
+      customer.text = _historyCell(selectedRow, ['Nama', 'Nama Pelanggan', 'Pelanggan', 'Nama Customer', 'Nama Konsumen']);
+      phone.text = _historyPhone(selectedRow);
+      address.text = _historyCell(selectedRow, ['Alamat', 'Alamat Pelanggan', 'Alamat Customer', 'Alamat Konsumen']);
+      doctor.text = _historyCell(selectedRow, ['Dokter', 'Nama Dokter', 'Dokter / Optometris', 'Optometris', 'Pemeriksa', 'Nama Pemeriksa']);
+      odSph.text = _historyCell(selectedRow, ['OD SPH', 'SPH OD', 'Mata Kanan SPH', 'SPH Kanan', 'SPH Mata Kanan', 'Sphere OD', 'OD Sphere']);
+      odCyl.text = _historyCell(selectedRow, ['OD CYL', 'CYL OD', 'Mata Kanan CYL', 'CYL Kanan', 'CYL Mata Kanan', 'Cylinder OD', 'OD Cylinder']);
+      odAxis.text = _historyCell(selectedRow, ['OD AXIS', 'AXIS OD', 'Mata Kanan AXIS', 'AXIS Kanan', 'AXIS Mata Kanan', 'Axis Kanan']);
+      odAdd.text = _historyCell(selectedRow, ['OD ADD', 'ADD OD', 'Mata Kanan ADD', 'ADD Kanan', 'ADD Mata Kanan']);
+      odPd.text = _historyCell(selectedRow, ['OD PD', 'PD OD', 'PD Kanan', 'PD Mata Kanan', 'Pupil Distance Kanan']);
+      osSph.text = _historyCell(selectedRow, ['OS SPH', 'SPH OS', 'Mata Kiri SPH', 'SPH Kiri', 'SPH Mata Kiri', 'Sphere OS', 'OS Sphere']);
+      osCyl.text = _historyCell(selectedRow, ['OS CYL', 'CYL OS', 'Mata Kiri CYL', 'CYL Kiri', 'CYL Mata Kiri', 'Cylinder OS', 'OS Cylinder']);
+      osAxis.text = _historyCell(selectedRow, ['OS AXIS', 'AXIS OS', 'Mata Kiri AXIS', 'AXIS Kiri', 'AXIS Mata Kiri']);
+      osAdd.text = _historyCell(selectedRow, ['OS ADD', 'ADD OS', 'Mata Kiri ADD', 'ADD Kiri', 'ADD Mata Kiri']);
+      osPd.text = _historyCell(selectedRow, ['OS PD', 'PD OS', 'PD Kiri', 'PD Mata Kiri', 'Pupil Distance Kiri']);
+      lensType.text = _historyCell(selectedRow, ['Jenis Lensa', 'Tipe Lensa', 'Model Lensa', 'Lensa']);
+      rxNote.text = _historyCell(selectedRow, ['Catatan Resep', 'Keterangan Resep', 'Catatan Pemeriksaan', 'Catatan Optik', 'Catatan Resep Mata']);
+      frameDescription.text = _historyCell(selectedRow, ['Deskripsi Frame', 'Model Frame', 'Merek Frame', 'Detail Frame', 'Nama Frame', 'Frame']);
+      frame.text = _historyCell(selectedRow, ['Harga Frame', 'Harga Bingkai', 'Biaya Frame', 'Nominal Frame']);
+      lensDescription.text = _historyCell(selectedRow, ['Deskripsi Lensa', 'Detail Lensa', 'Keterangan Lensa', 'Spesifikasi Lensa']);
+      lens.text = _historyCell(selectedRow, ['Harga Lensa', 'Biaya Lensa', 'Nominal Lensa']);
+      otherDescription.text = _historyCell(selectedRow, ['Keterangan Lain', 'Deskripsi Lain', 'Rincian Lain', 'Biaya Lain']);
+      otherPrice.text = _historyCell(selectedRow, ['Harga Lain', 'Harga Lainnya', 'Biaya Lainnya', 'Nominal Lain', 'Nominal Biaya Lain']);
+      invoiceNote.text = _historyCell(selectedRow, ['Catatan Invoice', 'Catatan Pesanan', 'Catatan Tambahan', 'Keterangan']);
       // DP intentionally stays empty: repeat orders must not inherit a previous invoice payment.
       dp.clear();
       selectedCustomerIndex = null;
