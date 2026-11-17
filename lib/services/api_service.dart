@@ -34,6 +34,81 @@ class ApiService {
     return _send('GET', uri);
   }
 
+  /// Sends a transaction to Apps Script and safely follows its ContentService
+  /// redirect. Apps Script may return JSON from script.googleusercontent.com
+  /// after the POST has been processed; the redirect is fetched with GET so
+  /// the transaction body is never replayed.
+  static Future<ApiResponse> postTransaction({
+    required String action,
+    required String idToken,
+    required String requestId,
+    required Map<String, dynamic> data,
+  }) async {
+    if (action != 'createOrder' && action != 'createPayment') {
+      throw ArgumentError.value(action, 'action', 'Unsupported transaction action');
+    }
+    if (idToken.isEmpty || requestId.isEmpty) {
+      throw ArgumentError('A verified Google ID token and stable request ID are required.');
+    }
+
+    final uri = Uri.parse(AppConfig.appsScriptUrl);
+    final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
+    request.followRedirects = false;
+    request.headers
+      ..contentType = ContentType.json
+      ..set(HttpHeaders.acceptHeader, 'application/json');
+    request.write(jsonEncode({
+      'action': action,
+      'requestId': requestId,
+      'idToken': idToken,
+      'data': data,
+    }));
+
+    final response = await request.close().timeout(AppConfig.apiTimeout);
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      final location = response.headers.value(HttpHeaders.locationHeader);
+      await response.drain<void>();
+      if (location == null || location.trim().isEmpty) {
+        throw const HttpException('Apps Script mengembalikan redirect tanpa alamat tujuan.');
+      }
+      final target = uri.resolve(location);
+      if (target.scheme != 'https' ||
+          (target.host != 'script.googleusercontent.com' &&
+           target.host != 'script.google.com')) {
+        throw const HttpException('Tujuan redirect Apps Script tidak tepercaya.');
+      }
+      // Do not replay the POST: Apps Script may already have written the row.
+      final redirected = await _client.getUrl(target).timeout(AppConfig.apiTimeout);
+      redirected.followRedirects = true;
+      redirected.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      final redirectedResponse = await redirected.close().timeout(AppConfig.apiTimeout);
+      return _readResponse(redirectedResponse);
+    }
+    return _readResponse(response);
+  }
+
+  static Future<ApiResponse> createOrder({
+    required String idToken,
+    required String requestId,
+    required Map<String, dynamic> data,
+  }) => postTransaction(
+    action: 'createOrder',
+    idToken: idToken,
+    requestId: requestId,
+    data: data,
+  );
+
+  static Future<ApiResponse> createPayment({
+    required String idToken,
+    required String requestId,
+    required Map<String, dynamic> data,
+  }) => postTransaction(
+    action: 'createPayment',
+    idToken: idToken,
+    requestId: requestId,
+    data: data,
+  );
+
   static Future<ApiResponse> post(Map<String, dynamic> payload) async {
     final uri = Uri.parse(AppConfig.appsScriptUrl);
     final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
