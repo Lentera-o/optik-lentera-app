@@ -44,8 +44,8 @@ void main() {
     });
 
     test('accepts Indonesian WhatsApp business landline', () {
-      expect(normalizeWhatsAppPhone('021 555 1234'), '622155551234');
-      expect(isValidWhatsAppPhone('622155551234'), isTrue);
+      expect(normalizeWhatsAppPhone('021 555 1234'), '62215551234');
+      expect(isValidWhatsAppPhone('62215551234'), isTrue);
     });
 
     test('rejects Indonesian number with invalid zero after country code', () {
