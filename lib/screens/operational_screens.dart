@@ -701,10 +701,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       for (final row in rows) {
         final number = _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']);
         if (number.isEmpty) continue;
-        final name = _cell(row, [
-        'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
-        'Nama Customer', 'Customer', 'Nama Konsumen',
-      ]);
+        final name = _customerNameFromRow(row);
         final totalText = _cell(row, ['Total', 'Total Harga', 'Total Tagihan', 'Total harga']);
         final paidText = _cell(row, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
         final remainingText = _cell(row, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
@@ -1000,6 +997,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   String? syncError;
   Timer? _syncTimer;
   DateTime? _lastSyncedAt;
+  List<String> _sourceOrderHeaders = [];
+  List<String> _latestOrderSamples = [];
   String? _lastNewestCustomerKey;
   String? _lastNewestInvoice;
 
@@ -1031,11 +1030,19 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     return '';
   }
 
+  String _customerNameFromRow(Map<String, String> row) => _cell(row, [
+    'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
+    'Nama Customer', 'Customer', 'Nama Konsumen', 'Nama Pemesan',
+    'Nama Lengkap', 'Nama Pasien', 'Nama Klien', 'Nama Penerima',
+  ]);
+
   String _invoiceNumber(Map<String, String> row) => _cell(row, [
     'No Invoice', 'Nomor Invoice', 'Nomor invoice', 'No. Invoice',
     'Invoice Number', 'Nomor Tagihan', 'No Tagihan', 'Invoice',
     'No Faktur', 'Nomor Faktur', 'Kode Invoice', 'Invoice ID', 'ID Invoice',
     'No Nota', 'Nomor Nota', 'No Transaksi', 'Nomor Transaksi',
+    'No Order', 'Nomor Order', 'Order Number', 'Order ID', 'ID Pesanan',
+    'Nomor Pesanan', 'Kode Pesanan',
   ]);
 
   String _phoneFromRow(Map<String, String> row) {
@@ -1208,6 +1215,17 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         final previousCustomerKey = selectedCustomer == null ? null : _customerKey(selectedCustomer!);
         officialOrders = orders;
         officialPayments = payments;
+        _sourceOrderHeaders = orders.isEmpty ? [] : orders.first.keys.toList();
+        _latestOrderSamples = orders.reversed.take(5).map((row) {
+          final name = _customerNameFromRow(row);
+          final invoice = _invoiceNumber(row);
+          final phone = _phoneFromRow(row);
+          final date = _cell(row, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp', 'Cap waktu']);
+          return [invoice.isEmpty ? '(invoice tidak terbaca)' : invoice,
+            name.isEmpty ? '(nama tidak terbaca)' : name,
+            phone.isEmpty ? '(nomor tidak terbaca)' : phone,
+            date].where((value) => value.isNotEmpty).join(' • ');
+        }).toList();
         officialCustomers = sheetCustomersByKey.values.toList();
         if (previousCustomerKey != null) {
           for (final option in _customerOptions) {
@@ -1345,10 +1363,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     final matches = source.where((row) {
       if (_invoiceNumber(row).isEmpty) return false;
       final phone = _phoneFromRow(row);
-      final name = _cell(row, [
-        'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
-        'Nama Customer', 'Customer', 'Nama Konsumen',
-      ]);
+      final name = _customerNameFromRow(row);
       final rowPhone = _canonicalPhone(phone);
       final sameName = name.trim().toLowerCase() == customer.name.trim().toLowerCase();
       // A valid phone is the primary identity. Fall back to name only when
@@ -1366,8 +1381,9 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       final dateB = _dateValue(_cell(b, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp']));
       final byDate = dateB.compareTo(dateA);
       if (byDate != 0) return byDate;
-      return _invoiceNumber(b).compareTo(
-        _invoiceNumber(a));
+      // If date cells are blank or use an unrecognized format, the newest
+      // appended Google Sheets row is the best available chronology signal.
+      return source.indexOf(b).compareTo(source.indexOf(a));
     });
     return matches;
   }
@@ -1427,8 +1443,15 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     }
   }
 
-  String _phoneForWhatsApp(String raw) =>
-      extractWhatsAppPhone(raw);
+  String _phoneForWhatsApp(String raw) => extractWhatsAppPhone(raw);
+
+  String get _selectedWhatsAppPhone {
+    final row = selectedOfficialOrder;
+    final fromInvoice = row == null ? '' : _phoneForWhatsApp(_phoneFromRow(row));
+    return fromInvoice.isNotEmpty
+        ? fromInvoice
+        : _phoneForWhatsApp(selectedCustomer?.phone ?? '');
+  }
 
   Future<void> _openWhatsApp() async {
     final customer = selectedCustomer;
@@ -1436,11 +1459,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih pelanggan terlebih dahulu.')));
       return;
     }
-    final invoicePhone = selectedOfficialOrder == null
-        ? ''
-        : _phoneForWhatsApp(_phoneFromRow(selectedOfficialOrder!));
-    final customerPhone = _phoneForWhatsApp(customer.phone);
-    final phone = invoicePhone.isNotEmpty ? invoicePhone : customerPhone;
+    final phone = _selectedWhatsAppPhone;
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Nomor WhatsApp belum terbaca dari data pelanggan. Periksa kolom No WA / WhatsApp / HP di DATA_PESANAN.'),
@@ -1453,10 +1472,34 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       ));
       return;
     }
-    final uri = Uri.https('wa.me', '/' + phone, {'text': message.text});
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('WhatsApp tidak dapat dibuka pada perangkat ini.')));
+    // Try WhatsApp's official API URL first, then the short wa.me link.
+    // Some Android builds route one URL correctly while the other is handled
+    // by a browser or a different installed WhatsApp client.
+    final links = <Uri>[
+      Uri.https('api.whatsapp.com', '/send', {
+        'phone': phone,
+        'text': message.text,
+      }),
+      Uri.https('wa.me', '/' + phone, {'text': message.text}),
+    ];
+    Object? lastError;
+    for (final uri in links) {
+      try {
+        final opened = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (opened) return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (mounted) {
+      final detail = lastError == null ? '' : ' (' + lastError.toString() + ')';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('WhatsApp gagal dibuka untuk nomor ' + phone + detail),
+        duration: const Duration(seconds: 8),
+      ));
     }
   }
 
@@ -1490,7 +1533,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             ),
             items: invoiceOptions.map((row) {
               final number = _invoiceNumber(row);
-              final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Pelanggan', 'Nama Customer', 'Customer', 'Nama Konsumen']);
+              final name = _customerNameFromRow(row);
               return DropdownMenuItem<String>(value: number, child: Text(number + (name.isEmpty ? '' : ' • ' + name), overflow: TextOverflow.ellipsis));
             }).toList(),
             onChanged: (value) => setState(() { selectedInvoice = value; _buildMessage(); }),
@@ -1516,6 +1559,35 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
                     _lastSyncedAt!.hour.toString().padLeft(2, '0') + ':' +
                     _lastSyncedAt!.minute.toString().padLeft(2, '0'),
                     style: const TextStyle(fontSize: 9, color: Colors.black45)),
+                if (_sourceOrderHeaders.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Text(
+                      'Kolom sumber: ' + _sourceOrderHeaders.join(' | '),
+                      style: const TextStyle(fontSize: 9, color: Colors.black45),
+                    ),
+                  ),
+                if (_latestOrderSamples.isNotEmpty)
+                  ExpansionTile(
+                    tilePadding: EdgeInsets.zero,
+                    childrenPadding: EdgeInsets.zero,
+                    title: const Text('Periksa 5 baris paling akhir dari Sheets',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                    children: _latestOrderSamples.map((sample) => Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(sample,
+                          style: const TextStyle(fontSize: 10, color: Colors.black54)),
+                      ),
+                    )).toList(),
+                  ),
+                if (selectedCustomer != null)
+                  Text(
+                    'Nomor yang akan dibuka: ' +
+                    (_selectedWhatsAppPhone.isEmpty ? 'belum terbaca' : _selectedWhatsAppPhone),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _ink),
+                  ),
               ]),
             ),
           if (syncError != null)
