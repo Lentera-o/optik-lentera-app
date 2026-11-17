@@ -10,6 +10,7 @@ File `FLUTTER_API_ENDPOINT.gs` adalah adapter tambahan untuk Apps Script yang su
 4. Di **Project Settings → Script Properties**, tambahkan `OL_API_TOKEN` dengan nilai acak rahasia minimal 32 karakter. Jangan simpan token di GitHub.
 5. Deploy → Manage deployments → Edit Web App → pilih **New version** → Deploy. Gunakan URL Web App yang sama.
 6. Tes GET URL Web App. Respons yang diharapkan memuat `"status":"ready"`.
+7. Build APK Flutter dengan token yang sama: `flutter build apk --release --dart-define=OL_API_TOKEN=TOKEN_RAHASIA`. Jangan commit token atau membagikan APK ke pihak yang tidak berwenang.
 
 ## Kontrak endpoint
 
