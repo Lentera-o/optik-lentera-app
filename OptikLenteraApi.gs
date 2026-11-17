@@ -9,12 +9,12 @@
  *   OL_GOOGLE_WEB_CLIENT_ID     = OAuth Web client ID used as ID-token audience
  *
  * Deploy the existing Web App as "Execute as me". The endpoint may be
- * reachable publicly. Every write requires a valid Google ID token issued
- * for this app; no per-staff email allowlist is applied.
+ * reachable publicly. Every read and write requires a valid Google ID token
+ * issued for this app; no per-staff email allowlist is applied.
  *
  * Request JSON:
  * {
- *   "action": "createOrder" | "createPayment",
+ *   "action": "readTable" | "createOrder" | "createPayment",
  *   "requestId": "<unique UUID generated once per user submission>",
  *   "idToken": "<Google Sign-In ID token>",
  *   "data": { ... }
