@@ -1224,7 +1224,10 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     final customerPhone = _canonicalPhone(customer.phone);
     final matches = officialOrders.where((row) {
       final phone = _phoneFromRow(row);
-      final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
+      final name = _cell(row, [
+        'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
+        'Nama Customer', 'Customer', 'Nama Konsumen',
+      ]);
       final rowPhone = _canonicalPhone(phone);
       final samePhone = customerPhone.isNotEmpty && rowPhone == customerPhone;
       return samePhone || name.trim().toLowerCase() == customer.name.trim().toLowerCase();
@@ -1356,6 +1359,16 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             onChanged: (value) => setState(() { selectedInvoice = value; _buildMessage(); }),
           ),
           if (loadingOfficialData) const LinearProgressIndicator(),
+          if (!loadingOfficialData && syncError == null)
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text(
+                officialOrders.length.toString() + ' invoice resmi • ' +
+                officialPayments.length.toString() + ' pembayaran resmi • ' +
+                customerOptions.length.toString() + ' pelanggan',
+                style: const TextStyle(fontSize: 10, color: Colors.black54),
+              ),
+            ),
           if (syncError != null)
             TextButton.icon(onPressed: _loadOfficialData, icon: const Icon(Icons.refresh), label: const Text('Muat ulang data invoice')),
           const SizedBox(height: 12),
