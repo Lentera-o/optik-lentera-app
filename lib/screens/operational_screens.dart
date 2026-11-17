@@ -992,7 +992,6 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   final message = TextEditingController();
   List<Map<String, String>> officialOrders = [];
   List<Map<String, String>> officialPayments = [];
-  int? rawOrderResponseCount;
   // Keep customer objects stable between rebuilds: DropdownButton matches values by ==.
   List<Customer> officialCustomers = [];
   late final List<Customer> _orderCustomers;
@@ -1033,28 +1032,39 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   ]);
 
   String _phoneFromRow(Map<String, String> row) {
-    final known = _cell(row, [
-      'No WhatsApp', 'Nomor WhatsApp', 'No. WhatsApp', 'No WA',
-      'Nomor WA', 'WA', 'WhatsApp', 'Whatsapp', 'Kontak WhatsApp',
-      'No Telepon', 'Nomor Telepon', 'Telepon', 'No Telp', 'Nomor Telp', 'Telp',
-      'No HP', 'Nomor HP', 'No. HP', 'Handphone', 'HP', 'No HP/WA',
-      'Nomor HP/WA', 'HP/WA', 'Nomor WhatsApp Pelanggan', 'No WhatsApp Pelanggan',
-      'Nomor WA Pelanggan', 'No WA Pelanggan', 'Nomor Kontak', 'Kontak Pelanggan',
-      'Phone', 'Mobile',
-    ]);
-    if (known.isNotEmpty) return known;
+    int score(String header) {
+      final key = header.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+      if (key.isEmpty ||
+          key.contains('status') ||
+          key.contains('aktif') ||
+          key.contains('verifikasi') ||
+          key.contains('kirim') ||
+          key.contains('pesan') ||
+          key.contains('catatan') ||
+          key.contains('izin')) return 0;
 
-    // Also tolerate descriptive header variants such as "Kontak WhatsApp".
-    for (final entry in row.entries) {
-      final key = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-      final phoneColumn = key == 'wa' || key == 'hp' || key == 'nohp' ||
-          key == 'phone' || key == 'mobile' || key.contains('whatsapp') ||
-          key.contains('nomorwa') || key.contains('telepon') || key.contains('telp') ||
-          key.contains('handphone') || key.contains('nomorhp') ||
-          key.contains('nomorkontak') || key.contains('kontakwhatsapp');
-      if (phoneColumn && entry.value.trim().isNotEmpty) {
-        return entry.value.trim();
-      }
+      if (key.contains('whatsapp') || key.contains('kontakwa')) return 130;
+      if (key == 'wa' || key.contains('nomorwa') || key.contains('nowa')) return 125;
+      if (key.contains('hpwa') || key.contains('wa pelanggan')) return 120;
+      if (key.contains('handphone') || key.contains('nomorhp') ||
+          key == 'hp' || key == 'nohp') return 110;
+      if (key.contains('telepon') || key.contains('nomortelp') ||
+          key.contains('notelp') || key == 'telp') return 100;
+      if (key == 'phone' || key.contains('mobile') ||
+          key.contains('nomorkontak')) return 95;
+      return 0;
+    }
+
+    final candidates = row.entries
+        .where((entry) => entry.value.trim().isNotEmpty && score(entry.key) > 0)
+        .toList()
+      ..sort((a, b) => score(b.key).compareTo(score(a.key)));
+
+    // Prefer the most explicit WhatsApp column, but skip values such as
+    // "Aktif", "Ya", or status text instead of returning the first match.
+    for (final entry in candidates) {
+      final phone = extractWhatsAppPhone(entry.value);
+      if (phone.isNotEmpty) return phone;
     }
     return '';
   }
@@ -1130,21 +1140,14 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
       ]);
+      // Keep every non-empty official order row. Some rows may not have an
+      // invoice number yet, but still contain the customer's current contact.
       final orders = tables[0].where((row) =>
-        _invoiceNumber(row).isNotEmpty
+        row.values.any((value) => value.trim().isNotEmpty)
       ).toList();
-      // Keep rows even when the form uses a different invoice column heading.
       final payments = tables[1].where((row) =>
         row.values.any((value) => value.trim().isNotEmpty)
       ).toList();
-      int? rawResponsesCount;
-      try {
-        final rawResponses = await SheetsReadService.readTable('Jawaban Formulir', forceRefresh: true);
-        rawResponsesCount = rawResponses.where((row) =>
-          row.values.any((value) => value.trim().isNotEmpty)).length;
-      } catch (_) {
-        // The official invoice list remains usable if the raw response tab is unavailable.
-      }
       if (!mounted) return;
       final sheetCustomersByKey = <String, Customer>{};
       for (final row in orders) {
@@ -1166,7 +1169,6 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         final previousCustomerKey = selectedCustomer == null ? null : _customerKey(selectedCustomer!);
         officialOrders = orders;
         officialPayments = payments;
-        rawOrderResponseCount = rawResponsesCount;
         officialCustomers = sheetCustomersByKey.values.toList();
         if (previousCustomerKey != null) {
           for (final option in _customerOptions) {
@@ -1234,6 +1236,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     if (customer == null) return [];
     final customerPhone = _canonicalPhone(customer.phone);
     final matches = officialOrders.where((row) {
+      if (_invoiceNumber(row).isEmpty) return false;
       final phone = _phoneFromRow(row);
       final name = _cell(row, [
         'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
@@ -1380,12 +1383,12 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 5),
               child: Text(
-                (rawOrderResponseCount == null
-                  ? 'Form respons: tidak terbaca'
-                  : 'Form masuk: ' + rawOrderResponseCount.toString()) +
-                ' • ' + officialOrders.length.toString() + ' invoice resmi • ' +
-                officialPayments.length.toString() + ' pembayaran resmi • ' +
-                customerOptions.length.toString() + ' pelanggan',
+                officialOrders.length.toString() + ' baris pesanan terbaca • ' +
+                officialOrders.where((row) => _invoiceNumber(row).isNotEmpty).length.toString() +
+                ' invoice • ' +
+                officialOrders.where((row) => _phoneFromRow(row).isNotEmpty).length.toString() +
+                ' nomor WA valid • ' + officialPayments.length.toString() +
+                ' pembayaran • ' + customerOptions.length.toString() + ' pelanggan',
                 style: const TextStyle(fontSize: 10, color: Colors.black54),
               ),
             ),
