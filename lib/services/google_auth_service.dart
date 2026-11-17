@@ -113,7 +113,10 @@ class GoogleAuthService extends ChangeNotifier {
         message.contains('serverClientId')) {
       return 'Konfigurasi Google Sign-In belum cocok. Periksa Web Client ID, nama paket Android, dan SHA-1 aplikasi.';
     }
-    if (message.contains('canceled')) return 'Proses masuk Google dibatalkan.';
+    if (message.toLowerCase().contains('canceled') ||
+        message.toLowerCase().contains('cancelled')) {
+      return 'Google menutup proses masuk. Ini belum tentu dibatalkan oleh pengguna; periksa kecocokan OAuth Android (package name dan SHA-1 sertifikat APK). Detail teknis: $message';
+    }
     return message.replaceFirst('Exception: ', '');
   }
 
@@ -177,7 +180,9 @@ class _GoogleSignInPageState extends State<_GoogleSignInPage> {
     try {
       await widget.auth.signIn();
     } catch (error) {
-      if (mounted) setState(() => message = error.toString().replaceFirst('Bad state: ', ''));
+      if (mounted) {
+        setState(() => message = widget.auth.error ?? error.toString().replaceFirst('Bad state: ', ''));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
