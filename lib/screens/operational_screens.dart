@@ -992,6 +992,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   final message = TextEditingController();
   List<Map<String, String>> officialOrders = [];
   List<Map<String, String>> officialPayments = [];
+  int? rawOrderResponseCount;
   // Keep customer objects stable between rebuilds: DropdownButton matches values by ==.
   List<Customer> officialCustomers = [];
   late final List<Customer> _orderCustomers;
@@ -1136,6 +1137,14 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       final payments = tables[1].where((row) =>
         row.values.any((value) => value.trim().isNotEmpty)
       ).toList();
+      int? rawResponsesCount;
+      try {
+        final rawResponses = await SheetsReadService.readTable('Jawaban Formulir', forceRefresh: true);
+        rawResponsesCount = rawResponses.where((row) =>
+          row.values.any((value) => value.trim().isNotEmpty)).length;
+      } catch (_) {
+        // The official invoice list remains usable if the raw response tab is unavailable.
+      }
       if (!mounted) return;
       final sheetCustomersByKey = <String, Customer>{};
       for (final row in orders) {
@@ -1157,6 +1166,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         final previousCustomerKey = selectedCustomer == null ? null : _customerKey(selectedCustomer!);
         officialOrders = orders;
         officialPayments = payments;
+        rawOrderResponseCount = rawResponsesCount;
         officialCustomers = sheetCustomersByKey.values.toList();
         if (previousCustomerKey != null) {
           for (final option in _customerOptions) {
@@ -1370,7 +1380,10 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 5),
               child: Text(
-                officialOrders.length.toString() + ' invoice resmi • ' +
+                (rawOrderResponseCount == null
+                  ? 'Form respons: tidak terbaca'
+                  : 'Form masuk: ' + rawOrderResponseCount.toString()) +
+                ' • ' + officialOrders.length.toString() + ' invoice resmi • ' +
                 officialPayments.length.toString() + ' pembayaran resmi • ' +
                 customerOptions.length.toString() + ' pelanggan',
                 style: const TextStyle(fontSize: 10, color: Colors.black54),
