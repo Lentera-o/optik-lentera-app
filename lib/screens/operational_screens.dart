@@ -949,11 +949,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pembayaran melebihi sisa tagihan Rp $formatted.')));
       return;
     }
-    final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
-
     setState(() => submitting = true);
     try {
       if (!_pendingPaymentLoaded) await _restorePendingPayment();
+      final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
       final idToken = await GoogleAuthService.instance.requireIdToken();
       final paymentPayload = <String, dynamic>{
         'invoice': invoice.text.trim(),
