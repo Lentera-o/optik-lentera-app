@@ -616,8 +616,8 @@ class _DashboardContentState extends State<DashboardContent> {
               )),
               const SizedBox(width: 12),
               Expanded(child: _DashboardMetric(
-                title: 'Pembayaran sesi',
-                value: 'Rp \$paymentTotal',
+                title: 'Total pembayaran resmi',
+                value: paymentText,
                 icon: Icons.payments_outlined,
                 tint: const Color(0xFFF7E8EA),
                 compact: true,
