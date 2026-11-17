@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'models/optik_models.dart';
 import 'screens/operational_screens.dart';
+import 'screens/reports_screen.dart';
 import 'assets/optik_brand_assets.dart';
 
 
@@ -216,6 +217,13 @@ class _MainScreenState extends State<MainScreen> {
               ),
               const SizedBox(height: 9),
               _MoreMenuTile(
+                icon: Icons.insights_outlined,
+                title: 'Laporan Harian & Bulanan',
+                subtitle: 'Rekap order, omzet, pembayaran, dan tagihan',
+                onTap: () => Navigator.pop(sheetContext, 6),
+              ),
+              const SizedBox(height: 9),
+              _MoreMenuTile(
                 icon: Icons.description_outlined,
                 title: 'Invoice & Dokumen',
                 subtitle: 'Lihat, cetak, dan bagikan dokumen',
@@ -282,6 +290,7 @@ class _MainScreenState extends State<MainScreen> {
           3 => WhatsAppCenterScreen(customers: customers, orders: orders, payments: payments),
           4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
           5 => const InvoiceReceiptScreen(),
+          6 => const ReportsScreen(),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
@@ -424,6 +433,8 @@ class DashboardContent extends StatelessWidget {
         onOpenModule(5);
       } else if (title == 'WhatsApp Semi-Otomatis') {
         onOpenModule(3);
+      } else if (title == 'Laporan') {
+        onOpenModule(6);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('\$title sedang disiapkan.')),
