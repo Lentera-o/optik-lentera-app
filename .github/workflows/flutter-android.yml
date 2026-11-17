@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -37,14 +37,3 @@ jobs:
           name: optik-lentera-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
-      - name: Publish public beta APK
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/read-only-sheet-sync'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: beta-latest
-          name: OPTIK LENTERA - Beta Testing
-          prerelease: true
-          make_latest: false
-          overwrite_files: true
-          files: build/app/outputs/flutter-apk/app-release.apk
-          fail_on_unmatched_files: true
