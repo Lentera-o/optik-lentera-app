@@ -1,17 +1,22 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 import '../services/api_service.dart';
+import '../services/google_auth_service.dart';
 import '../services/sheets_read_service.dart';
 import '../services/whatsapp_phone_service.dart';
 
 const _gold = Color(0xFFB99555);
 const _darkGold = Color(0xFF80612F);
 const _ink = Color(0xFF39342F);
+
+String _newTransactionRequestId() =>
+    '${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(1 << 32)}';
 
 class CustomerScreen extends StatefulWidget {
   final List<Customer> customers;
@@ -373,42 +378,82 @@ class _TransactionScreenState extends State<TransactionScreen> {
     }
 
     setState(() => submitting = true);
-    final opened = await ApiService.openOrderForm({
-      '1324477027': customer.text,
-      '539015243': phone.text,
-      '1777754745': address.text,
-      '542463507': doctor.text,
-      '1271316087': odSph.text,
-      '1616866281': odCyl.text,
-      '1784427947': odAxis.text,
-      '1558365892': odAdd.text,
-      '940199491': odPd.text,
-      '480078014': osSph.text,
-      '66061879': osCyl.text,
-      '493870905': osAxis.text,
-      '42654846': osAdd.text,
-      '950234578': osPd.text,
-      '684419252': lensType.text,
-      '1481958730': rxNote.text,
-      '686343109': frameDescription.text,
-      '1727076794': amount(frame).toString(),
-      '1326678958': lensDescription.text,
-      '97131819': amount(lens).toString(),
-      '2101353430': otherDescription.text,
-      '1643782415': amount(otherPrice).toString(),
-      '1449005528': amount(dp).toString(),
-      '1188539863': invoiceNote.text,
-      '1492024415': method,
-    });
-
-    if (!mounted) return;
-    setState(() => submitting = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(opened
-          ? 'Formulir pesanan dibuka. Periksa seluruh data lalu tekan Kirim di Google Forms. Setelah itu, muat ulang Riwayat Pesanan untuk memverifikasi invoice.'
-          : 'Google Forms tidak dapat dibuka. Aplikasi tidak mengirim transaksi. Periksa koneksi lalu coba kembali.'),
-      duration: const Duration(seconds: 10),
-    ));
+    try {
+      final idToken = await GoogleAuthService.instance.requireIdToken();
+      final orderDate = DateTime.now();
+      final response = await ApiService.createOrder(
+        idToken: idToken,
+        requestId: _newTransactionRequestId(),
+        data: {
+          'orderDate': orderDate.toIso8601String(),
+          'name': customer.text.trim(),
+          'phone': phone.text.trim(),
+          'address': address.text.trim(),
+          'doctor': doctor.text.trim(),
+          'odSph': odSph.text.trim(),
+          'odCyl': odCyl.text.trim(),
+          'odAxis': odAxis.text.trim(),
+          'odAdd': odAdd.text.trim(),
+          'odPd': odPd.text.trim(),
+          'osSph': osSph.text.trim(),
+          'osCyl': osCyl.text.trim(),
+          'osAxis': osAxis.text.trim(),
+          'osAdd': osAdd.text.trim(),
+          'osPd': osPd.text.trim(),
+          'lensType': lensType.text.trim(),
+          'rxNote': rxNote.text.trim(),
+          'frameDescription': frameDescription.text.trim(),
+          'framePrice': amount(frame),
+          'lensDescription': lensDescription.text.trim(),
+          'lensPrice': amount(lens),
+          'otherDescription': otherDescription.text.trim(),
+          'otherPrice': amount(otherPrice),
+          'initialPayment': amount(dp),
+          'initialPaymentMethod': method,
+          'note': invoiceNote.text.trim(),
+        },
+      );
+      if (!response.isSuccessful) {
+        throw Exception(response.errorMessage ?? 'Pesanan gagal disimpan ke server.');
+      }
+      final result = response.data;
+      final invoiceNumber = result is Map ? (result['invoice']?.toString() ?? '') : '';
+      if (invoiceNumber.isEmpty) {
+        throw Exception('Server menerima respons tanpa nomor invoice. Periksa DATA_PESANAN sebelum mengulang transaksi.');
+      }
+      widget.onAdd(OptikOrder(
+        invoiceNumber: invoiceNumber,
+        orderDate: orderDate,
+        customer: Customer(name: customer.text.trim(), phone: phone.text.trim(), address: address.text.trim()),
+        prescription: EyePrescription(
+          doctor: doctor.text.trim(), odSph: odSph.text.trim(), odCyl: odCyl.text.trim(),
+          odAxis: odAxis.text.trim(), odAdd: odAdd.text.trim(), odPd: odPd.text.trim(),
+          osSph: osSph.text.trim(), osCyl: osCyl.text.trim(), osAxis: osAxis.text.trim(),
+          osAdd: osAdd.text.trim(), osPd: osPd.text.trim(), lensType: lensType.text.trim(),
+          note: rxNote.text.trim(),
+        ),
+        frame: OrderItem(description: frameDescription.text.trim(), price: amount(frame)),
+        lens: OrderItem(description: lensDescription.text.trim(), price: amount(lens)),
+        other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
+        initialPayment: amount(dp),
+        initialPaymentMethod: method,
+        note: invoiceNote.text.trim(),
+      ));
+      await _loadOfficialOrderHistory();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Pesanan berhasil tersimpan. Invoice $invoiceNumber sudah diproses oleh sistem.'),
+        duration: const Duration(seconds: 6),
+      ));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Pesanan belum berhasil dikonfirmasi: ${error.toString().replaceFirst('Exception: ', '')}'),
+        duration: const Duration(seconds: 8),
+      ));
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
   }
 
   @override
@@ -584,7 +629,7 @@ class _LocalNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.only(top: 14, bottom: 12),
-    child: Text('Data transaksi dikirim langsung dari aplikasi ke Google Forms resmi; trigger Apps Script tetap memprosesnya. Invoice dan kuitansi resmi dibaca dari Google Sheets.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+    child: Text('Transaksi dikirim langsung dari aplikasi ke Apps Script setelah sesi Google diverifikasi. Invoice dan kuitansi resmi tetap diproses oleh sistem yang sudah ada.', style: TextStyle(fontSize: 11, color: Colors.black54)),
   );
 }
 
@@ -744,23 +789,52 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     final date = '${paymentDate.year.toString().padLeft(4, '0')}-${paymentDate.month.toString().padLeft(2, '0')}-${paymentDate.day.toString().padLeft(2, '0')}';
 
     setState(() => submitting = true);
-    final opened = await ApiService.openPaymentForm({
-      '1667531169': invoice.text,
-      '266758159': date,
-      '448728880': value.toString(),
-      '1530690867': method,
-      '1651033565': category,
-      '284716454': paymentNote.text,
-    });
-
-    if (!mounted) return;
-    setState(() => submitting = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(opened
-          ? 'Formulir pembayaran dibuka. Periksa data lalu tekan Kirim di Google Forms. Setelah itu, muat ulang daftar invoice untuk memverifikasi kuitansi.'
-          : 'Google Forms tidak dapat dibuka. Aplikasi tidak mengirim pembayaran. Periksa koneksi lalu coba kembali.'),
-      duration: const Duration(seconds: 10),
-    ));
+    try {
+      final idToken = await GoogleAuthService.instance.requireIdToken();
+      final response = await ApiService.createPayment(
+        idToken: idToken,
+        requestId: _newTransactionRequestId(),
+        data: {
+          'invoice': invoice.text.trim(),
+          'paymentDate': date,
+          'amount': value,
+          'method': method,
+          'category': category,
+          'note': paymentNote.text.trim(),
+        },
+      );
+      if (!response.isSuccessful) {
+        throw Exception(response.errorMessage ?? 'Pembayaran gagal disimpan ke server.');
+      }
+      final result = response.data;
+      final receipt = result is Map ? (result['receipt']?.toString() ?? '') : '';
+      widget.onAdd(OptikPayment(
+        invoiceNumber: invoice.text.trim(),
+        paymentDate: paymentDate,
+        amount: value,
+        method: method,
+        category: category,
+        note: paymentNote.text.trim(),
+      ));
+      await _loadOfficialInvoices();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(receipt.isEmpty
+            ? 'Pembayaran berhasil dicatat untuk invoice ${invoice.text.trim()}.'
+            : 'Pembayaran berhasil dicatat. Kuitansi $receipt sedang diproses.'),
+        duration: const Duration(seconds: 6),
+      ));
+      nominal.clear();
+      paymentNote.clear();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Pembayaran belum berhasil dikonfirmasi: ${error.toString().replaceFirst('Exception: ', '')}'),
+        duration: const Duration(seconds: 8),
+      ));
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
   }
 
   @override
