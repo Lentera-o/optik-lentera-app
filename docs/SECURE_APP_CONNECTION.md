@@ -5,7 +5,7 @@ Dokumen ini mencatat implementasi pada branch `feature/read-only-sheet-sync` dan
 ## Status implementasi pada kode Flutter
 
 - Google Sign-In tetap wajib. Aplikasi meminta Google ID token; pemeriksaan token tidak boleh dihapus.
-- Tidak ada kebutuhan allowlist email petugas atau persetujuan manual per email. Identitas Google tetap diverifikasi di backend.
+- Backend mewajibkan allowlist email petugas melalui Script Property `OL_ALLOWED_EMAILS`; akun Google di luar daftar ditolak.
 - Layar pesanan dan pembayaran menggunakan `ApiService.createOrder` dan `ApiService.createPayment`; penyimpanan transaksi dirancang melalui Apps Script, bukan pengiriman Google Forms.
 - Request transaksi membawa `requestId` stabil untuk membantu mencegah pengiriman ulang sebagai transaksi baru ketika pengguna mencoba ulang.
 - Pusat WhatsApp memilih nomor dari invoice/pesanan yang dipilih, dengan normalisasi nomor lokal dan internasional.
@@ -27,10 +27,11 @@ Fungsi lama yang harus tetap dipertahankan:
 ## Konfigurasi yang diperlukan di Apps Script
 
 Script Properties yang harus diverifikasi pada project yang benar:
-- `OL_GOOGLE_WEB_CLIENT_ID`: OAuth Web client ID yang menjadi audience ID token.
 - `OL_SPREADSHEET_ID`: ID spreadsheet operasional yang memang digunakan oleh project lama.
+- `OL_GOOGLE_WEB_CLIENT_ID`: OAuth Web client ID yang menjadi audience ID token.
+- `OL_ALLOWED_EMAILS`: daftar email petugas resmi dipisahkan koma atau titik koma. Wajib diisi; API menolak semua akses jika kosong.
 
-Deployment Web App harus menggunakan identitas pemilik yang tepat. Google ID token harus diverifikasi issuer, audience, expiry, dan email terverifikasi. Tidak diperlukan allowlist email staf. Jangan memasukkan OAuth client secret atau private key ke APK/repository.
+Deployment Web App harus menggunakan identitas pemilik yang tepat. Google ID token diverifikasi issuer, audience, expiry, dan email terverifikasi, lalu email harus cocok dengan `OL_ALLOWED_EMAILS`. Jangan memasukkan OAuth client secret atau private key ke APK/repository. Jangan memasukkan OAuth client secret atau private key ke APK/repository.
 
 ## Pemeriksaan sebelum transaksi produksi
 
