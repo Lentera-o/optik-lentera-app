@@ -128,7 +128,7 @@ function olApiAssertActiveStaff_(email) {
 
 function olApiCreateOrder_(data, requestId, actor) {
   const eventKey = 'APP_ORDER_' + requestId;
-  const initialPayment = olMoney_(data.initialPayment);
+  const initialPayment = olApiMoney_(data.initialPayment, 'DP awal');
   const orderDate = data.orderDate ? String(data.orderDate).trim() : new Date().toISOString();
   if (isNaN(new Date(orderDate).getTime())) throw new Error('Tanggal pesanan tidak valid.');
   const answers = {
@@ -150,11 +150,11 @@ function olApiCreateOrder_(data, requestId, actor) {
     'Jenis lensa': olApiText_(data.lensType, 'Jenis lensa', 160, false),
     'Catatan resep': olApiText_(data.rxNote, 'Catatan resep', 1000, false),
     'Frame - merek model warna': olApiText_(data.frameDescription, 'Deskripsi frame', 240, false),
-    'Harga frame': olMoney_(data.framePrice),
+    'Harga frame': olApiMoney_(data.framePrice, 'Harga frame'),
     'Lensa - jenis ukuran coating': olApiText_(data.lensDescription, 'Deskripsi lensa', 240, false),
-    'Harga lensa': olMoney_(data.lensPrice),
+    'Harga lensa': olApiMoney_(data.lensPrice, 'Harga lensa'),
     'Lain-lain': olApiText_(data.otherDescription, 'Keterangan biaya lain', 240, false),
-    'Harga lain-lain': olMoney_(data.otherPrice),
+    'Harga lain-lain': olApiMoney_(data.otherPrice, 'Harga lain-lain'),
     'DP Awal': initialPayment,
     'Metode pembayaran awal': olApiMethod_(data.initialPaymentMethod, initialPayment > 0),
     'Catatan invoice': olApiText_(data.note, 'Catatan invoice', 1000, false)
@@ -194,8 +194,8 @@ function olApiCreatePayment_(data, requestId, actor) {
   const answers = {
     'Nomor Invoice': invoice,
     'Tanggal Pembayaran': date,
-    'Jumlah Pembayaran': olMoney_(data.amount),
-    'Metode Pembayaran': olApiMethod_(data.method, false),
+    'Jumlah Pembayaran': olApiMoney_(data.amount, 'Jumlah pembayaran'),
+    'Metode Pembayaran': olApiMethod_(data.method, true),
     'Keterangan Pembayaran': category,
     'Catatan': olApiText_(data.note, 'Catatan pembayaran', 1000, false)
   };
@@ -225,6 +225,15 @@ function olApiCreatePayment_(data, requestId, actor) {
     receiptPdf: String(payment.pdf || ''),
     processedBy: actor.email
   });
+}
+
+function olApiMoney_(value, label) {
+  if (value === null || value === undefined || String(value).trim() === '') return 0;
+  const amount = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isSafeInteger(amount) || amount < 0) {
+    throw new Error((label || 'Nominal') + ' harus berupa bilangan bulat nol atau lebih.');
+  }
+  return amount;
 }
 
 function olApiText_(value, label, maxLength, required) {
