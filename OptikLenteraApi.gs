@@ -7,7 +7,6 @@
  *
  * Required Script Properties:
  *   OL_GOOGLE_WEB_CLIENT_ID     = OAuth Web client ID used as ID-token audience
- *   OL_GOOGLE_ANDROID_CLIENT_ID = OAuth Android client ID (expected azp)
  *
  * Deploy the existing Web App as "Execute as me". The endpoint may be
  * reachable publicly, but every write is rejected unless its Google ID token
@@ -81,9 +80,8 @@ function olApiVerifyGoogleIdToken_(token) {
 
   const props = PropertiesService.getScriptProperties();
   const webClientId = String(props.getProperty('OL_GOOGLE_WEB_CLIENT_ID') || '').trim();
-  const androidClientId = String(props.getProperty('OL_GOOGLE_ANDROID_CLIENT_ID') || '').trim();
-  if (!webClientId || !androidClientId) {
-    throw new Error('Autentikasi aplikasi belum dikonfigurasi oleh administrator.');
+  if (!webClientId) {
+    throw new Error('Autentikasi Google belum dikonfigurasi oleh administrator.');
   }
 
   const url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(token);
@@ -103,9 +101,6 @@ function olApiVerifyGoogleIdToken_(token) {
   }
   if (String(claims.aud || '') !== webClientId) {
     throw new Error('Token bukan untuk aplikasi OPTIK LENTERA.');
-  }
-  if (String(claims.azp || '') !== androidClientId) {
-    throw new Error('Aplikasi Google yang mengirim token tidak dikenali.');
   }
   if (!expiresAt || expiresAt <= now || expiresAt > now + 3600) {
     throw new Error('Sesi Google tidak valid atau sudah kedaluwarsa.');
