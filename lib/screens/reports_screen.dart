@@ -55,8 +55,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final b = int.parse(m.group(2)!);
     var y = int.parse(m.group(3)!);
     if (y < 100) y += 2000;
-    // The sheet's Indonesian date convention is day/month/year.
-    return DateTime(y, b, a);
+
+    // Prefer the unambiguous order when one component exceeds 12. For
+    // ambiguous dates, retain the spreadsheet's Indonesian day/month format.
+    final day = b > 12 && a <= 12 ? b : a;
+    final month = b > 12 && a <= 12 ? a : b;
+    if (month < 1 || month > 12 || day < 1) return null;
+    final parsed = DateTime(y, month, day);
+    // DateTime normalizes invalid dates (e.g. 31/02) into another month;
+    // reject those rather than silently putting transactions in the wrong day.
+    if (parsed.year != y || parsed.month != month || parsed.day != day) {
+      return null;
+    }
+    return parsed;
   }
   DateTime? rowDate(Map<String, String> row, bool payment) {
     final aliases = payment
