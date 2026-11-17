@@ -21,7 +21,7 @@ This document describes the remaining setup required before enabling direct in-a
 5. Configure the Apps Script project's Script Properties:
    - `OL_GOOGLE_WEB_CLIENT_ID`: exact Web OAuth client ID.
    - `OL_GOOGLE_ANDROID_CLIENT_ID`: exact Android OAuth client ID.
-6. Add only approved staff email addresses with status `AKTIF` in the existing staff settings sheet.
+6. No staff email allowlist is required. Keep Google ID-token verification enabled; it confirms the account is a valid Google identity for this app.
 7. Keep OAuth client IDs as configuration, not secrets. Never embed a client secret, shared password, or service-account private key in the APK.
 8. Configure Google Sign-In in Flutter to request an ID token for the Web client ID. Confirm that the resulting token has the expected `aud` (Web client) and `azp` (Android client) claims before enabling writes.
 
@@ -45,7 +45,7 @@ Payment:
 - [ ] Android OAuth client registered against the release package and SHA-1.
 - [ ] Web OAuth client ID and Android OAuth client ID configured in Apps Script Script Properties.
 - [ ] Google Sign-In implemented and verified on a real Android build.
-- [ ] Staff allowlist and active status verified.
+- [ ] Google ID-token issuer, audience, expiry, and verified-email checks verified on a real deployment.
 - [ ] Flutter order screen calls `createOrder` and displays returned invoice/PDF details.
 - [ ] Flutter payment screen calls `createPayment` and displays returned receipt/PDF and balance.
 - [ ] Duplicate-submit/retry behavior tested using a non-production test spreadsheet and test Drive folder.
