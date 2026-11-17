@@ -326,7 +326,13 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(balance <= 0 ? 'Invoice sudah lunas.' : 'Pembayaran melebihi sisa tagihan Rp $balance.')));
       return;
     }
-    widget.onAdd(OptikPayment(invoiceNumber: invoice.text.trim(), paymentDate: DateTime.now(), amount: value, method: method));
+    widget.onAdd(OptikPayment(
+      invoiceNumber: invoice.text.trim(),
+      paymentDate: DateTime.now(),
+      amount: value,
+      method: method,
+      requestId: 'PAY-' + DateTime.now().microsecondsSinceEpoch.toString(),
+    ));
     invoice.clear(); nominal.clear();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
   }
