@@ -137,6 +137,19 @@ class OptikOrder {
   int get total => frame.price + lens.price + other.price;
   int get remaining => total - initialPayment;
 
+  OptikOrder copyWith({String? invoiceNumber}) => OptikOrder(
+        invoiceNumber: invoiceNumber ?? this.invoiceNumber,
+        orderDate: orderDate,
+        customer: customer,
+        prescription: prescription,
+        frame: frame,
+        lens: lens,
+        other: other,
+        initialPayment: initialPayment,
+        initialPaymentMethod: initialPaymentMethod,
+        note: note,
+      );
+
   factory OptikOrder.fromJson(Map<String, dynamic> json) => OptikOrder(
         invoiceNumber: json['invoiceNumber']?.toString() ?? '',
         orderDate: DateTime.tryParse(json['orderDate']?.toString() ?? ''),
@@ -170,6 +183,7 @@ class OptikPayment {
   final int amount;
   final String method;
   final String note;
+  final String requestId;
 
   const OptikPayment({
     required this.invoiceNumber,
@@ -177,6 +191,7 @@ class OptikPayment {
     required this.amount,
     required this.method,
     this.note = '',
+    this.requestId = '',
   });
 
   factory OptikPayment.fromJson(Map<String, dynamic> json) => OptikPayment(
@@ -185,6 +200,7 @@ class OptikPayment {
         amount: _asInt(json['amount']),
         method: json['method']?.toString() ?? '',
         note: json['note']?.toString() ?? '',
+        requestId: json['requestId']?.toString() ?? '',
       );
 
   Map<String, dynamic> toJson() => {
@@ -193,6 +209,7 @@ class OptikPayment {
         'amount': amount,
         'method': method,
         'note': note,
+        'requestId': requestId,
       };
 }
 
