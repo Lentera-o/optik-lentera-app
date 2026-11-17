@@ -1175,58 +1175,84 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
         : selectedCustomer!.name + '|' + selectedCustomer!.phone + '|' + selectedCustomer!.address;
     final previousOrder = rowSignature(selectedOfficialOrder);
     final previousPayments = rowsSignature(selectedOfficialPayments);
+    final previousCustomerKey =
+        selectedCustomer == null ? null : _customerKey(selectedCustomer!);
+
     if (mounted && !silent) {
       setState(() { loadingOfficialData = true; syncError = null; });
     } else {
       loadingOfficialData = true;
       if (silent) syncError = null;
     }
+
+    // Read the two official tabs independently. A temporary failure in the
+    // payment tab must never discard freshly fetched order rows (and vice versa).
+    List<Map<String, String>>? fetchedOrders;
+    List<Map<String, String>>? fetchedPayments;
+    Object? orderError;
+    Object? paymentError;
+
     try {
-      final tables = await Future.wait([
-        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
-        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
-      ]);
-      // Keep every non-empty official order row. Some rows may not have an
-      // invoice number yet, but still contain the customer's current contact.
-      final orders = tables[0].where((row) =>
-        row.values.any((value) => value.trim().isNotEmpty)
-      ).toList();
-      final payments = tables[1].where((row) =>
-        row.values.any((value) => value.trim().isNotEmpty)
-      ).toList();
-      if (!mounted) return;
-      final sheetCustomersByKey = <String, Customer>{};
-      for (final row in orders) {
-        final name = _cell(row, [
-          'Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan',
-          'Nama Customer', 'Customer', 'Nama Konsumen',
-        ]);
-        if (name.isEmpty) continue;
-        final customer = Customer(
-          name: name,
-          phone: _phoneFromRow(row),
-          address: _cell(row, ['Alamat', 'Alamat Pelanggan', 'Alamat Customer', 'Alamat Konsumen']),
-        );
-        final phone = _canonicalPhone(customer.phone);
-        final key = phone.isNotEmpty ? 'phone:$phone' : 'name:${name.trim().toLowerCase()}';
-        sheetCustomersByKey.putIfAbsent(key, () => customer);
-      }
-      setState(() {
-        final previousCustomerKey = selectedCustomer == null ? null : _customerKey(selectedCustomer!);
+      fetchedOrders = await SheetsReadService.readTable(
+        'DATA_PESANAN',
+        forceRefresh: true,
+      );
+    } catch (error) {
+      orderError = error;
+    }
+
+    try {
+      fetchedPayments = await SheetsReadService.readTable(
+        'DATA_PEMBAYARAN',
+        forceRefresh: true,
+      );
+    } catch (error) {
+      paymentError = error;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      if (fetchedOrders != null) {
+        final orders = fetchedOrders!.where((row) =>
+          row.values.any((value) => value.trim().isNotEmpty)
+        ).toList();
         officialOrders = orders;
-        officialPayments = payments;
         _sourceOrderHeaders = orders.isEmpty ? [] : orders.first.keys.toList();
         _latestOrderSamples = orders.reversed.take(5).map((row) {
           final name = _customerNameFromRow(row);
           final invoice = _invoiceNumber(row);
           final phone = _phoneFromRow(row);
-          final date = _cell(row, ['Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp', 'Cap waktu']);
-          return [invoice.isEmpty ? '(invoice tidak terbaca)' : invoice,
+          final date = _cell(row, [
+            'Tanggal', 'Tanggal Pesanan', 'Tanggal Order', 'Timestamp', 'Cap waktu',
+          ]);
+          return [
+            invoice.isEmpty ? '(invoice tidak terbaca)' : invoice,
             name.isEmpty ? '(nama tidak terbaca)' : name,
             phone.isEmpty ? '(nomor tidak terbaca)' : phone,
-            date].where((value) => value.isNotEmpty).join(' • ');
+            date,
+          ].where((value) => value.isNotEmpty).join(' • ');
         }).toList();
+
+        final sheetCustomersByKey = <String, Customer>{};
+        for (final row in orders) {
+          final name = _customerNameFromRow(row);
+          if (name.isEmpty) continue;
+          final customer = Customer(
+            name: name,
+            phone: _phoneFromRow(row),
+            address: _cell(row, [
+              'Alamat', 'Alamat Pelanggan', 'Alamat Customer', 'Alamat Konsumen',
+            ]),
+          );
+          final phone = _canonicalPhone(customer.phone);
+          final key = phone.isNotEmpty
+              ? 'phone:' + phone
+              : 'name:' + name.trim().toLowerCase();
+          sheetCustomersByKey.putIfAbsent(key, () => customer);
+        }
         officialCustomers = sheetCustomersByKey.values.toList();
+
         if (previousCustomerKey != null) {
           for (final option in _customerOptions) {
             if (_customerKey(option) == previousCustomerKey) {
@@ -1235,36 +1261,49 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
             }
           }
         }
-        loadingOfficialData = false;
-        if (selectedCustomer != null) {
-          final customerKey = _customerKey(selectedCustomer!);
-          final matches = _ordersForCustomer(selectedCustomer, orders);
-          final newestInvoice = matches.isEmpty ? null : _invoiceNumber(matches.first);
-          final stillValid = matches.any((row) => _invoiceNumber(row) == selectedInvoice);
-          final wasFollowingNewest = selectedInvoice == null ||
-              (customerKey == _lastNewestCustomerKey && selectedInvoice == _lastNewestInvoice);
-          // If the picker was following the latest invoice, advance it when a
-          // new row appears. Preserve an older invoice only when staff chose it.
-          if (!stillValid || wasFollowingNewest) selectedInvoice = newestInvoice;
-          _lastNewestCustomerKey = customerKey;
-          _lastNewestInvoice = newestInvoice;
+      }
+
+      if (fetchedPayments != null) {
+        officialPayments = fetchedPayments!.where((row) =>
+          row.values.any((value) => value.trim().isNotEmpty)
+        ).toList();
+      }
+
+      loadingOfficialData = false;
+      final errors = <String>[];
+      if (orderError != null) errors.add('DATA_PESANAN: ' + orderError.toString());
+      if (paymentError != null) errors.add('DATA_PEMBAYARAN: ' + paymentError.toString());
+      syncError = errors.isEmpty ? null : errors.join(' • ');
+
+      if (fetchedOrders != null && selectedCustomer != null) {
+        final customerKey = _customerKey(selectedCustomer!);
+        final matches = _ordersForCustomer(selectedCustomer, officialOrders);
+        final newestInvoice = matches.isEmpty ? null : _invoiceNumber(matches.first);
+        final stillValid = matches.any((row) => _invoiceNumber(row) == selectedInvoice);
+        final wasFollowingNewest = selectedInvoice == null ||
+            (customerKey == _lastNewestCustomerKey &&
+             selectedInvoice == _lastNewestInvoice);
+        if (!stillValid || wasFollowingNewest) {
+          selectedInvoice = newestInvoice;
         }
+        _lastNewestCustomerKey = customerKey;
+        _lastNewestInvoice = newestInvoice;
+      }
+
+      if (fetchedOrders != null || fetchedPayments != null) {
         _lastSyncedAt = DateTime.now();
-        final currentCustomer = selectedCustomer == null
-            ? ''
-            : selectedCustomer!.name + '|' + selectedCustomer!.phone + '|' + selectedCustomer!.address;
-        final messageSourceChanged = previousInvoice != selectedInvoice ||
-            previousCustomer != currentCustomer ||
-            previousOrder != rowSignature(selectedOfficialOrder) ||
-            previousPayments != rowsSignature(selectedOfficialPayments);
-        // Do not overwrite a staff-edited WhatsApp draft on a routine poll.
-        // Rebuild only when the selected invoice/customer/payment data changed.
-        if (messageSourceChanged) _buildMessage();
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() { loadingOfficialData = false; syncError = error.toString(); });
-    }
+      }
+
+      final currentCustomer = selectedCustomer == null
+          ? ''
+          : selectedCustomer!.name + '|' + selectedCustomer!.phone + '|' + selectedCustomer!.address;
+      final messageSourceChanged = previousInvoice != selectedInvoice ||
+          previousCustomer != currentCustomer ||
+          previousOrder != rowSignature(selectedOfficialOrder) ||
+          previousPayments != rowsSignature(selectedOfficialPayments);
+      // Keep a staff-edited draft unless its selected official source changed.
+      if (messageSourceChanged) _buildMessage();
+    });
   }
 
   Map<String, String>? get selectedOfficialOrder {
