@@ -795,8 +795,9 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
       final orders = tables[0].where((row) =>
         _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
       ).toList();
+      // Keep rows even when the form uses a different invoice column heading.
       final payments = tables[1].where((row) =>
-        _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+        row.values.any((value) => value.trim().isNotEmpty)
       ).toList();
       if (!mounted) return;
       setState(() {
@@ -831,14 +832,23 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
     return rows;
   }
 
+  String _canonicalPhone(String value) {
+    var digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.startsWith('0')) digits = '62' + digits.substring(1);
+    if (digits.startsWith('8')) digits = '62' + digits;
+    return digits;
+  }
+
   List<Map<String, String>> get customerOrders {
     final customer = selectedCustomer;
     if (customer == null) return [];
+    final customerPhone = _canonicalPhone(customer.phone);
     return officialOrders.where((row) {
       final phone = _cell(row, ['No WhatsApp', 'Nomor WhatsApp', 'No Telepon', 'Nomor Telepon', 'Telepon', 'HP']);
       final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan']);
-      final samePhone = customer.phone.trim().isNotEmpty && phone.replaceAll(RegExp(r'[^0-9]'), '') == customer.phone.replaceAll(RegExp(r'[^0-9]'), '');
-      return samePhone || name.toLowerCase() == customer.name.toLowerCase();
+      final rowPhone = _canonicalPhone(phone);
+      final samePhone = customerPhone.isNotEmpty && rowPhone == customerPhone;
+      return samePhone || name.trim().toLowerCase() == customer.name.trim().toLowerCase();
     }).toList();
   }
 
@@ -1086,8 +1096,9 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
         orders = tables[0].where((row) =>
           _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
         ).toList();
+        // Keep rows even when the form uses a different invoice column heading.
         payments = tables[1].where((row) =>
-          _cell(row, ['No Invoice', 'Nomor Invoice', 'Nomor invoice']).isNotEmpty
+          row.values.any((value) => value.trim().isNotEmpty)
         ).toList();
         loading = false;
       });
