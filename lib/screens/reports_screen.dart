@@ -280,7 +280,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         const SizedBox(height: 18),
         const Text('PEMBAYARAN MASUK', style: TextStyle(fontWeight: FontWeight.w800, color: _dark, fontSize: 12)),
         if (periodPayments.isEmpty) const Text('Tidak ada pembayaran pada periode ini.')
-        else ...periodPayments.map((r) => Card(color: Colors.white, child: ListTile(
+        else ...periodPayments.map((r) => Card(color: const Color(0xFF191C21), child: ListTile(
           leading: const Icon(Icons.payments_outlined, color: _dark),
           title: Text(cell(r, ['No Invoice', 'Nomor Invoice', 'Invoice']).isEmpty ? 'Pembayaran' : cell(r, ['No Invoice', 'Nomor Invoice', 'Invoice'])),
           subtitle: Text(cell(r, ['Metode', 'Metode Pembayaran'])),
@@ -288,7 +288,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ))),
         const SizedBox(height: 12),
         const Text('Tarik layar ke bawah atau tekan sinkronisasi untuk mengambil data terbaru.',
-          style: TextStyle(fontSize: 10, color: Colors.black54)),
+          style: TextStyle(fontSize: 10, color: Colors.white70)),
         Align(alignment: Alignment.centerRight, child: TextButton.icon(
           onPressed: load, icon: const Icon(Icons.sync), label: const Text('Sinkronkan'))),
       ],
