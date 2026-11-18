@@ -89,7 +89,7 @@ class OptikLenteraApp extends StatelessWidget {
             fontSize: 9.5,
             letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFB7AEA1),
+            color: states.contains(WidgetState.selected) ? pagePalette.accent : const Color(0xFFB7AEA1),
           )),
           iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 21,
@@ -416,7 +416,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: NavigationBar(
           backgroundColor: Colors.transparent,
-          indicatorColor: gold.withValues(alpha: .22),
+          indicatorColor: pagePalette.accent.withValues(alpha: .22),
           selectedIndex: selectedIndex >= 4 ? 4 : selectedIndex,
           onDestinationSelected: (index) {
             if (index == 4) {
