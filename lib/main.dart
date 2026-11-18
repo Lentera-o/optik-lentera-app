@@ -17,11 +17,11 @@ void main() {
   runApp(const OptikLenteraApp());
 }
 
-const Color cream = Color(0xFFFAF7F0);
-const Color gold = Color(0xFFB99555);
-const Color darkGold = Color(0xFF80612F);
-const Color pink = Color(0xFFE9C9CC);
-const Color ink = Color(0xFF39342F);
+const Color cream = Color(0xFF0D0F12); // Obsidian background
+const Color gold = Color(0xFFD6B56F); // Champagne gold
+const Color darkGold = Color(0xFFB38B45); // Deep gold
+const Color pink = Color(0xFF29251D); // Warm gold-tinted selection
+const Color ink = Color(0xFF101216); // Deep graphite
 
 class OptikLenteraApp extends StatelessWidget {
   const OptikLenteraApp({super.key});
@@ -33,12 +33,14 @@ class OptikLenteraApp extends StatelessWidget {
       title: 'OPTIK LENTERA',
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.dark,
         scaffoldBackgroundColor: cream,
         colorScheme: ColorScheme.fromSeed(
           seedColor: gold,
-          surface: cream,
+          brightness: Brightness.dark,
+          surface: const Color(0xFF191C21),
         ),
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme).apply(bodyColor: const Color(0xFFF1EEE7), displayColor: const Color(0xFFF1EEE7)),
         appBarTheme: const AppBarTheme(
           backgroundColor: cream,
           foregroundColor: darkGold,
@@ -48,7 +50,7 @@ class OptikLenteraApp extends StatelessWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFFFFFCF8),
+          fillColor: const Color(0xFF1B1E23),
           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -62,7 +64,7 @@ class OptikLenteraApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: darkGold, width: 1.5),
           ),
-          labelStyle: const TextStyle(color: Color(0xFF82766A), fontSize: 13),
+          labelStyle: const TextStyle(color: Color(0xFFB9B2A5), fontSize: 13),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
@@ -82,7 +84,7 @@ class OptikLenteraApp extends StatelessWidget {
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: const Color(0xFFFFFCF8),
+          backgroundColor: const Color(0xFF111318),
           indicatorColor: pink.withValues(alpha: .52),
           height: 70,
           elevation: 0,
@@ -91,17 +93,17 @@ class OptikLenteraApp extends StatelessWidget {
             fontSize: 9.5,
             letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF8A8177),
+            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFFAAA397),
           )),
           iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 21,
-            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF9A9186),
+            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFFAAA397),
           )),
         ),
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
           backgroundColor: ink,
-          contentTextStyle: const TextStyle(color: Colors.white, fontSize: 13),
+          contentTextStyle: const TextStyle(color: const Color(0xFF191C21), fontSize: 13),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
@@ -209,7 +211,7 @@ class _MainScreenState extends State<MainScreen> {
               const SizedBox(height: 20),
               const Text('Menu lainnya', style: TextStyle(color: ink, fontSize: 18, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              const Text('Pilih layanan yang ingin dibuka.', style: TextStyle(color: Colors.black54, fontSize: 12)),
+              const Text('Pilih layanan yang ingin dibuka.', style: TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 16),
               _MoreMenuTile(
                 icon: Icons.payments_outlined,
@@ -257,7 +259,7 @@ class _MainScreenState extends State<MainScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text('OPTIK LENTERA', style: TextStyle(color: darkGold, fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                Text('Sistem Manajemen Optik', style: TextStyle(color: Colors.black54, fontSize: 10)),
+                Text('Sistem Manajemen Optik', style: TextStyle(color: Colors.white70, fontSize: 10)),
               ],
             ),
           ],
@@ -273,7 +275,7 @@ class _MainScreenState extends State<MainScreen> {
             padding: EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 18,
-              backgroundColor: pink,
+              backgroundColor: const Color(0xFF29251D),
               child: Icon(Icons.person_outline, color: darkGold),
             ),
           ),
@@ -298,7 +300,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFCF8),
+          color: const Color(0xFF191C21),
           border: Border(top: BorderSide(color: gold.withValues(alpha: .16))),
           boxShadow: [
             BoxShadow(color: ink.withValues(alpha: .045), blurRadius: 16, offset: const Offset(0, -5)),
@@ -363,7 +365,7 @@ class _MoreMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.white,
+    color: const Color(0xFF191C21),
     borderRadius: BorderRadius.circular(18),
     child: InkWell(
       onTap: onTap,
@@ -380,7 +382,7 @@ class _MoreMenuTile extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFF7E8EA),
+                color: const Color(0xFF29251D),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: darkGold, size: 21),
@@ -392,7 +394,7 @@ class _MoreMenuTile extends StatelessWidget {
                 children: [
                   Text(title, style: const TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 3),
-                  Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 11)),
+                  Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 11)),
                 ],
               ),
             ),
@@ -532,7 +534,7 @@ class _DashboardContentState extends State<DashboardContent> {
                     const Text('Selamat datang,',
                       style: TextStyle(color: ink, fontSize: 22, fontWeight: FontWeight.w700)),
                     const Text('apa yang ingin dikerjakan hari ini?',
-                      style: TextStyle(color: Colors.black54, fontSize: 12)),
+                      style: TextStyle(color: Colors.white70, fontSize: 12)),
                   ],
                 ),
               ),
@@ -562,11 +564,11 @@ class _DashboardContentState extends State<DashboardContent> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                                         Text('Jernih Melihat,\nNyaman Melangkah.',
-                      style: GoogleFonts.dmSerifDisplay(fontSize: 27, height: 1.16, color: Colors.white, letterSpacing: .1)),
+                      style: GoogleFonts.dmSerifDisplay(fontSize: 27, height: 1.16, color: const Color(0xFF191C21), letterSpacing: .1)),
                     const SizedBox(height: 18),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFF8EE),
+                        backgroundColor: const Color(0xFF29251D),
                         foregroundColor: darkGold,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
@@ -610,21 +612,21 @@ class _DashboardContentState extends State<DashboardContent> {
                 _lastSyncedAt!.month.toString().padLeft(2, '0') + ' ' +
                 _lastSyncedAt!.hour.toString().padLeft(2, '0') + ':' +
                 _lastSyncedAt!.minute.toString().padLeft(2, '0'),
-                style: const TextStyle(fontSize: 9, color: Colors.black45))),
+                style: const TextStyle(fontSize: 9, color: Colors.white60))),
           Row(
             children: [
               Expanded(child: _DashboardMetric(
                 title: 'Total transaksi resmi',
                 value: countText,
                 icon: Icons.shopping_bag_outlined,
-                tint: const Color(0xFFF5E9D6),
+                tint: const Color(0xFF29251D),
               )),
               const SizedBox(width: 12),
               Expanded(child: _DashboardMetric(
                 title: 'Total pembayaran resmi',
                 value: paymentText,
                 icon: Icons.payments_outlined,
-                tint: const Color(0xFFF7E8EA),
+                tint: const Color(0xFF29251D),
                 compact: true,
               )),
             ],
@@ -634,17 +636,17 @@ class _DashboardContentState extends State<DashboardContent> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFF80612F), onTap: () => widget.onOpenModule(2)),
+              _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFFB38B45), onTap: () => widget.onOpenModule(2)),
               const SizedBox(width: 10),
-              _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFF43866A), onTap: () => widget.onOpenModule(3)),
+              _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFFB8A477), onTap: () => widget.onOpenModule(3)),
               const SizedBox(width: 10),
-              _QuickAction(title: 'Pembayaran', subtitle: 'Catat pelunasan', icon: Icons.account_balance_wallet_outlined, color: const Color(0xFFAD7180), onTap: () => widget.onOpenModule(4)),
+              _QuickAction(title: 'Pembayaran', subtitle: 'Catat pelunasan', icon: Icons.account_balance_wallet_outlined, color: const Color(0xFFD6B56F), onTap: () => widget.onOpenModule(4)),
             ],
           ),
           const SizedBox(height: 22),
           const Text('Semua layanan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
           const SizedBox(height: 4),
-          const Text('Pilih modul untuk melanjutkan pekerjaan.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const Text('Pilih modul untuk melanjutkan pekerjaan.', style: TextStyle(fontSize: 11, color: Colors.white70)),
           const SizedBox(height: 12),
           GridView.builder(
             shrinkWrap: true,
@@ -681,7 +683,7 @@ class _DashboardMetric extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: const Color(0xFF191C21),
       borderRadius: BorderRadius.circular(18),
       border: Border.all(color: gold.withValues(alpha: .16)),
       boxShadow: [BoxShadow(color: ink.withValues(alpha: .035), blurRadius: 12, offset: const Offset(0, 4))],
@@ -696,7 +698,7 @@ class _DashboardMetric extends StatelessWidget {
         FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
           child: Text(value, style: TextStyle(color: ink, fontSize: compact ? 17 : 25, fontWeight: FontWeight.w800))),
         const SizedBox(height: 3),
-        Text(title, style: const TextStyle(color: Colors.black54, fontSize: 10)),
+        Text(title, style: const TextStyle(color: Colors.white70, fontSize: 10)),
       ],
     ),
   );
@@ -713,7 +715,7 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: Material(
-      color: Colors.white,
+      color: const Color(0xFF191C21),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -726,7 +728,7 @@ class _QuickAction extends StatelessWidget {
               const SizedBox(height: 7),
               Text(title, style: const TextStyle(color: ink, fontSize: 10, fontWeight: FontWeight.w800)),
               const SizedBox(height: 3),
-              Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black45, fontSize: 8)),
+              Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white60, fontSize: 8)),
             ],
           ),
         ),
@@ -743,7 +745,7 @@ class _ServiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.white,
+    color: const Color(0xFF191C21),
     borderRadius: BorderRadius.circular(17),
     child: InkWell(
       onTap: onTap,
@@ -758,7 +760,7 @@ class _ServiceTile extends StatelessWidget {
         child: Row(
           children: [
             Container(width: 37, height: 37,
-              decoration: BoxDecoration(color: const Color(0xFFFAF3E9), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: const Color(0xFF202329), borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, color: darkGold, size: 20)),
             const SizedBox(width: 9),
             Expanded(child: Text(title, style: const TextStyle(color: ink, fontSize: 10, fontWeight: FontWeight.w700))),
@@ -796,7 +798,7 @@ class _BackendStatusCardState extends State<BackendStatusCard> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF191C21),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: gold.withValues(alpha: 0.25)),
       ),
@@ -884,7 +886,7 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF191C21),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: gold.withValues(alpha: 0.25)),
       ),
@@ -901,7 +903,7 @@ class _SummaryCard extends StatelessWidget {
               color: ink,
             ),
           ),
-          Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(title, style: const TextStyle(fontSize: 12, color: Colors.white70)),
         ],
       ),
     );
@@ -946,7 +948,7 @@ class _OptikLogo extends StatelessWidget {
     child: Container(
       width: size,
       height: size,
-      color: Colors.white,
+      color: const Color(0xFF191C21),
       padding: EdgeInsets.all(size * 0.035),
       child: Image.memory(
         base64Decode(optikLogoBase64),
