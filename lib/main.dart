@@ -21,7 +21,7 @@ const Color cream = Color(0xFF0D0F12); // Obsidian background
 const Color gold = Color(0xFFD6B56F); // Champagne gold
 const Color darkGold = Color(0xFFB38B45); // Deep gold
 const Color pink = Color(0xFF29251D); // Warm gold-tinted selection
-const Color ink = Color(0xFF101216); // Deep graphite
+const Color ink = Color(0xFFF1EEE7); // Warm ivory text on dark surfaces
 
 class OptikLenteraApp extends StatelessWidget {
   const OptikLenteraApp({super.key});
@@ -102,8 +102,8 @@ class OptikLenteraApp extends StatelessWidget {
         ),
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: ink,
-          contentTextStyle: const TextStyle(color: const Color(0xFF191C21), fontSize: 13),
+          backgroundColor: const Color(0xFF29251D),
+          contentTextStyle: const TextStyle(color: Color(0xFFF1EEE7), fontSize: 13),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
