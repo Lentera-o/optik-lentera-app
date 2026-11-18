@@ -474,82 +474,124 @@ class DashboardContent extends StatelessWidget {
         onOpenModule(3);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('\$title sedang disiapkan.')),
+          SnackBar(content: Text('$title sedang disiapkan.')),
         );
       }
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('PUSAT KENDALI OPERASIONAL',
-                      style: TextStyle(color: darkGold, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-                    const SizedBox(height: 5),
-                    const Text('Selamat datang,',
-                      style: TextStyle(color: ink, fontSize: 22, fontWeight: FontWeight.w700)),
-                    const Text('apa yang ingin dikerjakan hari ini?',
-                      style: TextStyle(color: Colors.black54, fontSize: 12)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3E8D6),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: const Text(
+                        'PUSAT KENDALI OPERASIONAL',
+                        style: TextStyle(color: darkGold, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.05),
+                      ),
+                    ),
+                    const SizedBox(height: 11),
+                    const Text('Selamat datang,', style: TextStyle(color: ink, fontSize: 23, fontWeight: FontWeight.w800, height: 1.1)),
+                    const SizedBox(height: 4),
+                    const Text('Apa yang ingin dikerjakan hari ini?', style: TextStyle(color: Color(0xFF81766B), fontSize: 11.5)),
                   ],
                 ),
               ),
-              const _OptikLogo(size: 58),
+              const SizedBox(width: 12),
+              const _OptikLogo(size: 62),
             ],
           ),
           const SizedBox(height: 20),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 18, 18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF80612F), Color(0xFFB99555), Color(0xFFD6B985)],
+                colors: [Color(0xFF594323), Color(0xFF80612F), Color(0xFFC19B5C)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: darkGold.withValues(alpha: .20), blurRadius: 18, offset: const Offset(0, 8))],
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(color: darkGold.withValues(alpha: .20), blurRadius: 22, offset: const Offset(0, 10)),
+              ],
             ),
             child: Stack(
               children: [
                 Positioned(
-                  right: -12, top: -15,
-                  child: Icon(Icons.visibility_outlined, size: 132, color: Colors.white.withValues(alpha: .09)),
+                  right: -18,
+                  top: -22,
+                  child: Icon(Icons.remove_red_eye_outlined, size: 142, color: Colors.white.withValues(alpha: .075)),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                                        Text('Jernih Melihat,\nNyaman Melangkah.',
-                      style: GoogleFonts.dmSerifDisplay(fontSize: 27, height: 1.16, color: Colors.white, letterSpacing: .1)),
-                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .14),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.white.withValues(alpha: .20)),
+                      ),
+                      child: const Text('OPTIK LENTERA', style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 1.5, fontWeight: FontWeight.w800)),
+                    ),
+                    const SizedBox(height: 13),
+                    Text(
+                      'Jernih Melihat,\nNyaman Melangkah.',
+                      style: GoogleFonts.dmSerifDisplay(fontSize: 28, height: 1.12, color: Colors.white, letterSpacing: .1),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Kelola pelayanan dan transaksi optik dalam satu tempat.',
+                      style: TextStyle(color: Colors.white.withValues(alpha: .82), fontSize: 11, height: 1.45),
+                    ),
+                    const SizedBox(height: 17),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFFFF8EE),
-                        foregroundColor: darkGold,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        foregroundColor: const Color(0xFF72552B),
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                       ),
                       onPressed: () => onOpenModule(1),
-                      icon: const Icon(Icons.add_circle_outline, size: 18),
-                      label: const Text('Buat transaksi', style: TextStyle(fontWeight: FontWeight.w700)),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Buat transaksi', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Ringkasan aktivitas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
-              Text('DATA SESI INI', style: TextStyle(fontSize: 9, letterSpacing: 1, fontWeight: FontWeight.w700, color: darkGold)),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Ringkasan aktivitas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+                  SizedBox(height: 3),
+                  Text('Catatan yang tersimpan di perangkat ini', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(color: const Color(0xFFF5EBDD), borderRadius: BorderRadius.circular(20)),
+                child: const Text('SESI INI', style: TextStyle(fontSize: 8, letterSpacing: .9, fontWeight: FontWeight.w800, color: darkGold)),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -561,39 +603,41 @@ class DashboardContent extends StatelessWidget {
                 icon: Icons.shopping_bag_outlined,
                 tint: const Color(0xFFF5E9D6),
               )),
-              const SizedBox(width: 12),
+              const SizedBox(width: 11),
               Expanded(child: _DashboardMetric(
                 title: 'Pembayaran sesi',
-                value: 'Rp \$paymentTotal',
+                value: 'Rp $paymentTotal',
                 icon: Icons.payments_outlined,
                 tint: const Color(0xFFF7E8EA),
                 compact: true,
               )),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           const Text('Akses cepat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+          const SizedBox(height: 3),
+          const Text('Buka pekerjaan yang paling sering digunakan.', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
           const SizedBox(height: 12),
           Row(
             children: [
               _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFF80612F), onTap: () => onOpenModule(2)),
-              const SizedBox(width: 10),
+              const SizedBox(width: 9),
               _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFF43866A), onTap: () => onOpenModule(3)),
-              const SizedBox(width: 10),
+              const SizedBox(width: 9),
               _QuickAction(title: 'Pembayaran', subtitle: 'Catat pelunasan', icon: Icons.account_balance_wallet_outlined, color: const Color(0xFFAD7180), onTap: () => onOpenModule(4)),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           const Text('Semua layanan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
-          const SizedBox(height: 4),
-          const Text('Pilih modul untuk melanjutkan pekerjaan.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const SizedBox(height: 3),
+          const Text('Pilih modul untuk melanjutkan pekerjaan.', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
           const SizedBox(height: 12),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: modules.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, crossAxisSpacing: 11, mainAxisSpacing: 11, childAspectRatio: 1.72,
+              crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.58,
             ),
             itemBuilder: (context, index) {
               final module = modules[index];
@@ -602,9 +646,13 @@ class DashboardContent extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           const BackendStatusCard(),
-          const SizedBox(height: 12),
-          Center(child: Text('OPTIK LENTERA  •  MELAYANI DENGAN HATI',
-            style: TextStyle(color: darkGold.withValues(alpha: .75), fontSize: 9, letterSpacing: 1.1, fontWeight: FontWeight.w700))),
+          const SizedBox(height: 14),
+          Center(
+            child: Text(
+              'OPTIK LENTERA  •  MELAYANI DENGAN HATI',
+              style: TextStyle(color: darkGold.withValues(alpha: .72), fontSize: 8.5, letterSpacing: 1, fontWeight: FontWeight.w700),
+            ),
+          ),
         ],
       ),
     );
