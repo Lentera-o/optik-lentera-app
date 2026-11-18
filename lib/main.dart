@@ -80,7 +80,7 @@ class OptikLenteraApp extends StatelessWidget {
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: ink,
-          indicatorColor: gold.withValues(alpha: .22),
+          indicatorColor: pagePalette.accent.withValues(alpha: .23),
           height: 72,
           elevation: 0,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -112,6 +112,29 @@ class MainScreen extends StatefulWidget {
 
   @override
   State<MainScreen> createState() => _MainScreenState();
+}
+
+class _PagePalette {
+  final Color accent;
+  final Color background;
+  const _PagePalette(this.accent, this.background);
+}
+
+_PagePalette _paletteFor(int index) {
+  switch (index) {
+    case 1:
+      return const _PagePalette(Color(0xFF914F5B), Color(0xFFFBF5F4)); // Burgundy
+    case 2:
+      return const _PagePalette(Color(0xFF5D7967), Color(0xFFF4F7F2)); // Sage
+    case 3:
+      return const _PagePalette(Color(0xFFAD7180), Color(0xFFFAF4F5)); // Dusty rose
+    case 4:
+      return const _PagePalette(Color(0xFF3F7774), Color(0xFFF2F7F6)); // Deep teal
+    case 5:
+      return const _PagePalette(Color(0xFF8B6B3F), Color(0xFFFAF7F0)); // Ivory gold
+    default:
+      return const _PagePalette(Color(0xFF8B6B3F), Color(0xFFFAF7F0)); // Champagne
+  }
 }
 
 class _MainScreenState extends State<MainScreen> {
@@ -281,32 +304,67 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final pagePalette = _paletteFor(selectedIndex);
+    final baseTheme = Theme.of(context);
+    return Theme(
+      data: baseTheme.copyWith(
+        colorScheme: baseTheme.colorScheme.copyWith(
+          primary: pagePalette.accent,
+          secondary: pagePalette.accent,
+        ),
+        scaffoldBackgroundColor: pagePalette.background,
+        inputDecorationTheme: baseTheme.inputDecorationTheme.copyWith(
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: pagePalette.accent, width: 1.6),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: pagePalette.accent.withValues(alpha: .24)),
+          ),
+        ),
+        navigationBarTheme: baseTheme.navigationBarTheme.copyWith(
+          indicatorColor: pagePalette.accent.withValues(alpha: .23),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+            fontSize: 9.5,
+            letterSpacing: .1,
+            fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
+            color: states.contains(WidgetState.selected) ? pagePalette.accent : const Color(0xFFB7AEA1),
+          )),
+          iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+            size: 21,
+            color: states.contains(WidgetState.selected) ? pagePalette.accent : const Color(0xFFB7AEA1),
+          )),
+        ),
+      ),
+      child: Scaffold(
+      backgroundColor: pagePalette.background,
       appBar: AppBar(
-        backgroundColor: cream,
+        backgroundColor: pagePalette.background,
+        foregroundColor: pagePalette.accent,
         elevation: 0,
         titleSpacing: 20,
         title: Row(
           children: [
             const _OptikLogo(size: 42),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('OPTIK LENTERA', style: TextStyle(color: darkGold, fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                Text('OPTIK LENTERA', style: TextStyle(color: pagePalette.accent, fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                 Text('Sistem Manajemen Optik', style: TextStyle(color: Colors.black54, fontSize: 10)),
               ],
             ),
           ],
         ),
         actions: [
-          const Padding(
-            padding: EdgeInsets.only(right: 16),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 18,
-              backgroundColor: pink,
-              child: Icon(Icons.person_outline, color: darkGold),
+              backgroundColor: pagePalette.accent.withValues(alpha: .13),
+              child: Icon(Icons.person_outline, color: pagePalette.accent),
             ),
           ),
         ],
@@ -350,31 +408,32 @@ class _MainScreenState extends State<MainScreen> {
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded, color: gold),
+              selectedIcon: Icon(Icons.home_rounded, color: pagePalette.accent),
               label: 'Beranda',
             ),
             const NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long_rounded, color: gold),
+              selectedIcon: Icon(Icons.receipt_long_rounded, color: pagePalette.accent),
               label: 'Transaksi',
             ),
             const NavigationDestination(
               icon: Icon(Icons.people_outline_rounded),
-              selectedIcon: Icon(Icons.people_rounded, color: gold),
+              selectedIcon: Icon(Icons.people_rounded, color: pagePalette.accent),
               label: 'Pelanggan',
             ),
             const NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline_rounded),
-              selectedIcon: Icon(Icons.chat_bubble_rounded, color: gold),
+              selectedIcon: Icon(Icons.chat_bubble_rounded, color: pagePalette.accent),
               label: 'WhatsApp',
             ),
             NavigationDestination(
               icon: Icon(selectedIndex >= 4 ? Icons.grid_view_rounded : Icons.grid_view_outlined),
-              selectedIcon: const Icon(Icons.grid_view_rounded, color: gold),
+              selectedIcon: Icon(Icons.grid_view_rounded, color: pagePalette.accent),
               label: 'Lainnya',
             ),
           ],
         ),
+      ),
       ),
     );
   }
