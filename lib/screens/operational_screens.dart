@@ -76,6 +76,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final doctor = TextEditingController();
   final lensType = TextEditingController();
   final rxNote = TextEditingController();
+  final invoiceNote = TextEditingController();
   final frame = TextEditingController();
   final lens = TextEditingController();
   final otherPrice = TextEditingController();
@@ -110,7 +111,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, invoiceNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
@@ -134,8 +135,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
       initialPaymentMethod: method,
+      note: invoiceNote.text.trim(),
     ));
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, invoiceNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
     setState(() { selectedCustomerIndex = null; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
@@ -186,6 +188,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
       _field(lensType, 'Jenis / model lensa'),
       _field(rxNote, 'Catatan resep'),
+      _field(invoiceNote, 'Catatan invoice'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
