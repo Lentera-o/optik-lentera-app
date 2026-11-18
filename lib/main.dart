@@ -529,9 +529,9 @@ class DashboardContent extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned(
-                  right: -18,
-                  top: -22,
-                  child: Icon(Icons.remove_red_eye_outlined, size: 142, color: Colors.white.withValues(alpha: .075)),
+                  right: -20,
+                  top: -18,
+                  child: Icon(Icons.remove_red_eye_outlined, size: 126, color: Colors.white.withValues(alpha: .045)),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,14 +548,28 @@ class DashboardContent extends StatelessWidget {
                     const SizedBox(height: 13),
                     Text(
                       'Jernih Melihat,\nNyaman Melangkah.',
-                      style: GoogleFonts.dmSerifDisplay(fontSize: 28, height: 1.12, color: Colors.white, letterSpacing: .1),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 23,
+                        height: 1.24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -.65,
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Kelola pelayanan dan transaksi optik dalam satu tempat.',
-                      style: TextStyle(color: Colors.white.withValues(alpha: .82), fontSize: 11, height: 1.45),
+                    const SizedBox(height: 9),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 285),
+                      child: Text(
+                        'Kelola pelayanan dan transaksi optik dalam satu tempat.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: .84),
+                          fontSize: 11,
+                          height: 1.55,
+                          letterSpacing: .05,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 17),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFFFF8EE),
