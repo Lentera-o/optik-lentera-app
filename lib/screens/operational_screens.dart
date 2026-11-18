@@ -76,6 +76,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final doctor = TextEditingController();
   final lensType = TextEditingController();
   final rxNote = TextEditingController();
+  final frameDescription = TextEditingController();
   final frame = TextEditingController();
   final lens = TextEditingController();
   final otherPrice = TextEditingController();
@@ -110,7 +111,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, frameDescription, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
@@ -129,7 +130,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
         odSph: odSph.text, odCyl: odCyl.text, odAxis: odAxis.text, odAdd: odAdd.text, odPd: odPd.text,
         osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
       ),
-      frame: OrderItem(description: 'Frame', price: amount(frame)),
+      frame: OrderItem(description: frameDescription.text.trim().isEmpty ? 'Frame' : frameDescription.text.trim(), price: amount(frame)),
       lens: OrderItem(description: lensType.text.trim().isEmpty ? 'Lensa' : lensType.text.trim(), price: amount(lens)),
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
@@ -186,6 +187,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
       _field(lensType, 'Jenis / model lensa'),
       _field(rxNote, 'Catatan resep'),
+      _field(frameDescription, 'Merek / model / keterangan frame'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
