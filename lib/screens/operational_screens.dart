@@ -199,7 +199,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ),
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
-        style: FilledButton.styleFrom(backgroundColor: _darkGold),
+        style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
         onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan draft pesanan'),
       )),
     ])),
@@ -355,7 +355,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ),
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
-        style: FilledButton.styleFrom(backgroundColor: _darkGold),
+        style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
         onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Catat pembayaran'),
       )),
     ])),
@@ -605,7 +605,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: _darkGold),
+                    style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
                     onPressed: () => OptikPdfService.invoice(order, paid: paid, remaining: remaining < 0 ? 0 : remaining),
                     icon: const Icon(Icons.picture_as_pdf_outlined),
                     label: const Text('Cetak / Bagikan Invoice PDF'),
