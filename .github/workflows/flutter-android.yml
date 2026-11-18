@@ -1,3 +1,4 @@
+# Isolated CI verification branch; no production app/backend files changed.
 name: Flutter Android CI
 
 on:
