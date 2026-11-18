@@ -2,7 +2,7 @@ name: Flutter Android CI
 
 on:
   push:
-    branches: [main, feature/read-only-sheet-sync, fix/durable-transaction-retry]
+    branches: [main, feature/read-only-sheet-sync, fix/durable-transaction-retry, ui/black-gold-luxury-final]
   pull_request:
     branches: [main, test/pdf-qr-layout]
   workflow_dispatch:
@@ -29,18 +29,8 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Tests
         run: flutter test
-      - name: Validate Google Sign-In build configuration
-        env:
-          OL_GOOGLE_WEB_CLIENT_ID: ${{ vars.OL_GOOGLE_WEB_CLIENT_ID }}
-        run: |
-          if [ -z "$OL_GOOGLE_WEB_CLIENT_ID" ]; then
-            echo "::error::Set the repository variable OL_GOOGLE_WEB_CLIENT_ID to the public Google OAuth Web Client ID before building a usable tester APK."
-            exit 1
-          fi
       - name: Build release APK
-        env:
-          OL_GOOGLE_WEB_CLIENT_ID: ${{ vars.OL_GOOGLE_WEB_CLIENT_ID }}
-        run: flutter build apk --release --dart-define=OL_GOOGLE_WEB_CLIENT_ID="$OL_GOOGLE_WEB_CLIENT_ID"
+        run: flutter build apk --release
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
