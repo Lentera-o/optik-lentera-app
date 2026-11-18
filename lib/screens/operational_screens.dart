@@ -200,7 +200,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan draft pesanan'),
+        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan & kirim pesanan'),
       )),
     ])),
     const SizedBox(height: 18),
