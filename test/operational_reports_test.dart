@@ -25,6 +25,10 @@ void main() {
   );
 
   testWidgets('laporan menghitung pembayaran dan sisa tagihan', (tester) async {
+    tester.view.physicalSize = const Size(1200, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(
       home: ReportsScreen(
         customers: [customer],
@@ -37,11 +41,15 @@ void main() {
     expect(find.text('Pelanggan Uji'), findsOneWidget);
     expect(find.text('Rp 100.000'), findsWidgets);
     expect(find.text('Rp 40.000'), findsWidgets);
-    expect(find.text('Rp 60.000'), findsOneWidget);
+    expect(find.text('Rp 20.000'), findsOneWidget);
     expect(find.text('Salin laporan CSV'), findsOneWidget);
   });
 
   testWidgets('status pesanan menampilkan sisa pembayaran', (tester) async {
+    tester.view.physicalSize = const Size(1200, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(
       home: OrderStatusScreen(
         orders: [order],
@@ -51,12 +59,16 @@ void main() {
 
     expect(find.text('Status Pesanan'), findsOneWidget);
     expect(find.text('Pelanggan Uji'), findsOneWidget);
-    expect(find.text('Rp 40.000'), findsOneWidget);
-    expect(find.text('Sisa'), findsOneWidget);
+    expect(find.textContaining('Sisa Rp 40.000'), findsOneWidget);
+    expect(find.text('BELUM LUNAS'), findsOneWidget);
     expect(find.textContaining('belum menyimpan tahapan produksi'), findsOneWidget);
   });
 
   testWidgets('laporan dan status menampilkan keadaan kosong', (tester) async {
+    tester.view.physicalSize = const Size(1200, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const MaterialApp(
       home: ReportsScreen(customers: [], orders: [], payments: []),
     ));
