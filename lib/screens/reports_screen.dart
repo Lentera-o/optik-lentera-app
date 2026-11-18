@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/sheets_read_service.dart';
 
-const _gold = Color(0xFFB99555);
-const _dark = Color(0xFF80612F);
-const _ink = Color(0xFF39342F);
+const _gold = Color(0xFFD6B56F);
+const _dark = Color(0xFFB38B45);
+const _ink = Color(0xFFF1EEE7);
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -181,13 +181,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
   Widget metric(String title, String value, IconData icon) => Expanded(
     child: Container(padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+      decoration: BoxDecoration(color: const Color(0xFF191C21), borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _gold.withValues(alpha: .22))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, color: _dark), const SizedBox(height: 8),
         FittedBox(alignment: Alignment.centerLeft, child: Text(value,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ink))),
-        Text(title, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+        Text(title, style: const TextStyle(fontSize: 10, color: Colors.white70)),
       ])));
   @override
   void initState() { super.initState(); load(); }
@@ -216,7 +216,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return RefreshIndicator(onRefresh: load, child: ListView(padding: const EdgeInsets.all(18), children: [
       Container(padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFFCF7), Color(0xFFF8EEF0)]),
+        decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF22252B), Color(0xFF17191E)]),
           borderRadius: BorderRadius.circular(18), border: Border.all(color: _gold.withValues(alpha: .2))),
         child: const Row(children: [
           Icon(Icons.insights_rounded, color: _dark, size: 30), SizedBox(width: 12),
@@ -249,7 +249,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           onPressed: () => exportReport(periodOrders, periodPayments),
           icon: const Icon(Icons.download_rounded),
           label: const Text('Unduh / Ekspor Data Laporan (CSV)'),
-          style: FilledButton.styleFrom(backgroundColor: _dark, foregroundColor: Colors.white,
+          style: FilledButton.styleFrom(backgroundColor: _gold, foregroundColor: const Color(0xFF101216),
             padding: const EdgeInsets.symmetric(vertical: 14)),
         )),
         const SizedBox(height: 9),
@@ -261,7 +261,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           if (days.isEmpty) const Text('Belum ada order pada bulan ini.')
           else ...days.map((d) {
             final rows = daily[d]!;
-            return Card(color: Colors.white, child: ListTile(dense: true,
+            return Card(color: const Color(0xFF191C21), child: ListTile(dense: true,
               title: Text('${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}'),
               subtitle: Text('${rows.length} order'),
               trailing: Text(rp(rows.fold<int>(0, (s, r) => s + orderTotal(r))),
