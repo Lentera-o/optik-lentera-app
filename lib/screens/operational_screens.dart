@@ -42,7 +42,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
       _field(phone, 'Nomor WhatsApp / telepon', type: TextInputType.phone),
       _field(address, 'Alamat'),
       SizedBox(width: double.infinity, child: FilledButton.icon(
-        style: FilledButton.styleFrom(backgroundColor: _darkGold),
+        style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
         onPressed: save, icon: const Icon(Icons.person_add_alt_1), label: const Text('Tambah pelanggan'),
       )),
     ])),
@@ -52,7 +52,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
       const _Empty('Belum ada pelanggan di sesi ini.')
     else
       ...widget.customers.reversed.map((c) => Card(color: Colors.white, child: ListTile(
-        leading: const Icon(Icons.person_outline, color: _darkGold),
+        leading: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary),
         title: Text(c.name),
         subtitle: Text([c.phone, c.address].where((v) => v.isNotEmpty).join(' • ')),
       ))),
@@ -170,14 +170,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(phone, 'Nomor WhatsApp / telepon', type: TextInputType.phone),
       _field(address, 'Alamat pelanggan'),
       _field(doctor, 'Dokter / optometris'),
-      const Text('Resep OD — mata kanan', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+      Text('Resep OD — mata kanan', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
       Row(children: [
         Expanded(child: _field(odSph, 'SPH')), const SizedBox(width: 6),
         Expanded(child: _field(odCyl, 'CYL')), const SizedBox(width: 6),
         Expanded(child: _field(odAxis, 'AXIS')),
       ]),
       Row(children: [Expanded(child: _field(odAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(odPd, 'PD'))]),
-      const Text('Resep OS — mata kiri', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+      Text('Resep OS — mata kiri', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
       Row(children: [
         Expanded(child: _field(osSph, 'SPH')), const SizedBox(width: 6),
         Expanded(child: _field(osCyl, 'CYL')), const SizedBox(width: 6),
@@ -206,7 +206,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     const SizedBox(height: 18),
     Text('Draft pesanan: ${widget.orders.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
     ...widget.orders.reversed.map((o) => Card(color: Colors.white, child: ListTile(
-      leading: const Icon(Icons.shopping_bag_outlined, color: _darkGold),
+      leading: Icon(Icons.shopping_bag_outlined, color: Theme.of(context).colorScheme.primary),
       title: Text(o.customer.name),
       subtitle: Text(o.invoiceNumber + ' • Total Rp ' + o.total.toString() + ' • Sisa Rp ' + o.remaining.toString()),
     ))),
@@ -219,36 +219,39 @@ class _Intro extends StatelessWidget {
   final IconData icon;
   const _Intro(this.title, this.subtitle, this.icon);
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFFFFFCF7), Color(0xFFF3E9D9)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(19),
-      border: Border.all(color: _gold.withValues(alpha: .20)),
-    ),
-    child: Row(children: [
-      Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [BoxShadow(color: _gold.withValues(alpha: .10), blurRadius: 10, offset: const Offset(0, 3))],
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.white, accent.withValues(alpha: .075)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Icon(icon, color: _darkGold, size: 25),
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: accent.withValues(alpha: .22)),
       ),
-      const SizedBox(width: 13),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(color: _darkGold, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: .1)),
-        const SizedBox(height: 3),
-        Text(subtitle, style: const TextStyle(color: Color(0xFF81766E), fontSize: 11, height: 1.35)),
-      ])),
-    ]),
-  );
+      child: Row(children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [BoxShadow(color: accent.withValues(alpha: .10), blurRadius: 10, offset: const Offset(0, 3))],
+          ),
+          child: Icon(icon, color: accent, size: 25),
+        ),
+        const SizedBox(width: 13),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: .1)),
+          const SizedBox(height: 3),
+          Text(subtitle, style: const TextStyle(color: Color(0xFF81766E), fontSize: 11, height: 1.35)),
+        ])),
+      ]),
+    );
+  }
 }
 
 class _Panel extends StatelessWidget {
@@ -260,7 +263,7 @@ class _Panel extends StatelessWidget {
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: _gold.withValues(alpha: .20)),
+      border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: .18)),
       boxShadow: [BoxShadow(color: _ink.withValues(alpha: .035), blurRadius: 16, offset: const Offset(0, 5))],
     ),
     child: child,
@@ -359,7 +362,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const SizedBox(height: 18),
     Text('Pembayaran sesi ini: ${widget.payments.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
     ...widget.payments.reversed.map((p) => Card(color: Colors.white, child: ListTile(
-      leading: const Icon(Icons.payments_outlined, color: _darkGold),
+      leading: Icon(Icons.payments_outlined, color: Theme.of(context).colorScheme.primary),
       title: Text('Rp ' + p.amount.toString()),
       subtitle: Text(p.invoiceNumber + ' • ' + p.method),
     ))),
@@ -553,7 +556,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
               side: BorderSide(color: _gold.withValues(alpha: .35)),
             ),
             child: ExpansionTile(
-              leading: const Icon(Icons.receipt_long_outlined, color: _darkGold),
+              leading: Icon(Icons.receipt_long_outlined, color: Theme.of(context).colorScheme.primary),
               title: Text(order.customer.name, style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
               subtitle: Text('${order.invoiceNumber} • ${_date(order.orderDate)}'),
               childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
@@ -569,7 +572,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Center(child: Text('OPTIK LENTERA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 18))),
+                      Center(child: Text('OPTIK LENTERA', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 18))),
                       const Center(child: Text('INVOICE • PRATINJAU', style: TextStyle(color: _ink, fontWeight: FontWeight.bold))),
                       const Divider(height: 22, color: _gold),
                       _docLine('Nomor invoice', order.invoiceNumber),
@@ -577,7 +580,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                       _docLine('Pelanggan', order.customer.name),
                       _docLine('Telepon', order.customer.phone.isEmpty ? '-' : order.customer.phone),
                       const Divider(height: 20),
-                      const Text('RESEP KACAMATA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+                      Text('RESEP KACAMATA', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
                       _docLine('OD (kanan)', 'SPH ${order.prescription.odSph} • CYL ${order.prescription.odCyl} • AXIS ${order.prescription.odAxis}'),
                       _docLine('OS (kiri)', 'SPH ${order.prescription.osSph} • CYL ${order.prescription.osCyl} • AXIS ${order.prescription.osAxis}'),
                       const Divider(height: 20),
@@ -589,7 +592,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                       _docLine('Total dibayar', _rupiah(paid)),
                       _docLine('Sisa tagihan', _rupiah(remaining < 0 ? 0 : remaining), strong: true),
                       const SizedBox(height: 8),
-                      const Text('KUITANSI PEMBAYARAN', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
+                      Text('KUITANSI PEMBAYARAN', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
                       if (order.initialPayment > 0)
                         _docLine('DP awal • ${order.initialPaymentMethod}', _rupiah(order.initialPayment)),
                       ...related.map((p) => _docLine('${_date(p.paymentDate)} • ${p.method}', _rupiah(p.amount))),
