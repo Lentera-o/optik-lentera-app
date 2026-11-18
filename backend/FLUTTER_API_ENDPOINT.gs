@@ -20,7 +20,7 @@
 
 // Token adapter Flutter — tidak memakai Script Properties.
 // Samakan nilainya dengan GitHub Actions Secret OL_API_TOKEN.
-const OL_FLUTTER_API_TOKEN = 'GUYe8irPANJ2tag8j4OLnPJw1OFLubLhf4Y1zKgZ3Vmf7xNc';
+const OL_FLUTTER_API_TOKEN = 'GANTI_DENGAN_TOKEN_RAHASIA_DI_APPS_SCRIPT';
 
 function doGet(e) {
   return olApiJson_({
