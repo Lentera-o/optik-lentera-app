@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -131,7 +132,10 @@ _PagePalette _paletteFor(int index) {
     case 4:
       return const _PagePalette(Color(0xFF3F7774), Color(0xFFF2F7F6)); // Deep teal
     case 5:
+    case 6:
       return const _PagePalette(Color(0xFF8B6B3F), Color(0xFFFAF7F0)); // Ivory gold
+    case 7:
+      return const _PagePalette(Color(0xFF3F7774), Color(0xFFF2F7F6)); // Deep teal
     default:
       return const _PagePalette(Color(0xFF8B6B3F), Color(0xFFFAF7F0)); // Champagne
   }
@@ -292,6 +296,20 @@ class _MainScreenState extends State<MainScreen> {
                 subtitle: 'Lihat, cetak, dan bagikan dokumen',
                 onTap: () => Navigator.pop(sheetContext, 5),
               ),
+              const SizedBox(height: 9),
+              _MoreMenuTile(
+                icon: Icons.insights_outlined,
+                title: 'Laporan',
+                subtitle: 'Ringkasan transaksi dan salin data CSV',
+                onTap: () => Navigator.pop(sheetContext, 6),
+              ),
+              const SizedBox(height: 9),
+              _MoreMenuTile(
+                icon: Icons.local_shipping_outlined,
+                title: 'Status Pesanan',
+                subtitle: 'Pantau pesanan dan status pembayaran',
+                onTap: () => Navigator.pop(sheetContext, 7),
+              ),
             ],
           ),
         ),
@@ -383,6 +401,8 @@ class _MainScreenState extends State<MainScreen> {
           3 => WhatsAppCenterScreen(customers: customers, orders: orders, payments: payments),
           4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
           5 => InvoiceReceiptScreen(orders: orders, payments: payments),
+          6 => ReportsScreen(customers: customers, orders: orders, payments: payments),
+          7 => OrderStatusScreen(orders: orders, payments: payments),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
@@ -437,6 +457,256 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+}
+
+class ReportsScreen extends StatelessWidget {
+  final List<Customer> customers;
+  final List<OptikOrder> orders;
+  final List<OptikPayment> payments;
+  const ReportsScreen({super.key, required this.customers, required this.orders, required this.payments});
+
+  int _later(OptikOrder order) => payments
+      .where((p) => order.invoiceNumber.isNotEmpty && p.invoiceNumber == order.invoiceNumber)
+      .fold<int>(0, (sum, p) => sum + p.amount);
+
+  String _money(int value) {
+    final digits = value.toString();
+    final out = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) out.write('.');
+      out.write(digits[i]);
+    }
+    return 'Rp ' + out.toString();
+  }
+
+  String _cell(Object? value) => '"' + (value?.toString() ?? '').replaceAll('"', '""') + '"';
+
+  Future<void> _copyCsv(BuildContext context) async {
+    final rows = <List<Object?>>[
+      ['Jenis', 'Invoice', 'Tanggal', 'Pelanggan', 'Telepon', 'Total', 'DP', 'Pembayaran lanjutan', 'Sisa', 'Metode', 'Catatan'],
+    ];
+    for (final order in orders) {
+      final later = _later(order);
+      rows.add([
+        'Pesanan', order.invoiceNumber, order.orderDate?.toIso8601String() ?? '',
+        order.customer.name, order.customer.phone, order.total, order.initialPayment,
+        later, (order.total - order.initialPayment - later).clamp(0, 1 << 31),
+        order.initialPaymentMethod, order.note,
+      ]);
+    }
+    for (final payment in payments) {
+      rows.add([
+        'Pembayaran', payment.invoiceNumber, payment.paymentDate.toIso8601String(),
+        '', '', '', '', payment.amount, '', payment.method, payment.note,
+      ]);
+    }
+    final csv = '\uFEFF' + rows.map((row) => row.map(_cell).join(',')).join('\n');
+    await Clipboard.setData(ClipboardData(text: csv));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('CSV disalin. Tempelkan ke Excel atau Google Sheets.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    final sales = orders.fold<int>(0, (sum, order) => sum + order.total);
+    final down = orders.fold<int>(0, (sum, order) => sum + order.initialPayment);
+    final later = payments.fold<int>(0, (sum, payment) => sum + payment.amount);
+    final balance = orders.fold<int>(0, (sum, order) =>
+        sum + (order.total - order.initialPayment - _later(order)).clamp(0, 1 << 31));
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+      children: [
+        _ReportHeader(title: 'Laporan Operasional', subtitle: 'Ringkasan data yang tersimpan di perangkat ini.', icon: Icons.insights_outlined),
+        const SizedBox(height: 14),
+        GridView.count(
+          crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.65,
+          children: [
+            _ReportMetric(title: 'Pelanggan', value: customers.length.toString(), icon: Icons.people_outline, accent: accent),
+            _ReportMetric(title: 'Pesanan', value: orders.length.toString(), icon: Icons.shopping_bag_outlined, accent: accent),
+            _ReportMetric(title: 'Nilai pesanan', value: _money(sales), icon: Icons.receipt_long_outlined, accent: accent),
+            _ReportMetric(title: 'Uang diterima', value: _money(down + later), icon: Icons.payments_outlined, accent: accent),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: accent.withValues(alpha: .18))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Ringkasan tagihan', style: TextStyle(color: accent, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            _ReportLine(label: 'Nilai pesanan', value: _money(sales)),
+            _ReportLine(label: 'Pembayaran awal', value: _money(down)),
+            _ReportLine(label: 'Pembayaran lanjutan', value: _money(later)),
+            const Divider(height: 18),
+            _ReportLine(label: 'Sisa tagihan', value: _money(balance), strong: true),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: orders.isEmpty && payments.isEmpty ? null : () => _copyCsv(context),
+          icon: const Icon(Icons.content_copy_outlined),
+          label: const Text('Salin laporan CSV'),
+        ),
+        const SizedBox(height: 6),
+        const Text('CSV berisi rincian pesanan dan pembayaran. Sumbernya adalah penyimpanan lokal aplikasi, bukan penarikan langsung dari Google Sheets.', style: TextStyle(color: Colors.black54, fontSize: 11, height: 1.4)),
+        const SizedBox(height: 18),
+        Text('Rincian pesanan', style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 15)),
+        const SizedBox(height: 8),
+        if (orders.isEmpty)
+          const _ReportEmpty(message: 'Belum ada pesanan tersimpan.')
+        else
+          ...orders.reversed.map((order) {
+            final paid = order.initialPayment + _later(order);
+            final due = (order.total - paid).clamp(0, 1 << 31);
+            return Card(
+              color: Colors.white, elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: accent.withValues(alpha: .14))),
+              child: ListTile(
+                title: Text(order.customer.name, style: const TextStyle(fontWeight: FontWeight.w800, color: ink)),
+                subtitle: Text((order.invoiceNumber.isEmpty ? 'Tanpa nomor invoice' : order.invoiceNumber) + ' • ' + _money(order.total)),
+                trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text(_money(due), style: TextStyle(color: due == 0 ? Colors.green.shade700 : accent, fontWeight: FontWeight.w800, fontSize: 11)),
+                  Text(due == 0 ? 'Lunas' : 'Sisa', style: const TextStyle(color: Colors.black54, fontSize: 10)),
+                ]),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+}
+
+class OrderStatusScreen extends StatelessWidget {
+  final List<OptikOrder> orders;
+  final List<OptikPayment> payments;
+  const OrderStatusScreen({super.key, required this.orders, required this.payments});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+      children: [
+        _ReportHeader(title: 'Status Pesanan', subtitle: 'Pantau pesanan dan posisi tagihannya.', icon: Icons.local_shipping_outlined),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(color: accent.withValues(alpha: .08), borderRadius: BorderRadius.circular(14), border: Border.all(color: accent.withValues(alpha: .18))),
+          child: const Text('Catatan: data saat ini belum menyimpan tahapan produksi seperti diproses atau siap diambil. Label berikut hanya menunjukkan status pembayaran.', style: TextStyle(color: ink, fontSize: 11, height: 1.45)),
+        ),
+        const SizedBox(height: 14),
+        if (orders.isEmpty)
+          const _ReportEmpty(message: 'Belum ada pesanan untuk dipantau.')
+        else
+          ...orders.reversed.map((order) {
+            final paidLater = payments.where((p) => order.invoiceNumber.isNotEmpty && p.invoiceNumber == order.invoiceNumber).fold<int>(0, (sum, p) => sum + p.amount);
+            final due = (order.total - order.initialPayment - paidLater).clamp(0, 1 << 31);
+            final settled = due == 0;
+            final statusColor = settled ? Colors.green.shade700 : accent;
+            return Card(
+              color: Colors.white, elevation: 0, margin: const EdgeInsets.only(bottom: 9),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: statusColor.withValues(alpha: .20))),
+              child: ListTile(
+                leading: CircleAvatar(backgroundColor: statusColor.withValues(alpha: .10), child: Icon(Icons.shopping_bag_outlined, color: statusColor)),
+                title: Text(order.customer.name, style: const TextStyle(fontWeight: FontWeight.w800, color: ink)),
+                subtitle: Text((order.invoiceNumber.isEmpty ? 'Tanpa nomor invoice' : order.invoiceNumber) + '\nTotal ' + _money(order.total) + ' • Sisa ' + _money(due)),
+                isThreeLine: true,
+                trailing: Text(settled ? 'LUNAS' : 'BELUM LUNAS', style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.w900)),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  String _money(int value) {
+    final digits = value.toString();
+    final out = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) out.write('.');
+      out.write(digits[i]);
+    }
+    return 'Rp ' + out.toString();
+  }
+}
+
+class _ReportHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  const _ReportHeader({required this.title, required this.subtitle, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.white, accent.withValues(alpha: .09)]), borderRadius: BorderRadius.circular(18), border: Border.all(color: accent.withValues(alpha: .20))),
+      child: Row(children: [
+        Container(width: 46, height: 46, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: accent, size: 24)),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: TextStyle(color: accent, fontSize: 17, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 3),
+          Text(subtitle, style: const TextStyle(color: Colors.black54, fontSize: 11)),
+        ])),
+      ]),
+    );
+  }
+}
+
+class _ReportMetric extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color accent;
+  const _ReportMetric({required this.title, required this.value, required this.icon, required this.accent});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: accent.withValues(alpha: .16))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, color: accent, size: 19),
+      const Spacer(),
+      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w900))),
+      Text(title, style: const TextStyle(color: Colors.black54, fontSize: 10)),
+    ]),
+  );
+}
+
+class _ReportLine extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool strong;
+  const _ReportLine({required this.label, required this.value, this.strong = false});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(children: [
+      Expanded(child: Text(label, style: TextStyle(color: ink, fontSize: 12, fontWeight: strong ? FontWeight.w800 : FontWeight.normal))),
+      Text(value, style: TextStyle(color: ink, fontSize: 12, fontWeight: strong ? FontWeight.w900 : FontWeight.w600)),
+    ]),
+  );
+}
+
+class _ReportEmpty extends StatelessWidget {
+  final String message;
+  const _ReportEmpty({required this.message});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+    child: Center(child: Text(message, style: const TextStyle(color: Colors.black54, fontSize: 12))),
+  );
 }
 
 class _MoreMenuTile extends StatelessWidget {
@@ -526,6 +796,10 @@ class DashboardContent extends StatelessWidget {
         onOpenModule(5);
       } else if (title == 'WhatsApp Semi-Otomatis') {
         onOpenModule(3);
+      } else if (title == 'Laporan') {
+        onOpenModule(6);
+      } else if (title == 'Status Pesanan') {
+        onOpenModule(7);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('\$title sedang disiapkan.')),
