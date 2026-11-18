@@ -626,7 +626,7 @@ class _DashboardContentState extends State<DashboardContent> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFF80612F), onTap: () => widget.onOpenModule(2)),
+              _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: darkGold, onTap: () => widget.onOpenModule(2)),
               const SizedBox(width: 10),
               _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFF43866A), onTap: () => widget.onOpenModule(3)),
               const SizedBox(width: 10),
