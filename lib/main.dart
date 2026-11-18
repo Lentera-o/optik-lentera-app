@@ -166,6 +166,11 @@ class _MainScreenState extends State<MainScreen> {
     _saveLocalData();
   }
 
+  void _addPayment(OptikPayment value) {
+    setState(() => payments.add(value));
+    _saveLocalData();
+  }
+
   final List<String> navigation = [
     'Beranda',
     'Transaksi',
