@@ -310,8 +310,8 @@ class _MainScreenState extends State<MainScreen> {
             padding: EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 18,
-              backgroundColor: pink,
-              child: Icon(Icons.person_outline, color: darkGold),
+              backgroundColor: const Color(0xFFE8D8B8),
+              child: Icon(Icons.person_outline, color: ink),
             ),
           ),
         ],
@@ -355,27 +355,27 @@ class _MainScreenState extends State<MainScreen> {
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded, color: darkGold),
+              selectedIcon: Icon(Icons.home_rounded, color: gold),
               label: 'Beranda',
             ),
             const NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long_rounded, color: darkGold),
+              selectedIcon: Icon(Icons.receipt_long_rounded, color: gold),
               label: 'Transaksi',
             ),
             const NavigationDestination(
               icon: Icon(Icons.people_outline_rounded),
-              selectedIcon: Icon(Icons.people_rounded, color: darkGold),
+              selectedIcon: Icon(Icons.people_rounded, color: gold),
               label: 'Pelanggan',
             ),
             const NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline_rounded),
-              selectedIcon: Icon(Icons.chat_bubble_rounded, color: darkGold),
+              selectedIcon: Icon(Icons.chat_bubble_rounded, color: gold),
               label: 'WhatsApp',
             ),
             NavigationDestination(
               icon: Icon(selectedIndex >= 4 ? Icons.grid_view_rounded : Icons.grid_view_outlined),
-              selectedIcon: const Icon(Icons.grid_view_rounded, color: darkGold),
+              selectedIcon: const Icon(Icons.grid_view_rounded, color: gold),
               label: 'Lainnya',
             ),
           ],
@@ -417,7 +417,7 @@ class _MoreMenuTile extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFF7E8EA),
+                color: const Color(0xFFF3E8D3),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: darkGold, size: 21),
@@ -509,12 +509,13 @@ class DashboardContent extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF80612F), Color(0xFFB99555), Color(0xFFD6B985)],
+                colors: [Color(0xFF24221E), Color(0xFF403727), Color(0xFF80612F)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: darkGold.withValues(alpha: .20), blurRadius: 18, offset: const Offset(0, 8))],
+              border: Border.all(color: gold.withValues(alpha: .65), width: 1),
+              boxShadow: [BoxShadow(color: ink.withValues(alpha: .18), blurRadius: 22, offset: const Offset(0, 9))],
             ),
             child: Stack(
               children: [
@@ -578,9 +579,9 @@ class DashboardContent extends StatelessWidget {
             children: [
               _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFF80612F), onTap: () => onOpenModule(2)),
               const SizedBox(width: 10),
-              _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFF43866A), onTap: () => onOpenModule(3)),
+              _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFFB99555), onTap: () => onOpenModule(3)),
               const SizedBox(width: 10),
-              _QuickAction(title: 'Pembayaran', subtitle: 'Catat pelunasan', icon: Icons.account_balance_wallet_outlined, color: const Color(0xFFAD7180), onTap: () => onOpenModule(4)),
+              _QuickAction(title: 'Pembayaran', subtitle: 'Catat pelunasan', icon: Icons.account_balance_wallet_outlined, color: const Color(0xFF80612F), onTap: () => onOpenModule(4)),
             ],
           ),
           const SizedBox(height: 22),
