@@ -553,7 +553,7 @@ class _DashboardContentState extends State<DashboardContent> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                                        Text('Jernih Melihat,\nNyaman Melangkah.',
+                    Text('Jernih Melihat,\nNyaman Melangkah.',
                       style: GoogleFonts.dmSerifDisplay(fontSize: 27, height: 1.16, color: Colors.white, letterSpacing: .1)),
                     const SizedBox(height: 18),
                     FilledButton.icon(
