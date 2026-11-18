@@ -89,7 +89,7 @@ class OptikLenteraApp extends StatelessWidget {
             fontSize: 9.5,
             letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? pagePalette.accent : const Color(0xFFB7AEA1),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFB7AEA1),
           )),
           iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 21,
@@ -347,7 +347,7 @@ class _MainScreenState extends State<MainScreen> {
             fontSize: 9.5,
             letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFB7AEA1),
+            color: states.contains(WidgetState.selected) ? pagePalette.accent : const Color(0xFFB7AEA1),
           )),
           iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 21,
