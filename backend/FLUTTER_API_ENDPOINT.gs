@@ -5,8 +5,9 @@
  * Jangan hapus/ganti fungsi, trigger, tab, atau data yang sudah ada.
  *
  * Sebelum deploy:
- * 1. Apps Script > Project Settings > Script Properties.
- * 2. Tambahkan OL_API_TOKEN dengan token acak panjang (minimal 32 karakter).
+ * 1. Isi konstanta OL_FLUTTER_API_TOKEN di bawah dengan token yang sama
+ *    dengan GitHub Actions Secret OL_API_TOKEN.
+ * 2. Tidak perlu menambah Script Properties.
  * 3. Deploy > Manage deployments > Edit Web app > New version > Deploy.
  * 4. Web app tetap berjalan sebagai pemilik script. Batasi penggunaan URL/token.
  *
@@ -16,6 +17,10 @@
  * { "token":"...", "action":"createPayment", "requestId":"unik",
  *   "payment": { "invoiceNumber":"INV-2026-0001", "amount":50000, ... } }
  */
+
+// Token adapter Flutter — tidak memakai Script Properties.
+// Samakan nilainya dengan GitHub Actions Secret OL_API_TOKEN.
+const OL_FLUTTER_API_TOKEN = 'GANTI_DENGAN_TOKEN_RAHASIA_DI_APPS_SCRIPT';
 
 function doGet(e) {
   return olApiJson_({
@@ -33,8 +38,7 @@ function doPost(e) {
     if (!raw) throw new Error('Body JSON wajib diisi.');
     const body = JSON.parse(raw);
 
-    const expected = PropertiesService.getScriptProperties().getProperty('OL_API_TOKEN');
-    if (!expected || String(body.token || '') !== expected) {
+    if (!OL_FLUTTER_API_TOKEN || String(body.token || '') !== OL_FLUTTER_API_TOKEN) {
       return olApiJson_({ ok:false, error:'UNAUTHORIZED', message:'Token API tidak valid atau belum disetel.' });
     }
 

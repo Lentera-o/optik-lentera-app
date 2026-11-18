@@ -7,10 +7,11 @@ File `FLUTTER_API_ENDPOINT.gs` adalah adapter tambahan untuk Apps Script yang su
 1. Buka project Apps Script yang dipakai oleh Web App aktif.
 2. Pastikan project itu sudah berisi fungsi lama seperti `olProcessOrder_`, `olProcessPayment_`, `olFindRow_`, `olGetField_`, serta konstanta `OL_FIELDS` dan `OL_PAY_FIELDS`.
 3. Salin isi `FLUTTER_API_ENDPOINT.gs` ke file baru di project Apps Script. Jangan mengganti file lama.
-4. Di **Project Settings → Script Properties**, tambahkan `OL_API_TOKEN` dengan nilai acak rahasia minimal 32 karakter. Jangan simpan token di GitHub.
-5. Deploy → Manage deployments → Edit Web App → pilih **New version** → Deploy. Gunakan URL Web App yang sama.
-6. Tes GET URL Web App. Respons yang diharapkan memuat `"status":"ready"`.
-7. Build APK Flutter dengan token yang sama: `flutter build apk --release --dart-define=OL_API_TOKEN=TOKEN_RAHASIA`. Jangan commit token atau membagikan APK ke pihak yang tidak berwenang.
+4. Pada konstanta `OL_FLUTTER_API_TOKEN` di file adapter, gunakan token yang sama dengan GitHub Actions Secret `OL_API_TOKEN`. Tidak perlu menambah Script Properties.
+5. Simpan token sebagai repository secret di GitHub: Settings → Secrets and variables → Actions → New repository secret, nama `OL_API_TOKEN`. Jangan commit token ke repository.
+6. Deploy → Manage deployments → Edit Web App → pilih **New version** → Deploy. Gunakan URL Web App yang sama.
+7. Tes GET URL Web App. Respons yang diharapkan memuat `"status":"ready"`.
+8. Build APK melalui workflow GitHub Actions. Jangan membagikan token atau APK ke pihak yang tidak berwenang.
 
 ## Kontrak endpoint
 
