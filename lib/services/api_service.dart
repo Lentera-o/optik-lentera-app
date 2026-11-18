@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,7 +5,6 @@ import '../app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Hasil mentah dari Google Apps Script.
-/// Parsing payload bisnis dilakukan setelah kontrak endpoint diverifikasi.
 class ApiResponse {
   final int statusCode;
   final String rawBody;
@@ -18,7 +16,20 @@ class ApiResponse {
     required this.data,
   });
 
-  bool get isSuccessful => statusCode >= 200 && statusCode < 300;
+  /// Apps Script ContentService can return an application-level failure as
+  /// JSON with HTTP 200. Treat an explicit {ok:false} as a failed request.
+  bool get isSuccessful {
+    if (statusCode < 200 || statusCode >= 300) return false;
+    if (data is Map && data['ok'] == false) return false;
+    return true;
+  }
+
+  String? get errorMessage {
+    if (data is Map && data['error'] != null) {
+      return data['error'].toString();
+    }
+    return null;
+  }
 }
 
 class ApiService {
@@ -27,8 +38,6 @@ class ApiService {
   static final HttpClient _client = HttpClient()
     ..connectionTimeout = AppConfig.apiTimeout;
 
-  /// Memanggil doGet Apps Script. Parameter [query] diteruskan sebagai query
-  /// string tanpa mengasumsikan nama action tertentu.
   static Future<ApiResponse> get({
     Map<String, String> query = const {},
   }) async {
@@ -38,25 +47,130 @@ class ApiService {
     return _send('GET', uri);
   }
 
-  /// Mengirim JSON ke doPost Apps Script. Bentuk payload diserahkan pemanggil
-  /// agar sesuai kontrak backend yang sudah ada.
+  /// Sends a transaction to Apps Script and safely follows its ContentService
+  /// redirect. Apps Script may return JSON from script.googleusercontent.com
+  /// after the POST has been processed; the redirect is fetched with GET so
+  /// the transaction body is never replayed.
+  static Future<ApiResponse> postTransaction({
+    required String action,
+    required String idToken,
+    required String requestId,
+    required Map<String, dynamic> data,
+  }) async {
+    if (action != 'createOrder' && action != 'createPayment') {
+      throw ArgumentError.value(action, 'action', 'Unsupported transaction action');
+    }
+    if (idToken.isEmpty || requestId.isEmpty) {
+      throw ArgumentError('A verified Google ID token and stable request ID are required.');
+    }
+
+    final uri = Uri.parse(AppConfig.appsScriptUrl);
+    final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
+    request.followRedirects = false;
+    request.headers
+      ..contentType = ContentType.json
+      ..set(HttpHeaders.acceptHeader, 'application/json');
+    request.write(jsonEncode({
+      'action': action,
+      'requestId': requestId,
+      'idToken': idToken,
+      'data': data,
+    }));
+
+    final response = await request.close().timeout(AppConfig.apiTimeout);
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      final location = response.headers.value(HttpHeaders.locationHeader);
+      await response.drain<void>();
+      if (location == null || location.trim().isEmpty) {
+        throw const HttpException('Apps Script mengembalikan redirect tanpa alamat tujuan.');
+      }
+      final target = uri.resolve(location);
+      if (target.scheme != 'https' ||
+          (target.host != 'script.googleusercontent.com' &&
+           target.host != 'script.google.com')) {
+        throw const HttpException('Tujuan redirect Apps Script tidak tepercaya.');
+      }
+      // Do not replay the POST: Apps Script may already have written the row.
+      final redirected = await _client.getUrl(target).timeout(AppConfig.apiTimeout);
+      redirected.followRedirects = true;
+      redirected.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      final redirectedResponse = await redirected.close().timeout(AppConfig.apiTimeout);
+      return _readResponse(redirectedResponse);
+    }
+    return _readResponse(response);
+  }
+
+  /// Authenticated, read-only request to the Apps Script API.
+  /// This endpoint is separate from transaction writes and never replays a POST.
+  static Future<ApiResponse> postAuthorizedRead({
+    required String action,
+    required String idToken,
+    required Map<String, dynamic> data,
+  }) async {
+    if (action != 'readTable' || idToken.isEmpty) {
+      throw ArgumentError('Authenticated read action and Google ID token are required.');
+    }
+    final uri = Uri.parse(AppConfig.appsScriptUrl);
+    final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
+    request.followRedirects = false;
+    request.headers
+      ..contentType = ContentType.json
+      ..set(HttpHeaders.acceptHeader, 'application/json');
+    request.write(jsonEncode({'action': action, 'idToken': idToken, 'data': data}));
+    final response = await request.close().timeout(AppConfig.apiTimeout);
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      final location = response.headers.value(HttpHeaders.locationHeader);
+      await response.drain<void>();
+      if (location == null || location.trim().isEmpty) {
+        throw const HttpException('Apps Script mengembalikan redirect tanpa alamat tujuan.');
+      }
+      final target = uri.resolve(location);
+      if (target.scheme != 'https' ||
+          (target.host != 'script.googleusercontent.com' && target.host != 'script.google.com')) {
+        throw const HttpException('Tujuan redirect Apps Script tidak tepercaya.');
+      }
+      final redirected = await _client.getUrl(target).timeout(AppConfig.apiTimeout);
+      redirected.followRedirects = true;
+      redirected.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      return _readResponse(await redirected.close().timeout(AppConfig.apiTimeout));
+    }
+    return _readResponse(response);
+  }
+
+  static Future<ApiResponse> createOrder({
+    required String idToken,
+    required String requestId,
+    required Map<String, dynamic> data,
+  }) => postTransaction(
+    action: 'createOrder',
+    idToken: idToken,
+    requestId: requestId,
+    data: data,
+  );
+
+  static Future<ApiResponse> createPayment({
+    required String idToken,
+    required String requestId,
+    required Map<String, dynamic> data,
+  }) => postTransaction(
+    action: 'createPayment',
+    idToken: idToken,
+    requestId: requestId,
+    data: data,
+  );
+
   static Future<ApiResponse> post(Map<String, dynamic> payload) async {
     final uri = Uri.parse(AppConfig.appsScriptUrl);
-    final request = await _client
-        .postUrl(uri)
-        .timeout(AppConfig.apiTimeout);
+    final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
     request.headers.contentType = ContentType.json;
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
     request.write(jsonEncode(payload));
-
     final response = await request.close().timeout(AppConfig.apiTimeout);
     return _readResponse(response);
   }
 
-
-  /// Membuka Google Form resmi dengan jawaban transaksi yang sudah diisi.
-  /// Petugas tetap meninjau dan menekan Kirim di Google Form; trigger Form
-  /// yang sudah ada tetap menjadi satu-satunya pemroses transaksi resmi.
+  /// Membuka Google Form resmi dengan jawaban yang sudah diisi.
+  /// Petugas wajib memeriksa data dan menekan Kirim secara manual.
   static Future<bool> openPrefilledForm({
     required String formId,
     required Map<String, String> answers,
@@ -72,7 +186,11 @@ class ApiService {
       '/forms/d/e/$formId/viewform',
       query,
     );
-    return launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
+    }
   }
 
   static const String orderFormId =
@@ -80,9 +198,11 @@ class ApiService {
   static const String paymentFormId =
       '1FAIpQLScckA6mmAbrektSRO1-9rRE9ObwRErwmb5LLTo5ZTq24DEbEQ';
 
+  /// Membuka formulir pesanan; tidak mengirim transaksi dari aplikasi.
   static Future<bool> openOrderForm(Map<String, String> answers) =>
       openPrefilledForm(formId: orderFormId, answers: answers);
 
+  /// Membuka formulir pembayaran; tidak mengirim transaksi dari aplikasi.
   static Future<bool> openPaymentForm(Map<String, String> answers) =>
       openPrefilledForm(formId: paymentFormId, answers: answers);
 
