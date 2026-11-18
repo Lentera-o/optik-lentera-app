@@ -192,7 +192,7 @@ class _MainScreenState extends State<MainScreen> {
       builder: (sheetContext) => Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 26),
         decoration: const BoxDecoration(
-          color: Color(0xFFFFFCF8),
+          color: const Color(0xFF191C21),
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: SafeArea(
@@ -547,7 +547,7 @@ class _DashboardContentState extends State<DashboardContent> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF80612F), Color(0xFFB99555), Color(0xFFD6B985)],
+                colors: [Color(0xFF8C6931), Color(0xFFD6B56F), Color(0xFFF0D99A)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
