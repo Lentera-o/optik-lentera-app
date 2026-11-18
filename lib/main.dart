@@ -15,10 +15,10 @@ void main() {
 }
 
 const Color cream = Color(0xFFFAF7F0);
-const Color gold = Color(0xFFB99555);
-const Color darkGold = Color(0xFF80612F);
-const Color pink = Color(0xFFE9C9CC);
-const Color ink = Color(0xFF39342F);
+const Color gold = Color(0xFFC5A46D);
+const Color darkGold = Color(0xFF8B6B3F);
+const Color pink = Color(0xFFEADBD8);
+const Color ink = Color(0xFF24221E);
 
 class OptikLenteraApp extends StatelessWidget {
   const OptikLenteraApp({super.key});
@@ -79,20 +79,20 @@ class OptikLenteraApp extends StatelessWidget {
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: const Color(0xFFFFFCF8),
-          indicatorColor: pink.withValues(alpha: .52),
-          height: 70,
+          backgroundColor: ink,
+          indicatorColor: gold.withValues(alpha: .22),
+          height: 72,
           elevation: 0,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
             fontSize: 9.5,
             letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF8A8177),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFB7AEA1),
           )),
           iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 21,
-            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF9A9186),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFB7AEA1),
           )),
         ),
         snackBarTheme: SnackBarThemeData(
@@ -301,11 +301,6 @@ class _MainScreenState extends State<MainScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none),
-            color: darkGold,
-          ),
           const Padding(
             padding: EdgeInsets.only(right: 16),
             child: CircleAvatar(
@@ -335,15 +330,15 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFCF8),
-          border: Border(top: BorderSide(color: gold.withValues(alpha: .16))),
+          color: ink,
+          border: Border(top: BorderSide(color: gold.withValues(alpha: .34))),
           boxShadow: [
             BoxShadow(color: ink.withValues(alpha: .045), blurRadius: 16, offset: const Offset(0, -5)),
           ],
         ),
         child: NavigationBar(
           backgroundColor: Colors.transparent,
-          indicatorColor: pink.withValues(alpha: .45),
+          indicatorColor: gold.withValues(alpha: .22),
           selectedIndex: selectedIndex >= 4 ? 4 : selectedIndex,
           onDestinationSelected: (index) {
             if (index == 4) {
@@ -355,27 +350,27 @@ class _MainScreenState extends State<MainScreen> {
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded, color: darkGold),
+              selectedIcon: Icon(Icons.home_rounded, color: gold),
               label: 'Beranda',
             ),
             const NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long_rounded, color: darkGold),
+              selectedIcon: Icon(Icons.receipt_long_rounded, color: gold),
               label: 'Transaksi',
             ),
             const NavigationDestination(
               icon: Icon(Icons.people_outline_rounded),
-              selectedIcon: Icon(Icons.people_rounded, color: darkGold),
+              selectedIcon: Icon(Icons.people_rounded, color: gold),
               label: 'Pelanggan',
             ),
             const NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline_rounded),
-              selectedIcon: Icon(Icons.chat_bubble_rounded, color: darkGold),
+              selectedIcon: Icon(Icons.chat_bubble_rounded, color: gold),
               label: 'WhatsApp',
             ),
             NavigationDestination(
               icon: Icon(selectedIndex >= 4 ? Icons.grid_view_rounded : Icons.grid_view_outlined),
-              selectedIcon: const Icon(Icons.grid_view_rounded, color: darkGold),
+              selectedIcon: const Icon(Icons.grid_view_rounded, color: gold),
               label: 'Lainnya',
             ),
           ],
@@ -417,7 +412,7 @@ class _MoreMenuTile extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFF7E8EA),
+                color: const Color(0xFFF3E9D9),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: darkGold, size: 21),
