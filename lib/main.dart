@@ -509,8 +509,6 @@ class DashboardContent extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 20),
