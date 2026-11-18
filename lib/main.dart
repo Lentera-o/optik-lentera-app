@@ -80,7 +80,7 @@ class OptikLenteraApp extends StatelessWidget {
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: ink,
-          indicatorColor: pagePalette.accent.withValues(alpha: .23),
+          indicatorColor: gold.withValues(alpha: .22),
           height: 72,
           elevation: 0,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -329,11 +329,11 @@ class _MainScreenState extends State<MainScreen> {
             fontSize: 9.5,
             letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? pagePalette.accent : const Color(0xFFB7AEA1),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFB7AEA1),
           )),
           iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 21,
-            color: states.contains(WidgetState.selected) ? pagePalette.accent : const Color(0xFFB7AEA1),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFB7AEA1),
           )),
         ),
       ),
@@ -406,23 +406,23 @@ class _MainScreenState extends State<MainScreen> {
             }
           },
           destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.home_outlined),
+            NavigationDestination(
+              icon: const Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home_rounded, color: pagePalette.accent),
               label: 'Beranda',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
+            NavigationDestination(
+              icon: const Icon(Icons.receipt_long_outlined),
               selectedIcon: Icon(Icons.receipt_long_rounded, color: pagePalette.accent),
               label: 'Transaksi',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.people_outline_rounded),
+            NavigationDestination(
+              icon: const Icon(Icons.people_outline_rounded),
               selectedIcon: Icon(Icons.people_rounded, color: pagePalette.accent),
               label: 'Pelanggan',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline_rounded),
+            NavigationDestination(
+              icon: const Icon(Icons.chat_bubble_outline_rounded),
               selectedIcon: Icon(Icons.chat_bubble_rounded, color: pagePalette.accent),
               label: 'WhatsApp',
             ),
