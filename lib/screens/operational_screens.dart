@@ -3,9 +3,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 
-const _gold = Color(0xFFB99555);
-const _darkGold = Color(0xFF80612F);
-const _ink = Color(0xFF39342F);
+const _gold = Color(0xFFC5A46D);
+const _darkGold = Color(0xFF8B6B3F);
+const _ink = Color(0xFF24221E);
 
 class CustomerScreen extends StatefulWidget {
   final List<Customer> customers;
@@ -223,7 +223,7 @@ class _Intro extends StatelessWidget {
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
       gradient: const LinearGradient(
-        colors: [Color(0xFFFFFCF7), Color(0xFFF8EEF0)],
+        colors: [Color(0xFFFFFCF7), Color(0xFFF3E9D9)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
@@ -562,7 +562,7 @@ class InvoiceReceiptScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8F7),
+                    color: const Color(0xFFFFFCF7),
                     border: Border.all(color: _gold.withValues(alpha: .35)),
                     borderRadius: BorderRadius.circular(12),
                   ),
