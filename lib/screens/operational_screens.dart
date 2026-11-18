@@ -145,7 +145,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
     try {
       await GoogleFormsService.submitOrder(order);
-      widget.onAdd(order);
       for (final field in [customer, phone, address, doctor, lensType, rxNote, frame, frameDescription, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) {
         field.clear();
       }
@@ -357,7 +356,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     setState(() => submitting = true);
     try {
       await GoogleFormsService.submitPayment(payment);
-      widget.onAdd(payment);
       invoice.clear();
       nominal.clear();
       category.clear();
