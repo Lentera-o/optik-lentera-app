@@ -3,9 +3,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 
-const _gold = Color(0xFFB99555);
-const _darkGold = Color(0xFF80612F);
-const _ink = Color(0xFF39342F);
+const _gold = Color(0xFFC5A66F);
+const _darkGold = Color(0xFF8A6B3F);
+const _ink = Color(0xFF292722);
 
 class CustomerScreen extends StatefulWidget {
   final List<Customer> customers;
