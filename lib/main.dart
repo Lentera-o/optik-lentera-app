@@ -713,7 +713,7 @@ class _LenteraTodayCard extends StatelessWidget {
     final index = day % _motivations.length;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFCF8),
         borderRadius: BorderRadius.circular(20),
@@ -741,9 +741,9 @@ class _LenteraTodayCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('LENTERA HARI INI', style: TextStyle(color: darkGold, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: .8)),
+                    Text('LENTERA HARI INI', style: TextStyle(color: darkGold, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .8)),
                     SizedBox(height: 2),
-                    Text('Motivasi, pelayanan, dan wawasan optik', style: TextStyle(color: Color(0xFF8A8177), fontSize: 9)),
+                    Text('Motivasi, pelayanan, dan wawasan optik', style: TextStyle(color: Color(0xFF8A8177), fontSize: 10)),
                   ],
                 ),
               ),
@@ -755,6 +755,7 @@ class _LenteraTodayCard extends StatelessWidget {
             label: 'MOTIVASI',
             icon: Icons.favorite_border_rounded,
             text: _motivations[index],
+            prominent: true,
           ),
           const SizedBox(height: 10),
           _LearningItem(
@@ -778,11 +779,13 @@ class _LearningItem extends StatelessWidget {
   final String label;
   final IconData icon;
   final String text;
+  final bool prominent;
 
   const _LearningItem({
     required this.label,
     required this.icon,
     required this.text,
+    this.prominent = false,
   });
 
   @override
@@ -801,9 +804,9 @@ class _LearningItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: darkGold, fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: .8)),
-              const SizedBox(height: 4),
-              Text(text, style: const TextStyle(color: ink, fontSize: 10, height: 1.45)),
+              Text(label, style: TextStyle(color: darkGold, fontSize: prominent ? 10 : 9, fontWeight: FontWeight.w800, letterSpacing: .8)),
+              const SizedBox(height: 5),
+              Text(text, style: TextStyle(color: ink, fontSize: prominent ? 15 : 12, height: 1.5, fontWeight: prominent ? FontWeight.w600 : FontWeight.normal)),
             ],
           ),
         ),
