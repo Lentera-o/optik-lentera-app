@@ -480,7 +480,7 @@ class DashboardContent extends StatelessWidget {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 26),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -503,14 +503,14 @@ class DashboardContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 11),
-                    const Text('Selamat datang,', style: TextStyle(color: ink, fontSize: 23, fontWeight: FontWeight.w800, height: 1.1)),
+                    const Text('Selamat datang,', style: TextStyle(color: ink, fontSize: 25, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: -.45)),
                     const SizedBox(height: 4),
                     const Text('Apa yang ingin dikerjakan hari ini?', style: TextStyle(color: Color(0xFF81766B), fontSize: 11.5)),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              const _OptikLogo(size: 62),
+              const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 20),
@@ -545,7 +545,7 @@ class DashboardContent extends StatelessWidget {
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(color: Colors.white.withValues(alpha: .20)),
                       ),
-                      child: const Text('OPTIK LENTERA', style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 1.5, fontWeight: FontWeight.w800)),
+                      child: const Text('LAYANAN OPTIK TERPADU', style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 1.35, fontWeight: FontWeight.w800)),
                     ),
                     const SizedBox(height: 13),
                     Text(
