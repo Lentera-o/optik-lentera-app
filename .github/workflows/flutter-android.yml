@@ -2,7 +2,7 @@ name: Flutter Android CI
 
 on:
   push:
-    branches: [main, feature/read-only-sheet-sync, fix/durable-transaction-retry]
+    branches: [main, feature/read-only-sheet-sync, fix/durable-transaction-retry, ui/black-gold-luxury-final]
   pull_request:
     branches: [main, test/pdf-qr-layout]
   workflow_dispatch:
