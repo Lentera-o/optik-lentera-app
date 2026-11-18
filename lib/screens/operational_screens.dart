@@ -146,6 +146,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
     try {
       await GoogleFormsService.submitOrder(order);
       widget.onAdd(order);
+      for (final field in [customer, phone, address, doctor, lensType, rxNote, frame, frameDescription, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) {
+        field.clear();
+      }
+      selectedCustomerIndex = null;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Permintaan pesanan dikirim ke Google Forms. Invoice resmi masih menunggu proses Apps Script dan verifikasi di Sheets. Jangan buat pembayaran sebelum nomor invoice resmi muncul.'),
@@ -336,8 +340,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   Future<void> save() async {
     if (submitting) return;
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-    if (invoice.text.trim().isEmpty || value <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice resmi dan nominal pembayaran wajib diisi.')));
+    final invoiceNumber = invoice.text.trim();
+    if (invoiceNumber.isEmpty || invoiceNumber.startsWith('FORM-PENDING-') || invoiceNumber.startsWith('DRAFT-') || value <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Masukkan nomor invoice resmi dari Sheets dan nominal pembayaran.')));
       return;
     }
     final payment = OptikPayment(
@@ -353,6 +358,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     try {
       await GoogleFormsService.submitPayment(payment);
       widget.onAdd(payment);
+      invoice.clear();
+      nominal.clear();
+      category.clear();
+      note.clear();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Permintaan pembayaran dikirim ke Google Forms. Kuitansi resmi menunggu proses Apps Script dan verifikasi di Sheets.'),
@@ -374,7 +383,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const _Intro('Pembayaran', 'Catat pembayaran lanjutan sesuai nomor invoice.', Icons.payments_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(children: [
-      _field(invoice, 'Nomor invoice *'),
+      _field(invoice, 'Nomor invoice resmi dari Sheets *'),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
       _field(category, 'Keterangan pembayaran'),
       _field(note, 'Catatan pembayaran'),
