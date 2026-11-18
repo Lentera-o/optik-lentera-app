@@ -390,10 +390,17 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   String _rupiah(int value) => 'Rp ' + value.toString().replaceAllMapped(
     RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
 
+  // Normalisasi nomor Indonesia untuk tautan WhatsApp.
+  // Mendukung +62..., 62..., 08..., 8..., dan awalan internasional 0062...
   String _phoneForWhatsApp(String raw) {
-    var digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('0')) digits = '62' + digits.substring(1);
-    if (digits.startsWith('8')) digits = '62' + digits;
+    var digits = raw.trim().replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.startsWith('0062')) {
+      digits = digits.substring(2);
+    } else if (digits.startsWith('0')) {
+      digits = '62' + digits.substring(1);
+    } else if (digits.startsWith('8')) {
+      digits = '62' + digits;
+    }
     return digits;
   }
 
