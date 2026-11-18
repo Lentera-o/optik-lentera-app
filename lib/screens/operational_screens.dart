@@ -11,9 +11,9 @@ import '../services/google_auth_service.dart';
 import '../services/sheets_read_service.dart';
 import '../services/whatsapp_phone_service.dart';
 
-const _gold = Color(0xFFB99555);
-const _darkGold = Color(0xFF80612F);
-const _ink = Color(0xFF39342F);
+const _gold = Color(0xFFD6B56F);
+const _darkGold = Color(0xFFB38B45);
+const _ink = Color(0xFFF1EEE7);
 
 String _newTransactionRequestId() =>
     '${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(1 << 32)}';
@@ -213,8 +213,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
       else ...keys.map((key){
         final customerOrders=groups[key]!;
         final paymentCount=payments.where((p)=>customerOrders.any((o)=>paymentFor(p,cell(o,['No Invoice','Nomor Invoice','Invoice'])))).length;
-        return Card(color:Colors.white,child:ExpansionTile(
-          leading:const CircleAvatar(backgroundColor:Color(0xFFF8EEF0),child:Icon(Icons.person_outline,color:_darkGold)),
+        return Card(color:const Color(0xFF191C21),child:ExpansionTile(
+          leading:const CircleAvatar(backgroundColor:Color(0xFF29251D),child:Icon(Icons.person_outline,color:_darkGold)),
           title:Text(names[key]??'Pelanggan',style:const TextStyle(fontWeight:FontWeight.w800,color:_ink)),
           subtitle:Text('${phones[key]??'-'} · ${customerOrders.length} invoice · ${paymentCount} pembayaran'),
           childrenPadding:const EdgeInsets.fromLTRB(14,0,14,14),
@@ -222,7 +222,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
             final invoice=cell(o,['No Invoice','Nomor Invoice','Invoice']);
             final related=payments.where((p)=>paymentFor(p,invoice)).toList();
             final pdf=documentUrl(o,['Link Invoice PDF','PDF Invoice','Link PDF Invoice','Invoice PDF','URL Invoice PDF']);
-            return Container(width:double.infinity,margin:const EdgeInsets.only(top:10),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xFFFFFCF8),borderRadius:BorderRadius.circular(12),border:Border.all(color:_gold.withValues(alpha:.2))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+            return Container(width:double.infinity,margin:const EdgeInsets.only(top:10),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:const Color(0xFF202329),borderRadius:BorderRadius.circular(12),border:Border.all(color:_gold.withValues(alpha:.2))),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
               Text(invoice,style:const TextStyle(fontWeight:FontWeight.w800,color:_darkGold)),
               Text('Tanggal: ${cell(o,['Tanggal','Tanggal Pesanan','Tanggal Order','Timestamp'])}'),
               Text('Total: ${rupiah(cell(o,['Total','Total Harga','Total Tagihan']))}'),
@@ -230,7 +230,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
               if(pdf.isNotEmpty) Align(alignment:Alignment.centerLeft,child:TextButton.icon(onPressed:()=>openDocument(pdf),icon:const Icon(Icons.picture_as_pdf_outlined),label:const Text('Buka invoice PDF'))),
               const Divider(height:14),
               const Text('RIWAYAT PEMBAYARAN / KUITANSI',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800,color:_darkGold)),
-              if(related.isEmpty) const Text('Belum ada pembayaran tercatat.',style:TextStyle(fontSize:11,color:Colors.black54))
+              if(related.isEmpty) const Text('Belum ada pembayaran tercatat.',style:TextStyle(fontSize:11,color:Colors.white70))
               else ...related.map((p){
                 final amount=cell(p,['Jumlah Bayar','Jumlah Pembayaran','Nominal Pembayaran','Nominal']);
                 final receipt=documentUrl(p,['PDF Kuitansi','Link PDF Kuitansi','Link Kuitansi','Link Kuitansi PDF','Kuitansi PDF','URL Kuitansi PDF']);
@@ -243,7 +243,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
       const SizedBox(height:18),
       Text('Pelanggan tersimpan di aplikasi: ${widget.customers.length}',style:const TextStyle(fontWeight:FontWeight.bold,color:_ink)),
       if(widget.customers.isEmpty) const _Empty('Belum ada profil pelanggan yang ditambahkan melalui aplikasi.')
-      else ...widget.customers.reversed.map((c)=>Card(color:Colors.white,child:ListTile(leading:const Icon(Icons.person_outline,color:_darkGold),title:Text(c.name),subtitle:Text([c.phone,c.address].where((v)=>v.isNotEmpty).join(' • '))))),
+      else ...widget.customers.reversed.map((c)=>Card(color:const Color(0xFF191C21),child:ListTile(leading:const Icon(Icons.person_outline,color:_darkGold),title:Text(c.name),subtitle:Text([c.phone,c.address].where((v)=>v.isNotEmpty).join(' • '))))),
       const _LocalNote(),
     ]));
   }
@@ -593,7 +593,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ]),
       if (_historyLoading) const LinearProgressIndicator()
       else if (_historyError != null) Text('Data pesanan lama belum dapat dimuat: $_historyError', style: const TextStyle(color: Colors.deepOrange, fontSize: 11))
-      else if (_officialOrderHistory.isEmpty) const Text('Belum ada rincian pesanan resmi yang tersedia untuk dipilih.', style: TextStyle(fontSize: 11, color: Colors.black54))
+      else if (_officialOrderHistory.isEmpty) const Text('Belum ada rincian pesanan resmi yang tersedia untuk dipilih.', style: TextStyle(fontSize: 11, color: Colors.white70))
       else DropdownButtonFormField<String>(
         value: _selectedHistoryInvoice,
         isExpanded: true,
@@ -676,7 +676,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     ])),
     const SizedBox(height: 18),
     Text('Draft pesanan: ${widget.orders.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
-    ...widget.orders.reversed.map((o) => Card(color: Colors.white, child: ListTile(
+    ...widget.orders.reversed.map((o) => Card(color: const Color(0xFF191C21), child: ListTile(
       leading: const Icon(Icons.shopping_bag_outlined, color: _darkGold),
       title: Text(o.customer.name),
       subtitle: Text(o.invoiceNumber + ' • Total Rp ' + o.total.toString() + ' • Sisa Rp ' + o.remaining.toString()),
@@ -694,7 +694,7 @@ class _Intro extends StatelessWidget {
     padding: const EdgeInsets.all(15),
     decoration: BoxDecoration(
       gradient: const LinearGradient(
-        colors: [Color(0xFFFFFCF7), Color(0xFFF8EEF0)],
+        colors: [Color(0xFF202329), Color(0xFF29251D)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
@@ -706,7 +706,7 @@ class _Intro extends StatelessWidget {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFF191C21),
           borderRadius: BorderRadius.circular(15),
           boxShadow: [BoxShadow(color: _gold.withValues(alpha: .10), blurRadius: 10, offset: const Offset(0, 3))],
         ),
@@ -716,7 +716,7 @@ class _Intro extends StatelessWidget {
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: const TextStyle(color: _darkGold, fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: .1)),
         const SizedBox(height: 3),
-        Text(subtitle, style: const TextStyle(color: Color(0xFF81766E), fontSize: 11, height: 1.35)),
+        Text(subtitle, style: const TextStyle(color: Color(0xFFB9B2A5), fontSize: 11, height: 1.35)),
       ])),
     ]),
   );
@@ -729,7 +729,7 @@ class _Panel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(17),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: const Color(0xFF191C21),
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: _gold.withValues(alpha: .20)),
       boxShadow: [BoxShadow(color: _ink.withValues(alpha: .035), blurRadius: 16, offset: const Offset(0, 5))],
@@ -747,7 +747,7 @@ class _Empty extends StatelessWidget {
   final String text;
   const _Empty(this.text);
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.all(16), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black54)));
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.all(16), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)));
 }
 
 class _LocalNote extends StatelessWidget {
@@ -755,7 +755,7 @@ class _LocalNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.only(top: 14, bottom: 12),
-    child: Text('Transaksi dikirim langsung dari aplikasi ke Apps Script setelah sesi Google diverifikasi. Invoice dan kuitansi resmi tetap diproses oleh sistem yang sudah ada.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+    child: Text('Transaksi dikirim langsung dari aplikasi ke Apps Script setelah sesi Google diverifikasi. Invoice dan kuitansi resmi tetap diproses oleh sistem yang sudah ada.', style: TextStyle(fontSize: 11, color: Colors.white70)),
   );
 }
 
@@ -1088,7 +1088,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFCF7),
+            color: const Color(0xFF202329),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: _gold.withValues(alpha: .25)),
           ),
@@ -1115,7 +1115,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
                   padding: const EdgeInsets.only(top: 5),
                   child: Text(
                     '${item['date']} • ${item['receipt']} • Rp ${item['amount']} • ${item['method']}',
-                    style: const TextStyle(fontSize: 11, color: Colors.black87),
+                    style: const TextStyle(fontSize: 11, color: Colors.white),
                   ),
                 )),
               ],
@@ -1140,7 +1140,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     ])),
     const SizedBox(height: 18),
     Text('Pembayaran sesi ini: ${widget.payments.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
-    ...widget.payments.reversed.map((p) => Card(color: Colors.white, child: ListTile(
+    ...widget.payments.reversed.map((p) => Card(color: const Color(0xFF191C21), child: ListTile(
       leading: const Icon(Icons.payments_outlined, color: _darkGold),
       title: Text('Rp ' + p.amount.toString()),
       subtitle: Text(p.invoiceNumber + ' • ' + p.method),
@@ -1819,7 +1819,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
                   officialOrders.where((row) => _phoneFromRow(row).isNotEmpty).length.toString() +
                   ' nomor WA valid • ' + officialPayments.length.toString() +
                   ' pembayaran • ' + customerOptions.length.toString() + ' pelanggan',
-                  style: const TextStyle(fontSize: 10, color: Colors.black54),
+                  style: const TextStyle(fontSize: 10, color: Colors.white70),
                 ),
                 if (_lastSyncedAt != null)
                   Text('Terakhir disinkronkan: ' +
@@ -1827,13 +1827,13 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
                     _lastSyncedAt!.month.toString().padLeft(2, '0') + ' ' +
                     _lastSyncedAt!.hour.toString().padLeft(2, '0') + ':' +
                     _lastSyncedAt!.minute.toString().padLeft(2, '0'),
-                    style: const TextStyle(fontSize: 9, color: Colors.black45)),
+                    style: const TextStyle(fontSize: 9, color: Colors.white60)),
                 if (_sourceOrderHeaders.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 5),
                     child: Text(
                       'Kolom sumber: ' + _sourceOrderHeaders.join(' | '),
-                      style: const TextStyle(fontSize: 9, color: Colors.black45),
+                      style: const TextStyle(fontSize: 9, color: Colors.white60),
                     ),
                   ),
                 if (_latestOrderSamples.isNotEmpty)
@@ -1847,7 +1847,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(sample,
-                          style: const TextStyle(fontSize: 10, color: Colors.black54)),
+                          style: const TextStyle(fontSize: 10, color: Colors.white70)),
                       ),
                     )).toList(),
                   ),
@@ -1895,9 +1895,9 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
             label: const Text('Perbarui data pesanan & pembayaran terbaru'),
           ),
           const SizedBox(height: 8),
-          const Text('PDF resmi tidak dibuat oleh aplikasi. Tautan yang tersedia diambil dari catatan resmi Google Sheets/Drive.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const Text('PDF resmi tidak dibuat oleh aplikasi. Tautan yang tersedia diambil dari catatan resmi Google Sheets/Drive.', style: TextStyle(fontSize: 11, color: Colors.white70)),
           const SizedBox(height: 8),
-          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa pesan lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const Text('Pesan tidak dikirim otomatis. WhatsApp akan dibuka agar petugas memeriksa pesan lalu menekan tombol Kirim sendiri.', style: TextStyle(fontSize: 11, color: Colors.white70)),
         ])),
       ],
     );
@@ -2108,7 +2108,7 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
             final paid = _cell(order, ['Total Dibayar', 'Total dibayar', 'Total Dibayar Kumulatif']);
             final remaining = _cell(order, ['Sisa', 'Sisa Tagihan', 'Sisa tagihan']);
             return Card(
-              color: Colors.white,
+              color: const Color(0xFF191C21),
               margin: const EdgeInsets.only(bottom: 13),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -2137,7 +2137,7 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
                       padding: EdgeInsets.symmetric(vertical: 8),
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: Text('Belum ada pembayaran tercatat.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                        child: Text('Belum ada pembayaran tercatat.', style: TextStyle(fontSize: 11, color: Colors.white70)),
                       ),
                     )
                   else
@@ -2179,7 +2179,7 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: Text('Tautan invoice PDF belum tersedia pada baris ini.',
-                        style: TextStyle(fontSize: 11, color: Colors.black54)),
+                        style: TextStyle(fontSize: 11, color: Colors.white70)),
                     ),
                 ],
               ),
@@ -2329,7 +2329,7 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
           final status = _statuses[notice.id] ?? 'ready';
           final sent = status == 'sent';
           final review = status == 'review';
-          return Card(color: Colors.white, margin: const EdgeInsets.only(bottom: 10), child: Padding(
+          return Card(color: const Color(0xFF191C21), margin: const EdgeInsets.only(bottom: 10), child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
@@ -2340,7 +2340,7 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: sent ? Colors.green : review ? Colors.deepOrange : _darkGold)),
               ]),
               const SizedBox(height: 5),
-              Text(notice.detail, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+              Text(notice.detail, style: const TextStyle(fontSize: 11, color: Colors.white70)),
               const SizedBox(height: 9),
               Wrap(spacing: 8, runSpacing: 4, children: [
                 OutlinedButton.icon(onPressed: () => _open(notice), icon: const Icon(Icons.picture_as_pdf_outlined), label: const Text('Periksa PDF')),
@@ -2350,7 +2350,7 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
                   icon: const Icon(Icons.undo), label: const Text('Batalkan status')),
               ]),
               if (!sent) const Text('Status terkirim hanya dicatat setelah petugas mengirim sendiri melalui WhatsApp.',
-                style: TextStyle(fontSize: 10, color: Colors.black45)),
+                style: TextStyle(fontSize: 10, color: Colors.white60)),
             ]),
           ));
         }),
