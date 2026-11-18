@@ -490,7 +490,7 @@ class ReportsScreen extends StatelessWidget {
       rows.add([
         'Pesanan', order.invoiceNumber, order.orderDate?.toIso8601String() ?? '',
         order.customer.name, order.customer.phone, order.total, order.initialPayment,
-        later, (order.total - order.initialPayment - later).clamp(0, 1 << 31),
+        later, (order.total - order.initialPayment - later).clamp(0, 1 << 31).toInt(),
         order.initialPaymentMethod, order.note,
       ]);
     }
@@ -516,7 +516,7 @@ class ReportsScreen extends StatelessWidget {
     final down = orders.fold<int>(0, (sum, order) => sum + order.initialPayment);
     final later = payments.fold<int>(0, (sum, payment) => sum + payment.amount);
     final balance = orders.fold<int>(0, (sum, order) =>
-        sum + (order.total - order.initialPayment - _later(order)).clamp(0, 1 << 31));
+        sum + (order.total - order.initialPayment - _later(order)).clamp(0, 1 << 31).toInt());
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
@@ -563,7 +563,7 @@ class ReportsScreen extends StatelessWidget {
         else
           ...orders.reversed.map((order) {
             final paid = order.initialPayment + _later(order);
-            final due = (order.total - paid).clamp(0, 1 << 31);
+            final due = (order.total - paid).clamp(0, 1 << 31).toInt();
             return Card(
               color: Colors.white, elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: accent.withValues(alpha: .14))),
@@ -606,7 +606,7 @@ class OrderStatusScreen extends StatelessWidget {
         else
           ...orders.reversed.map((order) {
             final paidLater = payments.where((p) => order.invoiceNumber.isNotEmpty && p.invoiceNumber == order.invoiceNumber).fold<int>(0, (sum, p) => sum + p.amount);
-            final due = (order.total - order.initialPayment - paidLater).clamp(0, 1 << 31);
+            final due = (order.total - order.initialPayment - paidLater).clamp(0, 1 << 31).toInt();
             final settled = due == 0;
             final statusColor = settled ? Colors.green.shade700 : accent;
             return Card(
