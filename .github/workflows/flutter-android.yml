@@ -2,9 +2,9 @@ name: Flutter Android CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/remove-google-login-gate-only]
   pull_request:
-    branches: [main, test/pdf-qr-layout]
+    branches: [main, test/pdf-qr-layout, feature/read-only-sheet-sync]
   workflow_dispatch:
 
 permissions:
