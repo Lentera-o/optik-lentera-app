@@ -547,7 +547,7 @@ class DashboardContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 13),
                     Text(
-                      'Jernih Melihat,\nNyaman Melangkah.',
+                      'Jelas Lihatnya,\nJelas Rezekinya.',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 23,
                         height: 1.24,
@@ -586,6 +586,8 @@ class DashboardContent extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 18),
+          const _LenteraTodayCard(),
           const SizedBox(height: 24),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -669,6 +671,145 @@ class DashboardContent extends StatelessWidget {
       ),
     );
   }
+}
+
+
+class _LenteraTodayCard extends StatelessWidget {
+  const _LenteraTodayCard();
+
+  static const List<String> _motivations = [
+    'Jelas Lihatnya, Jelas Rezekinya. Layani dengan hati, bertumbuh bersama.',
+    'Kerja yang teliti hari ini membangun kepercayaan untuk esok hari.',
+    'Setiap pelanggan adalah kesempatan untuk memberi manfaat.',
+    'Disiplin dalam proses, jujur dalam pelayanan, ikhlas dalam usaha.',
+    'Tim yang saling mendukung akan tumbuh lebih kuat.',
+    'Jangan berhenti belajar; kemampuan baik lahir dari kebiasaan baik.',
+    'Keberhasilan dimulai dari niat baik dan tindakan yang konsisten.',
+  ];
+
+  static const List<String> _serviceTips = [
+    'Sambut pelanggan dengan ramah, lalu dengarkan kebutuhannya sebelum menawarkan produk.',
+    'Jelaskan pilihan produk dengan bahasa sederhana, jujur, dan tanpa memaksa.',
+    'Ulangi kebutuhan pelanggan untuk memastikan tidak ada informasi yang terlewat.',
+    'Jika belum yakin dengan jawaban, sampaikan dengan jujur dan minta bantuan rekan yang kompeten.',
+    'Periksa kembali detail pesanan bersama pelanggan sebelum transaksi disimpan.',
+    'Tanggapi keluhan dengan tenang: dengarkan, pahami, lalu jelaskan langkah penyelesaiannya.',
+    'Akhiri pelayanan dengan memastikan pelanggan memahami cara penggunaan dan perawatan produk.',
+  ];
+
+  static const List<String> _opticalInsights = [
+    'Ukuran lensa harus mengikuti resep pemeriksaan yang valid; jangan menebak ukuran mata pelanggan.',
+    'Lensa single vision memiliki satu area koreksi utama, sedangkan lensa progresif dirancang untuk beberapa jarak pandang.',
+    'Ukuran frame yang sesuai membantu kenyamanan dan posisi lensa di depan mata.',
+    'Jarak pupil (PD) merupakan salah satu data penting dalam penempatan pusat optik lensa.',
+    'Lapisan lensa memiliki fungsi berbeda; jelaskan manfaat dan batasannya secara akurat.',
+    'Bersihkan lensa dengan cairan yang sesuai dan kain microfiber agar permukaan tidak mudah tergores.',
+    'Keluhan penglihatan atau perubahan resep perlu diarahkan ke pemeriksaan oleh tenaga profesional yang berwenang.',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final day = DateTime.now().difference(DateTime(2026, 1, 1)).inDays.abs();
+    final index = day % _motivations.length;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFCF8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: gold.withValues(alpha: .24)),
+        boxShadow: [
+          BoxShadow(color: ink.withValues(alpha: .035), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5EBDD),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.wb_sunny_outlined, color: darkGold, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('LENTERA HARI INI', style: TextStyle(color: darkGold, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: .8)),
+                    SizedBox(height: 2),
+                    Text('Motivasi, pelayanan, dan wawasan optik', style: TextStyle(color: Color(0xFF8A8177), fontSize: 9)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.auto_awesome_outlined, color: gold, size: 19),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _LearningItem(
+            label: 'MOTIVASI',
+            icon: Icons.favorite_border_rounded,
+            text: _motivations[index],
+          ),
+          const SizedBox(height: 10),
+          _LearningItem(
+            label: 'TIPS PELAYANAN',
+            icon: Icons.handshake_outlined,
+            text: _serviceTips[index],
+          ),
+          const SizedBox(height: 10),
+          _LearningItem(
+            label: 'WAWASAN OPTIK',
+            icon: Icons.visibility_outlined,
+            text: _opticalInsights[index],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LearningItem extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final String text;
+
+  const _LearningItem({
+    required this.label,
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(11),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFAF7F0),
+      borderRadius: BorderRadius.circular(13),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: darkGold, size: 17),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: darkGold, fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: .8)),
+              const SizedBox(height: 4),
+              Text(text, style: const TextStyle(color: ink, fontSize: 10, height: 1.45)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _DashboardMetric extends StatelessWidget {
