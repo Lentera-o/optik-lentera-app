@@ -182,6 +182,7 @@ class OptikPayment {
   final DateTime paymentDate;
   final int amount;
   final String method;
+  final String category;
   final String note;
   final String requestId;
 
@@ -190,6 +191,7 @@ class OptikPayment {
     required this.paymentDate,
     required this.amount,
     required this.method,
+    this.category = '',
     this.note = '',
     this.requestId = '',
   });
@@ -199,6 +201,7 @@ class OptikPayment {
         paymentDate: DateTime.tryParse(json['paymentDate']?.toString() ?? '') ?? DateTime.now(),
         amount: _asInt(json['amount']),
         method: json['method']?.toString() ?? '',
+        category: json['category']?.toString() ?? '',
         note: json['note']?.toString() ?? '',
         requestId: json['requestId']?.toString() ?? '',
       );
@@ -208,6 +211,7 @@ class OptikPayment {
         'paymentDate': paymentDate.toIso8601String(),
         'amount': amount,
         'method': method,
+        'category': category,
         'note': note,
         'requestId': requestId,
       };
