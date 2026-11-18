@@ -50,7 +50,13 @@ jobs:
             echo "Signing secrets not configured; this build will use temporary debug signing."
           fi
       - name: Build release APK
-        run: flutter build apk --release
+        env:
+          OL_API_TOKEN: ${{ secrets.OL_API_TOKEN }}
+        run: |
+          if [ -z "$OL_API_TOKEN" ]; then
+            echo "::warning::OL_API_TOKEN secret is not configured; this APK will not sync transactions to Google Sheets."
+          fi
+          flutter build apk --release --dart-define=OL_API_TOKEN="$OL_API_TOKEN"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
