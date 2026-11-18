@@ -222,7 +222,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Icon(Icons.insights_rounded, color: _dark, size: 30), SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('LAPORAN OPERASIONAL', style: TextStyle(color: _dark, fontWeight: FontWeight.w800)),
-            Text('Rekap resmi dari Google Sheets', style: TextStyle(color: Colors.black54, fontSize: 10)),
+            Text('Rekap resmi dari Google Sheets', style: TextStyle(color: Colors.white70, fontSize: 10)),
           ])),
         ])),
       const SizedBox(height: 14),
@@ -271,7 +271,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         const SizedBox(height: 18),
         const Text('RINCIAN ORDER', style: TextStyle(fontWeight: FontWeight.w800, color: _dark, fontSize: 12)),
         if (periodOrders.isEmpty) const Text('Tidak ada order pada periode ini.')
-        else ...periodOrders.map((r) => Card(color: Colors.white, child: ListTile(
+        else ...periodOrders.map((r) => Card(color: const Color(0xFF191C21), child: ListTile(
           leading: const Icon(Icons.receipt_long_outlined, color: _dark),
           title: Text(cell(r, ['Nama Pelanggan', 'Nama', 'Pelanggan'])),
           subtitle: Text(cell(r, ['No Invoice', 'Nomor Invoice', 'Invoice'])),
