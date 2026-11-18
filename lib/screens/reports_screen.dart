@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../services/sheets_read_service.dart';
 
-const _gold = Color(0xFFB99555);
-const _dark = Color(0xFF80612F);
-const _ink = Color(0xFF39342F);
+const _gold = Color(0xFFC5A66F);
+const _dark = Color(0xFF8A6B3F);
+const _ink = Color(0xFF292722);
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
