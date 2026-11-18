@@ -16,11 +16,11 @@ void main() {
   runApp(const OptikLenteraApp());
 }
 
-const Color cream = Color(0xFFFAF7F0);
-const Color gold = Color(0xFFB99555);
-const Color darkGold = Color(0xFF80612F);
-const Color pink = Color(0xFFE9C9CC);
-const Color ink = Color(0xFF39342F);
+const Color cream = Color(0xFFFBF8F2);
+const Color gold = Color(0xFFC5A66F);
+const Color darkGold = Color(0xFF8A6B3F);
+const Color pink = Color(0xFFEAD9D8);
+const Color ink = Color(0xFF292722);
 
 class OptikLenteraApp extends StatelessWidget {
   const OptikLenteraApp({super.key});
@@ -537,12 +537,12 @@ class _DashboardContentState extends State<DashboardContent> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF80612F), Color(0xFFB99555), Color(0xFFD6B985)],
+                colors: [Color(0xFFA88A55), Color(0xFFC7A96F), Color(0xFFE1CDA4)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: darkGold.withValues(alpha: .20), blurRadius: 18, offset: const Offset(0, 8))],
+              boxShadow: [BoxShadow(color: darkGold.withValues(alpha: .13), blurRadius: 18, offset: const Offset(0, 8))],
             ),
             child: Stack(
               children: [
