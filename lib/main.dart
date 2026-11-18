@@ -483,21 +483,24 @@ class ReportsScreen extends StatelessWidget {
 
   Future<void> _copyCsv(BuildContext context) async {
     final rows = <List<Object?>>[
-      ['Jenis', 'Invoice', 'Tanggal', 'Pelanggan', 'Telepon', 'Total', 'DP', 'Pembayaran lanjutan', 'Sisa', 'Metode', 'Catatan'],
+      ['Jenis', 'Invoice', 'Tanggal', 'Pelanggan', 'Telepon', 'Total', 'DP', 'Pembayaran lanjutan', 'Sisa', 'Metode', 'Catatan', 'Alamat'],
     ];
+    for (final customer in customers) {
+      rows.add(['Pelanggan', '', '', customer.name, customer.phone, '', '', '', '', '', '', customer.address]);
+    }
     for (final order in orders) {
       final later = _later(order);
       rows.add([
         'Pesanan', order.invoiceNumber, order.orderDate?.toIso8601String() ?? '',
         order.customer.name, order.customer.phone, order.total, order.initialPayment,
         later, (order.total - order.initialPayment - later).clamp(0, 1 << 31).toInt(),
-        order.initialPaymentMethod, order.note,
+        order.initialPaymentMethod, order.note, '',
       ]);
     }
     for (final payment in payments) {
       rows.add([
         'Pembayaran', payment.invoiceNumber, payment.paymentDate.toIso8601String(),
-        '', '', '', '', payment.amount, '', payment.method, payment.note,
+        '', '', '', '', payment.amount, '', payment.method, payment.note, '',
       ]);
     }
     final csv = '\uFEFF' + rows.map((row) => row.map(_cell).join(',')).join('\n');
