@@ -14,11 +14,11 @@ void main() {
   runApp(const OptikLenteraApp());
 }
 
-const Color cream = Color(0xFFFAF7F0);
-const Color gold = Color(0xFFB99555);
-const Color darkGold = Color(0xFF80612F);
+const Color cream = Color(0xFFF7F3EA);
+const Color gold = Color(0xFFC6A15B);
+const Color darkGold = Color(0xFF8A6A36);
 const Color pink = Color(0xFFE9C9CC);
-const Color ink = Color(0xFF39342F);
+const Color ink = Color(0xFF282521);
 
 class OptikLenteraApp extends StatelessWidget {
   const OptikLenteraApp({super.key});
@@ -79,8 +79,8 @@ class OptikLenteraApp extends StatelessWidget {
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: const Color(0xFFFFFCF8),
-          indicatorColor: pink.withValues(alpha: .52),
+          backgroundColor: ink,
+          indicatorColor: gold.withValues(alpha: .22),
           height: 70,
           elevation: 0,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -88,11 +88,11 @@ class OptikLenteraApp extends StatelessWidget {
             fontSize: 9.5,
             letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF8A8177),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFBDB7AC),
           )),
           iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 21,
-            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF9A9186),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFBDB7AC),
           )),
         ),
         snackBarTheme: SnackBarThemeData(
@@ -335,15 +335,15 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFCF8),
-          border: Border(top: BorderSide(color: gold.withValues(alpha: .16))),
+          color: ink,
+          border: Border(top: BorderSide(color: gold.withValues(alpha: .42))),
           boxShadow: [
             BoxShadow(color: ink.withValues(alpha: .045), blurRadius: 16, offset: const Offset(0, -5)),
           ],
         ),
         child: NavigationBar(
           backgroundColor: Colors.transparent,
-          indicatorColor: pink.withValues(alpha: .45),
+          indicatorColor: gold.withValues(alpha: .22),
           selectedIndex: selectedIndex >= 4 ? 4 : selectedIndex,
           onDestinationSelected: (index) {
             if (index == 4) {
