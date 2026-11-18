@@ -14,11 +14,11 @@ void main() {
   runApp(const OptikLenteraApp());
 }
 
-const Color cream = Color(0xFFFAF7F0);
-const Color gold = Color(0xFFB99555);
-const Color darkGold = Color(0xFF80612F);
-const Color pink = Color(0xFFE9C9CC);
-const Color ink = Color(0xFF39342F);
+const Color cream = Color(0xFFFBF8F2);
+const Color gold = Color(0xFFC5A66F);
+const Color darkGold = Color(0xFF8A6B3F);
+const Color pink = Color(0xFFEAD9D8);
+const Color ink = Color(0xFF292722);
 
 class OptikLenteraApp extends StatelessWidget {
   const OptikLenteraApp({super.key});
@@ -509,7 +509,7 @@ class DashboardContent extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF80612F), Color(0xFFB99555), Color(0xFFD6B985)],
+                colors: [Color(0xFF8A6B3F), Color(0xFFC5A66F), Color(0xFFD6B985)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -576,7 +576,7 @@ class DashboardContent extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFF80612F), onTap: () => onOpenModule(2)),
+              _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: const Color(0xFF8A6B3F), onTap: () => onOpenModule(2)),
               const SizedBox(width: 10),
               _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFF43866A), onTap: () => onOpenModule(3)),
               const SizedBox(width: 10),
