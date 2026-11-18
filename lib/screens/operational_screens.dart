@@ -77,6 +77,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final lensType = TextEditingController();
   final rxNote = TextEditingController();
   final frame = TextEditingController();
+  final frameDescription = TextEditingController();
   final lens = TextEditingController();
   final otherPrice = TextEditingController();
   final otherDescription = TextEditingController();
@@ -110,7 +111,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, frameDescription, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
@@ -129,7 +130,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
         odSph: odSph.text, odCyl: odCyl.text, odAxis: odAxis.text, odAdd: odAdd.text, odPd: odPd.text,
         osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
       ),
-      frame: OrderItem(description: 'Frame', price: amount(frame)),
+      frame: OrderItem(description: frameDescription.text.trim(), price: amount(frame)),
       lens: OrderItem(description: lensType.text.trim().isEmpty ? 'Lensa' : lensType.text.trim(), price: amount(lens)),
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
@@ -186,6 +187,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
       _field(lensType, 'Jenis / model lensa'),
       _field(rxNote, 'Catatan resep'),
+      _field(frameDescription, 'Frame - merek / model / warna'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
@@ -301,10 +303,12 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   final nominal = TextEditingController();
+  final category = TextEditingController();
+  final note = TextEditingController();
   String method = 'Tunai';
 
   @override
-  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+  void dispose() { invoice.dispose(); nominal.dispose(); category.dispose(); note.dispose(); super.dispose(); }
 
   void save() {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -331,9 +335,11 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       paymentDate: DateTime.now(),
       amount: value,
       method: method,
+      category: category.text.trim(),
+      note: note.text.trim(),
       requestId: 'PAY-' + DateTime.now().microsecondsSinceEpoch.toString(),
     ));
-    invoice.clear(); nominal.clear();
+    invoice.clear(); nominal.clear(); category.clear(); note.clear();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
   }
 
@@ -344,6 +350,8 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     _Panel(child: Column(children: [
       _field(invoice, 'Nomor invoice *'),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
+      _field(category, 'Keterangan pembayaran'),
+      _field(note, 'Catatan pembayaran'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
