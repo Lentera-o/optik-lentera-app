@@ -552,7 +552,7 @@ class ReportsScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: orders.isEmpty && payments.isEmpty ? null : () => _copyCsv(context),
+          onPressed: customers.isEmpty && orders.isEmpty && payments.isEmpty ? null : () => _copyCsv(context),
           icon: const Icon(Icons.content_copy_outlined),
           label: const Text('Salin laporan CSV'),
         ),
