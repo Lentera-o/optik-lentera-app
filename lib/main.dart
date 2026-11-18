@@ -580,9 +580,9 @@ class DashboardContent extends StatelessWidget {
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ringkasan aktivitas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+                  Text('Ringkasan aktivitas', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: ink)),
                   SizedBox(height: 3),
-                  Text('Catatan yang tersimpan di perangkat ini', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
+                  Text('Aktivitas pada sesi aplikasi ini', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
                 ],
               ),
               Container(
@@ -596,7 +596,7 @@ class DashboardContent extends StatelessWidget {
           Row(
             children: [
               Expanded(child: _DashboardMetric(
-                title: 'Pesanan tersimpan',
+                title: 'Pesanan sesi ini',
                 value: orderCount.toString(),
                 icon: Icons.shopping_bag_outlined,
                 tint: const Color(0xFFF5E9D6),
