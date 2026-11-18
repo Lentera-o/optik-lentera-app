@@ -304,10 +304,11 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   final nominal = TextEditingController();
+  final paymentNote = TextEditingController();
   String method = 'Tunai';
 
   @override
-  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+  void dispose() { invoice.dispose(); nominal.dispose(); paymentNote.dispose(); super.dispose(); }
 
   void save() {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -334,9 +335,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       paymentDate: DateTime.now(),
       amount: value,
       method: method,
+      note: paymentNote.text.trim(),
       requestId: 'PAY-' + DateTime.now().microsecondsSinceEpoch.toString(),
     ));
-    invoice.clear(); nominal.clear();
+    invoice.clear(); nominal.clear(); paymentNote.clear();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
   }
 
@@ -347,6 +349,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     _Panel(child: Column(children: [
       _field(invoice, 'Nomor invoice *'),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
+      _field(paymentNote, 'Catatan pembayaran'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
