@@ -806,7 +806,7 @@ class _LearningItem extends StatelessWidget {
             children: [
               Text(label, style: TextStyle(color: darkGold, fontSize: prominent ? 10 : 9, fontWeight: FontWeight.w800, letterSpacing: .8)),
               const SizedBox(height: 5),
-              Text(text, style: TextStyle(color: ink, fontSize: prominent ? 15 : 12, height: 1.5, fontWeight: prominent ? FontWeight.w600 : FontWeight.normal)),
+              Text(text, style: TextStyle(color: ink, fontSize: prominent ? 13 : 11, height: 1.45, fontWeight: prominent ? FontWeight.w600 : FontWeight.normal)),
             ],
           ),
         ),
