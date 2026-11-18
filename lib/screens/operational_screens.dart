@@ -11,9 +11,9 @@ import '../services/google_auth_service.dart';
 import '../services/sheets_read_service.dart';
 import '../services/whatsapp_phone_service.dart';
 
-const _gold = Color(0xFFB99555);
-const _darkGold = Color(0xFF80612F);
-const _ink = Color(0xFF39342F);
+const _gold = Color(0xFFC5A66F);
+const _darkGold = Color(0xFF8A6B3F);
+const _ink = Color(0xFF292722);
 
 String _newTransactionRequestId() =>
     '${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(1 << 32)}';
