@@ -7,23 +7,22 @@
  *
  * Required Script Properties:
  *   OL_SPREADSHEET_ID           = ID spreadsheet operasional OPTIK LENTERA
- *   OL_GOOGLE_WEB_CLIENT_ID     = OAuth Web client ID used as ID-token audience
- *   OL_ALLOWED_EMAILS           = comma-separated authorized staff email addresses
+ *   OL_APP_API_KEY              = random access key (minimum 32 characters)
  *
  * Deploy the existing Web App as "Execute as me". The endpoint may be
- * reachable publicly, but every action requires a valid Google ID token AND
- * an email present in OL_ALLOWED_EMAILS. The API fails closed if the allowlist
- * is missing or empty.
+ * reachable publicly, but every action requires OL_APP_API_KEY. This removes
+ * Google Sign-In. A key embedded in an APK can be extracted, so this is a basic
+ * access gate, not strong staff authentication. Restrict APK distribution.
  *
  * Request JSON:
  * {
  *   "action": "readTable" | "createOrder" | "createPayment",
  *   "requestId": "<unique UUID generated once per user submission>",
- *   "idToken": "<Google Sign-In ID token>",
+ *   "apiKey": "<app access key>",
  *   "data": { ... }
  * }
  *
- * Never put OAuth client secrets or shared API passwords in the Flutter app.
+ * Do not treat an APK-embedded key as a secret against a determined attacker.
  */
 
 function doPost(e) {
@@ -40,8 +39,8 @@ function doPost(e) {
       throw new Error('Format permintaan tidak valid.');
     }
 
-    // Verify Google identity before taking the spreadsheet lock.
-    const actor = olApiVerifyGoogleIdToken_(request.idToken);
+    // Verify app access key before reading or changing operational data.
+    const actor = olApiVerifyAppKey_(request.apiKey);
     const action = String(request.action || '');
     if (action === 'readTable') {
       if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
@@ -79,59 +78,15 @@ function doPost(e) {
   }
 }
 
-function olApiVerifyGoogleIdToken_(token) {
-  token = String(token || '');
-  if (!token || token.length > 10000 || token.split('.').length !== 3) {
-    throw new Error('Silakan masuk kembali dengan Google.');
-  }
-
-  const props = PropertiesService.getScriptProperties();
-  const webClientId = String(props.getProperty('OL_GOOGLE_WEB_CLIENT_ID') || '').trim();
-  if (!webClientId) {
-    throw new Error('Autentikasi Google belum dikonfigurasi oleh administrator.');
-  }
-
-  const url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(token);
-  const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-  if (response.getResponseCode() !== 200) {
-    throw new Error('Sesi Google tidak valid atau sudah kedaluwarsa. Silakan masuk kembali.');
-  }
-
-  const claims = JSON.parse(response.getContentText());
-  const issuer = String(claims.iss || '');
-  const expiresAt = Number(claims.exp || 0);
-  const now = Math.floor(Date.now() / 1000);
-  const verified = claims.email_verified === true || String(claims.email_verified).toLowerCase() === 'true';
-
-  if (issuer !== 'accounts.google.com' && issuer !== 'https://accounts.google.com') {
-    throw new Error('Penerbit token Google tidak valid.');
-  }
-  if (String(claims.aud || '') !== webClientId) {
-    throw new Error('Token bukan untuk aplikasi OPTIK LENTERA.');
-  }
-  if (!expiresAt || expiresAt <= now || expiresAt > now + 3600) {
-    throw new Error('Sesi Google tidak valid atau sudah kedaluwarsa.');
-  }
-  if (!verified) throw new Error('Email Google belum terverifikasi.');
-
-  const email = String(claims.email || '').trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error('Akun Google tidak memiliki email yang valid.');
-  }
-  // Prescription, phone, and payment data are sensitive: authorize staff explicitly.
-  // Fail closed when the allowlist is missing or empty.
-  const allowedEmails = String(props.getProperty('OL_ALLOWED_EMAILS') || '')
-    .split(/[;,\s]+/)
-    .map(value => value.trim().toLowerCase())
-    .filter(Boolean);
-  if (!allowedEmails.length) {
-    throw new Error('Daftar akun petugas belum dikonfigurasi administrator.');
-  }
-  if (allowedEmails.indexOf(email) < 0) {
-    throw new Error('Akun Google ini belum diizinkan menggunakan OPTIK LENTERA.');
-  }
-
-  return { email: email, name: String(claims.name || '') };
+function olApiVerifyAppKey_(providedKey) {
+  const expected = String(PropertiesService.getScriptProperties().getProperty('OL_APP_API_KEY') || '');
+  const supplied = String(providedKey || '');
+  if (expected.length < 32) throw new Error('Kunci akses aplikasi belum dikonfigurasi administrator.');
+  if (supplied.length !== expected.length || supplied.length > 256) throw new Error('Akses aplikasi tidak valid.');
+  let mismatch = 0;
+  for (let i = 0; i < expected.length; i++) mismatch |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
+  if (mismatch !== 0) throw new Error('Akses aplikasi tidak valid.');
+  return { email: 'Aplikasi OPTIK LENTERA', name: 'Aplikasi' };
 }
 
 function olApiCreateOrder_(data, requestId, actor) {
@@ -260,7 +215,7 @@ function olApiMethod_(value, required) {
 }
 
 
-/** Read only the two operational tables after Google ID-token verification. */
+/** Read only the two operational tables after app-key verification. */
 function olApiReadTable_(data, actor) {
   const sheetName = String(data.sheetName || '').trim();
   const allowed = [OL.SHEET_ORDER, OL.SHEET_PAY];
