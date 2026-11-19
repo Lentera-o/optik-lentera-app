@@ -65,7 +65,9 @@ class TransactionScreen extends StatefulWidget {
   final List<Customer> customers;
   final List<OptikOrder> orders;
   final ValueChanged<OptikOrder> onAdd;
-  const TransactionScreen({super.key, required this.customers, required this.orders, required this.onAdd});
+  final void Function(int index, OptikOrder order) onUpdate;
+  final ValueChanged<OptikOrder> onSubmit;
+  const TransactionScreen({super.key, required this.customers, required this.orders, required this.onAdd, required this.onUpdate, required this.onSubmit});
   @override
   State<TransactionScreen> createState() => _TransactionScreenState();
 }
@@ -97,6 +99,22 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final osPd = TextEditingController();
   String method = 'Tunai';
   int? selectedCustomerIndex;
+  int? editingIndex;
+
+  void restoreDraft(int index) {
+    final o = widget.orders[index];
+    final p = o.prescription;
+    customer.text = o.customer.name; phone.text = o.customer.phone; address.text = o.customer.address;
+    doctor.text = p.doctor; lensType.text = p.lensType; lensDescription.text = o.lens.description; rxNote.text = p.note;
+    frameDescription.text = o.frame.description; frame.text = o.frame.price.toString();
+    lens.text = o.lens.price.toString(); otherPrice.text = o.other.price.toString();
+    otherDescription.text = o.other.description; dp.text = o.initialPayment.toString();
+    invoiceNote.text = o.note; odSph.text = p.odSph; odCyl.text = p.odCyl; odAxis.text = p.odAxis;
+    odAdd.text = p.odAdd; odPd.text = p.odPd; osSph.text = p.osSph; osCyl.text = p.osCyl;
+    osAxis.text = p.osAxis; osAdd.text = p.osAdd; osPd.text = p.osPd;
+    setState(() { editingIndex = index; selectedCustomerIndex = null; method = o.initialPaymentMethod.isEmpty ? 'Tunai' : o.initialPaymentMethod; });
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft dimuat. Silakan periksa atau ubah, lalu simpan.')));
+  }
 
   void selectSavedCustomer(int? index) {
     setState(() {
@@ -124,9 +142,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
       return;
     }
-    widget.onAdd(OptikOrder(
-      invoiceNumber: 'DRAFT-' + DateTime.now().microsecondsSinceEpoch.toString(),
-      orderDate: DateTime.now(),
+    final old = editingIndex != null && editingIndex! < widget.orders.length ? widget.orders[editingIndex!] : null;
+    final order = OptikOrder(
+      invoiceNumber: old?.invoiceNumber ?? 'DRAFT-' + DateTime.now().microsecondsSinceEpoch.toString(),
+      orderDate: old?.orderDate ?? DateTime.now(),
       customer: Customer(name: customer.text.trim(), phone: phone.text.trim(), address: address.text.trim()),
       prescription: EyePrescription(
         doctor: doctor.text.trim(), lensType: lensType.text.trim(), note: rxNote.text.trim(),
@@ -134,15 +153,18 @@ class _TransactionScreenState extends State<TransactionScreen> {
         osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
       ),
       frame: OrderItem(description: frameDescription.text.trim().isEmpty ? 'Frame' : frameDescription.text.trim(), price: amount(frame)),
-      lens: OrderItem(description: lensDescription.text.trim(), price: amount(lens)), 
+      lens: OrderItem(description: lensDescription.text.trim(), price: amount(lens)),
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
-      initialPayment: amount(dp),
-      initialPaymentMethod: method,
-      note: invoiceNote.text.trim(),
-    ));
-    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frame, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
-    setState(() { selectedCustomerIndex = null; });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
+      initialPayment: amount(dp), initialPaymentMethod: method, note: invoiceNote.text.trim(),
+    );
+    if (editingIndex != null) {
+      widget.onUpdate(editingIndex!, order);
+    } else {
+      widget.onAdd(order);
+    }
+    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frameDescription, frame, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
+    setState(() { selectedCustomerIndex = null; editingIndex = null; });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(old == null ? 'Draft pesanan disimpan.' : 'Draft berhasil diperbarui.')));
   }
 
   @override
@@ -219,16 +241,26 @@ class _TransactionScreenState extends State<TransactionScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan draft pesanan'),
+        onPressed: save, icon: const Icon(Icons.save_outlined), label: Text(editingIndex == null ? 'Simpan draft pesanan' : 'Perbarui draft pesanan'),
       )),
     ])),
     const SizedBox(height: 18),
     Text('Draft pesanan: ${widget.orders.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
-    ...widget.orders.reversed.map((o) => Card(color: Colors.white, child: ListTile(
-      leading: const Icon(Icons.shopping_bag_outlined, color: _darkGold),
-      title: Text(o.customer.name),
-      subtitle: Text(o.invoiceNumber + ' • Total Rp ' + o.total.toString() + ' • Sisa Rp ' + o.remaining.toString()),
-    ))),
+    ...List.generate(widget.orders.length, (index) {
+      final o = widget.orders[widget.orders.length - 1 - index];
+      final actualIndex = widget.orders.length - 1 - index;
+      return Card(color: Colors.white, child: ListTile(
+        leading: const Icon(Icons.shopping_bag_outlined, color: _darkGold),
+        title: Text(o.customer.name),
+        subtitle: Text(o.invoiceNumber + ' • Total Rp ' + o.total.toString() + ' • Sisa Rp ' + o.remaining.toString()),
+        onTap: () => restoreDraft(actualIndex),
+        trailing: IconButton(
+          tooltip: 'Kirim ke Formulir 6',
+          icon: const Icon(Icons.cloud_upload_outlined, color: _darkGold),
+          onPressed: () => widget.onSubmit(o),
+        ),
+      ));
+    }),
     const _LocalNote(),
   ]);
 }
