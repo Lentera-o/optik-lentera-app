@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 import '../services/api_service.dart';
-import '../services/google_auth_service.dart';
 import '../services/sheets_read_service.dart';
 import '../services/whatsapp_phone_service.dart';
 
@@ -441,7 +440,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
     setState(() => submitting = true);
     try {
-      final idToken = await GoogleAuthService.instance.requireIdToken();
       final orderDate = _pendingOrderDate ??= DateTime.now();
       final orderPayload = <String, dynamic>{
           'orderDate': orderDate.toIso8601String(),
@@ -477,7 +475,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
         _pendingOrderRequestId = _newTransactionRequestId();
       }
       final response = await ApiService.createOrder(
-        idToken: idToken,
         requestId: _pendingOrderRequestId!,
         data: orderPayload,
       );
