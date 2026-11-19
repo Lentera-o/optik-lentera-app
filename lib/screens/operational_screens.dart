@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
+import '../services/api_service.dart';
 
 const _gold = Color(0xFFB99555);
 const _darkGold = Color(0xFF80612F);
@@ -528,130 +529,142 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> {
   }
 }
 
-class InvoiceReceiptScreen extends StatelessWidget {
+class InvoiceReceiptScreen extends StatefulWidget {
   final List<OptikOrder> orders;
   final List<OptikPayment> payments;
   const InvoiceReceiptScreen({super.key, required this.orders, required this.payments});
 
-  String _rupiah(int value) => 'Rp ' + value.toString().replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (match) => '.',
-  );
+  @override
+  State<InvoiceReceiptScreen> createState() => _InvoiceReceiptScreenState();
+}
 
-  String _date(DateTime? value) {
-    if (value == null) return '-';
-    final d = value.day.toString().padLeft(2, '0');
-    final m = value.month.toString().padLeft(2, '0');
-    return '$d/$m/${value.year}';
-  }
+class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
+  final invoice = TextEditingController();
+  final phone = TextEditingController();
+  bool loading = false;
+  String? error;
+  Map<String, dynamic>? document;
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(18),
-    children: [
-      const _Intro('Invoice & Kuitansi', 'Pratinjau dokumen berdasarkan draft transaksi dan pembayaran sesi ini.', Icons.description_outlined),
-      const SizedBox(height: 16),
-      if (orders.isEmpty)
-        const _Empty('Belum ada draft pesanan. Buat pesanan terlebih dahulu untuk melihat invoice.')
-      else
-        ...orders.reversed.map((order) {
-          final related = payments.where((p) => p.invoiceNumber == order.invoiceNumber).toList();
-          final paidLater = related.fold<int>(0, (sum, p) => sum + p.amount);
-          final paid = order.initialPayment + paidLater;
-          final remaining = order.total - paid;
-          final receiptPayments = <OptikPayment>[
-            if (order.initialPayment > 0)
-              OptikPayment(invoiceNumber: order.invoiceNumber, paymentDate: order.orderDate ?? DateTime.now(), amount: order.initialPayment, method: order.initialPaymentMethod, note: 'DP awal'),
-            ...related,
-          ];
-          return Card(
-            color: Colors.white,
-            margin: const EdgeInsets.only(bottom: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: _gold.withValues(alpha: .35)),
-            ),
-            child: ExpansionTile(
-              leading: const Icon(Icons.receipt_long_outlined, color: _darkGold),
-              title: Text(order.customer.name, style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
-              subtitle: Text('${order.invoiceNumber} • ${_date(order.orderDate)}'),
-              childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8F7),
-                    border: Border.all(color: _gold.withValues(alpha: .35)),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Center(child: Text('OPTIK LENTERA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 18))),
-                      const Center(child: Text('INVOICE • PRATINJAU', style: TextStyle(color: _ink, fontWeight: FontWeight.bold))),
-                      const Divider(height: 22, color: _gold),
-                      _docLine('Nomor invoice', order.invoiceNumber),
-                      _docLine('Tanggal', _date(order.orderDate)),
-                      _docLine('Pelanggan', order.customer.name),
-                      _docLine('Telepon', order.customer.phone.isEmpty ? '-' : order.customer.phone),
-                      const Divider(height: 20),
-                      const Text('RESEP KACAMATA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
-                      _docLine('OD (kanan)', 'SPH ${order.prescription.odSph} • CYL ${order.prescription.odCyl} • AXIS ${order.prescription.odAxis}'),
-                      _docLine('OS (kiri)', 'SPH ${order.prescription.osSph} • CYL ${order.prescription.osCyl} • AXIS ${order.prescription.osAxis}'),
-                      const Divider(height: 20),
-                      _docLine('Frame', _rupiah(order.frame.price)),
-                      _docLine('Lensa', _rupiah(order.lens.price)),
-                      _docLine('Lain-lain', _rupiah(order.other.price)),
-                      _docLine('TOTAL', _rupiah(order.total), strong: true),
-                      _docLine('DP awal', _rupiah(order.initialPayment)),
-                      _docLine('Total dibayar', _rupiah(paid)),
-                      _docLine('Sisa tagihan', _rupiah(remaining < 0 ? 0 : remaining), strong: true),
-                      const SizedBox(height: 8),
-                      const Text('KUITANSI PEMBAYARAN', style: TextStyle(color: _darkGold, fontWeight: FontWeight.bold)),
-                      if (order.initialPayment > 0)
-                        _docLine('DP awal • ${order.initialPaymentMethod}', _rupiah(order.initialPayment)),
-                      ...related.map((p) => _docLine('${_date(p.paymentDate)} • ${p.method}', _rupiah(p.amount))),
-                      if (order.initialPayment == 0 && related.isEmpty)
-                        const Text('Belum ada pembayaran tercatat.', style: TextStyle(color: Colors.black54, fontSize: 12)),
-                    ],
-                  ),
+  void dispose() {
+    invoice.dispose();
+    phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _findDocuments() async {
+    final invoiceNo = invoice.text.trim();
+    final phoneNo = phone.text.trim();
+    if (invoiceNo.isEmpty || phoneNo.isEmpty) {
+      setState(() => error = 'Nomor invoice dan nomor HP wajib diisi.');
+      return;
+    }
+    setState(() { loading = true; error = null; document = null; });
+    try {
+      final response = await ApiService.get(query: {
+        'action': 'documents',
+        'invoice': invoiceNo,
+        'phone': phoneNo,
+      });
+      final data = response.data;
+      if (!response.isSuccessful || data is! Map || data['ok'] != true) {
+        throw StateError(data is Map
+            ? (data['message']?.toString() ?? 'Dokumen tidak ditemukan.')
+            : 'Respons backend bukan JSON yang valid. Pastikan endpoint dokumen sudah dipasang dan deployment diperbarui.');
+      }
+      if (!mounted) return;
+      setState(() => document = Map<String, dynamic>.from(data));
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString().replaceFirst('Bad state: ', ''));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> _openPdf(String? value, String label) async {
+    final raw = (value ?? '').trim();
+    final uri = Uri.tryParse(raw);
+    if (uri == null || !uri.hasScheme || (uri.scheme != 'https' && uri.scheme != 'http')) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(label + ' belum tersedia di database.')));
+      return;
+    }
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(label + ' tidak dapat dibuka.')));
+    }
+  }
+
+  String _value(dynamic value) => value == null || value.toString().trim().isEmpty ? '-' : value.toString();
+
+  @override
+  Widget build(BuildContext context) {
+    final receipts = (document?['receipts'] is List)
+        ? List<Map<String, dynamic>>.from((document!['receipts'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)))
+        : <Map<String, dynamic>>[];
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        const _Intro('Invoice & Kuitansi Resmi', 'Ambil dokumen asli yang sudah dibuat Apps Script dan tersimpan di Google Drive. APK tidak membuat ulang PDF.', Icons.description_outlined),
+        const SizedBox(height: 16),
+        _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _field(invoice, 'Nomor invoice resmi *'),
+          _field(phone, 'Nomor HP pelanggan *', type: TextInputType.phone),
+          SizedBox(width: double.infinity, child: FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: _darkGold),
+            onPressed: loading ? null : _findDocuments,
+            icon: loading
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.search),
+            label: Text(loading ? 'Mencari dokumen...' : 'Cari dokumen resmi'),
+          )),
+          if (error != null) ...[
+            const SizedBox(height: 10),
+            Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+          ],
+        ])),
+        if (document != null) ...[
+          const SizedBox(height: 16),
+          Card(color: Colors.white, child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('INVOICE RESMI', style: TextStyle(color: _darkGold, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              _docLine('Nomor invoice', _value(document!['invoiceNumber'])),
+              _docLine('Tanggal', _value(document!['date'])),
+              _docLine('Status', _value(document!['status'])),
+              const SizedBox(height: 10),
+              SizedBox(width: double.infinity, child: FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: _darkGold),
+                onPressed: () => _openPdf(document!['invoicePdf']?.toString(), 'Invoice PDF'),
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Buka PDF Invoice Resmi'),
+              )),
+            ]),
+          )),
+          const SizedBox(height: 12),
+          Text('KUITANSI RESMI (' + receipts.length.toString() + ')', style: const TextStyle(fontWeight: FontWeight.bold, color: _ink)),
+          if (receipts.isEmpty)
+            const _Empty('Belum ada kuitansi pembayaran yang tercatat.')
+          else
+            ...receipts.map((receipt) => Card(
+              color: Colors.white,
+              child: ListTile(
+                leading: const Icon(Icons.receipt_long_outlined, color: _darkGold),
+                title: Text(_value(receipt['receiptNumber'])),
+                subtitle: Text(_value(receipt['date']) + ' • ' + _value(receipt['method']) + ' • Rp ' + _value(receipt['amount'])),
+                trailing: IconButton(
+                  tooltip: 'Buka PDF kuitansi resmi',
+                  icon: const Icon(Icons.picture_as_pdf_outlined, color: _darkGold),
+                  onPressed: () => _openPdf(receipt['receiptPdf']?.toString(), 'Kuitansi PDF'),
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(backgroundColor: _darkGold),
-                    onPressed: () => OptikPdfService.invoice(order, paid: paid, remaining: remaining < 0 ? 0 : remaining),
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: const Text('Cetak / Bagikan Invoice PDF'),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                if (receiptPayments.isNotEmpty)
-                  ...receiptPayments.asMap().entries.map((entry) {
-                    final payment = entry.value;
-                    final receiptNo = _receiptNumber(payment.paymentDate, entry.key + 1);
-                    final paidAtReceipt = receiptPayments.take(entry.key + 1).fold<int>(0, (sum, item) => sum + item.amount);
-                    final balanceAtReceipt = order.total - paidAtReceipt;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: OutlinedButton.icon(
-                        onPressed: () => OptikPdfService.receipt(order, payment, receiptNumber: receiptNo, paid: paidAtReceipt, remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt),
-                        icon: const Icon(Icons.receipt_long_outlined),
-                        label: Text('Cetak / Bagikan Kuitansi $receiptNo'),
-                      ),
-                    );
-                  }),
-                const SizedBox(height: 8),
-                const Text('PDF ini dibuat dari draft sesi aplikasi. Untuk dokumen resmi tersimpan di Drive dan sinkronisasi database, transaksi tetap harus masuk melalui backend aktif.', style: TextStyle(color: Colors.black54, fontSize: 11)),
-              ],
-            ),
-          );
-        }),
-      const _LocalNote(),
-    ],
-  );
+              ),
+            )),
+        ],
+        const SizedBox(height: 10),
+        const Text('Dokumen yang ditampilkan berasal langsung dari tautan PDF resmi di database Drive. Tampilan dan isi invoice/kuitansi resmi tetap mengikuti template Apps Script.', style: TextStyle(color: Colors.black54, fontSize: 11)),
+      ],
+    );
+  }
 }
 
 Widget _docLine(String label, String value, {bool strong = false}) => Padding(
