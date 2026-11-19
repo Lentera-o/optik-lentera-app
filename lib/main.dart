@@ -502,13 +502,13 @@ class _DashboardContentState extends State<DashboardContent> {
         widget.onOpenModule(6);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('\$title sedang disiapkan.')),
+          SnackBar(content: Text('$title sedang disiapkan.')),
         );
       }
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 26),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -518,69 +518,123 @@ class _DashboardContentState extends State<DashboardContent> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('PUSAT KENDALI OPERASIONAL',
-                      style: TextStyle(color: darkGold, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-                    const SizedBox(height: 5),
-                    const Text('Selamat datang,',
-                      style: TextStyle(color: ink, fontSize: 22, fontWeight: FontWeight.w700)),
-                    const Text('apa yang ingin dikerjakan hari ini?',
-                      style: TextStyle(color: Colors.black54, fontSize: 12)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3E8D6),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: const Text(
+                        'PUSAT KENDALI OPERASIONAL',
+                        style: TextStyle(color: darkGold, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.05),
+                      ),
+                    ),
+                    const SizedBox(height: 11),
+                    const Text('Selamat datang,', style: TextStyle(color: ink, fontSize: 25, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: -.45)),
+                    const SizedBox(height: 4),
+                    const Text('Apa yang ingin dikerjakan hari ini?', style: TextStyle(color: Color(0xFF81766B), fontSize: 11.5)),
                   ],
                 ),
               ),
-              const _OptikLogo(size: 58),
+              const SizedBox(width: 10),
+              const _OptikLogo(size: 48),
             ],
           ),
           const SizedBox(height: 20),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 18, 18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFA88A55), Color(0xFFC7A96F), Color(0xFFE1CDA4)],
+                colors: [Color(0xFF3D3324), darkGold, gold],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: darkGold.withValues(alpha: .13), blurRadius: 18, offset: const Offset(0, 8))],
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(color: darkGold.withValues(alpha: .20), blurRadius: 22, offset: const Offset(0, 10)),
+              ],
             ),
             child: Stack(
               children: [
                 Positioned(
-                  right: -12, top: -15,
-                  child: Icon(Icons.visibility_outlined, size: 132, color: Colors.white.withValues(alpha: .09)),
+                  right: -20,
+                  top: -18,
+                  child: Icon(Icons.remove_red_eye_outlined, size: 126, color: Colors.white.withValues(alpha: .055)),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Jernih Melihat,\nNyaman Melangkah.',
-                      style: GoogleFonts.dmSerifDisplay(fontSize: 27, height: 1.16, color: Colors.white, letterSpacing: .1)),
-                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .14),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.white.withValues(alpha: .20)),
+                      ),
+                      child: const Text('LAYANAN OPTIK TERPADU', style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 1.35, fontWeight: FontWeight.w800)),
+                    ),
+                    const SizedBox(height: 13),
+                    Text(
+                      'Jelas Lihatnya,\nJelas Rezekinya.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 23,
+                        height: 1.24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -.65,
+                      ),
+                    ),
+                    const SizedBox(height: 9),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 285),
+                      child: Text(
+                        'Kelola pelayanan dan transaksi optik dalam satu tempat.',
+                        style: TextStyle(color: Colors.white.withValues(alpha: .84), fontSize: 11, height: 1.55),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFFFF8EE),
                         foregroundColor: darkGold,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                       ),
                       onPressed: () => widget.onOpenModule(1),
-                      icon: const Icon(Icons.add_circle_outline, size: 18),
-                      label: const Text('Buat transaksi', style: TextStyle(fontWeight: FontWeight.w700)),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Buat transaksi', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
+          const _LenteraTodayCard(),
+          const SizedBox(height: 24),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Ringkasan aktivitas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Ringkasan aktivitas', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: ink)),
+                  SizedBox(height: 3),
+                  Text('Rekap resmi dari Google Sheets', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
+                ],
+              ),
               Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(_summaryLoading ? 'MENYINKRONKAN' : (_summaryError == null ? 'DATA GOOGLE SHEETS' : 'GAGAL SINKRON'),
-                  style: TextStyle(fontSize: 9, letterSpacing: .5, fontWeight: FontWeight.w700,
-                    color: _summaryError == null ? darkGold : Colors.red.shade700)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: const Color(0xFFF5EBDD), borderRadius: BorderRadius.circular(20)),
+                  child: Text(
+                    _summaryLoading ? 'MENYINKRONKAN' : (_summaryError == null ? 'DATA RESMI' : 'GAGAL SINKRON'),
+                    style: TextStyle(fontSize: 8, letterSpacing: .5, fontWeight: FontWeight.w800,
+                      color: _summaryError == null ? darkGold : Colors.red.shade700),
+                  ),
+                ),
                 IconButton(
                   tooltip: 'Perbarui total transaksi resmi',
                   visualDensity: VisualDensity.compact,
@@ -590,19 +644,23 @@ class _DashboardContentState extends State<DashboardContent> {
               ]),
             ],
           ),
-          const SizedBox(height: 12),
           if (_summaryError != null)
-            Padding(padding: const EdgeInsets.only(bottom: 8),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text('Data total transaksi belum tersinkron: ' + _summaryError!,
-                style: const TextStyle(fontSize: 10, color: Colors.deepOrange))),
+                style: const TextStyle(fontSize: 10, color: Colors.deepOrange)),
+            ),
           if (_lastSyncedAt != null)
-            Padding(padding: const EdgeInsets.only(bottom: 8),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text('Terakhir diperbarui: ' +
                 _lastSyncedAt!.day.toString().padLeft(2, '0') + '/' +
                 _lastSyncedAt!.month.toString().padLeft(2, '0') + ' ' +
                 _lastSyncedAt!.hour.toString().padLeft(2, '0') + ':' +
                 _lastSyncedAt!.minute.toString().padLeft(2, '0'),
-                style: const TextStyle(fontSize: 9, color: Colors.black45))),
+                style: const TextStyle(fontSize: 9, color: Colors.black45)),
+            ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(child: _DashboardMetric(
@@ -611,7 +669,7 @@ class _DashboardContentState extends State<DashboardContent> {
                 icon: Icons.shopping_bag_outlined,
                 tint: const Color(0xFFF5E9D6),
               )),
-              const SizedBox(width: 12),
+              const SizedBox(width: 11),
               Expanded(child: _DashboardMetric(
                 title: 'Total pembayaran resmi',
                 value: paymentText,
@@ -621,29 +679,31 @@ class _DashboardContentState extends State<DashboardContent> {
               )),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           const Text('Akses cepat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+          const SizedBox(height: 3),
+          const Text('Buka pekerjaan yang paling sering digunakan.', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
           const SizedBox(height: 12),
           Row(
             children: [
               _QuickAction(title: 'Pelanggan', subtitle: 'Data & kontak', icon: Icons.people_alt_outlined, color: darkGold, onTap: () => widget.onOpenModule(2)),
-              const SizedBox(width: 10),
+              const SizedBox(width: 9),
               _QuickAction(title: 'WhatsApp', subtitle: 'Hubungi pelanggan', icon: Icons.chat_bubble_outline, color: const Color(0xFF43866A), onTap: () => widget.onOpenModule(3)),
-              const SizedBox(width: 10),
+              const SizedBox(width: 9),
               _QuickAction(title: 'Pembayaran', subtitle: 'Catat pelunasan', icon: Icons.account_balance_wallet_outlined, color: const Color(0xFFAD7180), onTap: () => widget.onOpenModule(4)),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           const Text('Semua layanan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
-          const SizedBox(height: 4),
-          const Text('Pilih modul untuk melanjutkan pekerjaan.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          const SizedBox(height: 3),
+          const Text('Pilih modul untuk melanjutkan pekerjaan.', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
           const SizedBox(height: 12),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: modules.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, crossAxisSpacing: 11, mainAxisSpacing: 11, childAspectRatio: 1.72,
+              crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.58,
             ),
             itemBuilder: (context, index) {
               final module = modules[index];
@@ -652,13 +712,145 @@ class _DashboardContentState extends State<DashboardContent> {
           ),
           const SizedBox(height: 18),
           const BackendStatusCard(),
-          const SizedBox(height: 12),
-          Center(child: Text('OPTIK LENTERA  •  MELAYANI DENGAN HATI',
-            style: TextStyle(color: darkGold.withValues(alpha: .75), fontSize: 9, letterSpacing: 1.1, fontWeight: FontWeight.w700))),
+          const SizedBox(height: 14),
+          Center(
+            child: Text(
+              'OPTIK LENTERA  •  MELAYANI DENGAN HATI',
+              style: TextStyle(color: darkGold.withValues(alpha: .72), fontSize: 8.5, letterSpacing: 1, fontWeight: FontWeight.w700),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+class _LenteraTodayCard extends StatelessWidget {
+  const _LenteraTodayCard();
+
+  static const List<String> _motivations = [
+    'Jelas Lihatnya, Jelas Rezekinya. Layani dengan hati, bertumbuh bersama.',
+    'Kerja yang teliti hari ini membangun kepercayaan untuk esok hari.',
+    'Setiap pelanggan adalah kesempatan untuk memberi manfaat.',
+    'Disiplin dalam proses, jujur dalam pelayanan, ikhlas dalam usaha.',
+    'Tim yang saling mendukung akan tumbuh lebih kuat.',
+    'Jangan berhenti belajar; kemampuan baik lahir dari kebiasaan baik.',
+    'Keberhasilan dimulai dari niat baik dan tindakan yang konsisten.',
+  ];
+
+  static const List<String> _serviceTips = [
+    'Sambut pelanggan dengan ramah, lalu dengarkan kebutuhannya sebelum menawarkan produk.',
+    'Jelaskan pilihan produk dengan bahasa sederhana, jujur, dan tanpa memaksa.',
+    'Ulangi kebutuhan pelanggan untuk memastikan tidak ada informasi yang terlewat.',
+    'Jika belum yakin dengan jawaban, sampaikan dengan jujur dan minta bantuan rekan yang kompeten.',
+    'Periksa kembali detail pesanan bersama pelanggan sebelum transaksi disimpan.',
+    'Tanggapi keluhan dengan tenang: dengarkan, pahami, lalu jelaskan langkah penyelesaiannya.',
+    'Akhiri pelayanan dengan memastikan pelanggan memahami cara penggunaan dan perawatan produk.',
+  ];
+
+  static const List<String> _opticalInsights = [
+    'Ukuran lensa harus mengikuti resep pemeriksaan yang valid; jangan menebak ukuran mata pelanggan.',
+    'Lensa single vision memiliki satu area koreksi utama, sedangkan lensa progresif dirancang untuk beberapa jarak pandang.',
+    'Ukuran frame yang sesuai membantu kenyamanan dan posisi lensa di depan mata.',
+    'Jarak pupil (PD) merupakan salah satu data penting dalam penempatan pusat optik lensa.',
+    'Lapisan lensa memiliki fungsi berbeda; jelaskan manfaat dan batasannya secara akurat.',
+    'Bersihkan lensa dengan cairan yang sesuai dan kain microfiber agar permukaan tidak mudah tergores.',
+    'Keluhan penglihatan atau perubahan resep perlu diarahkan ke pemeriksaan oleh tenaga profesional yang berwenang.',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final dayIndex = today.difference(DateTime(today.year, 1, 1)).inDays % _motivations.length;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFCF8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: gold.withValues(alpha: .24)),
+        boxShadow: [
+          BoxShadow(color: ink.withValues(alpha: .035), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5EBDD),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.wb_sunny_outlined, color: darkGold, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('LENTERA HARI INI', style: TextStyle(color: darkGold, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .8)),
+                    SizedBox(height: 2),
+                    Text('Motivasi, pelayanan, dan wawasan optik', style: TextStyle(color: Color(0xFF8A8177), fontSize: 10)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.auto_awesome_outlined, color: gold, size: 19),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _LearningItem(label: 'MOTIVASI', icon: Icons.favorite_border_rounded, text: _motivations[dayIndex], prominent: true),
+          const SizedBox(height: 10),
+          _LearningItem(label: 'TIPS PELAYANAN', icon: Icons.handshake_outlined, text: _serviceTips[dayIndex]),
+          const SizedBox(height: 10),
+          _LearningItem(label: 'WAWASAN OPTIK', icon: Icons.visibility_outlined, text: _opticalInsights[dayIndex]),
+        ],
+      ),
+    );
+  }
+}
+
+class _LearningItem extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final String text;
+  final bool prominent;
+
+  const _LearningItem({
+    required this.label,
+    required this.icon,
+    required this.text,
+    this.prominent = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(11),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFAF7F0),
+      borderRadius: BorderRadius.circular(13),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: darkGold, size: 17),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(color: darkGold, fontSize: prominent ? 10 : 9, fontWeight: FontWeight.w800, letterSpacing: .8)),
+              const SizedBox(height: 5),
+              Text(text, style: TextStyle(color: ink, fontSize: prominent ? 13 : 11, height: 1.45, fontWeight: prominent ? FontWeight.w600 : FontWeight.normal)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _DashboardMetric extends StatelessWidget {
