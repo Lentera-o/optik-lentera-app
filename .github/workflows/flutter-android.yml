@@ -23,6 +23,10 @@ jobs:
           cache: true
       - name: Install dependencies
         run: flutter pub get
+      - name: Prepare full-bleed launcher artwork
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 tool/prepare_launcher_icon.py
       - name: Generate branded Android launcher icon
         run: dart run flutter_launcher_icons
       - name: Analyze
@@ -65,7 +69,7 @@ jobs:
           EOF
       - name: Build release APK
         env:
-          OL_GOOGLE_WEB_CLIENT_ID: ${{ secrets.OL_GOOGLE_WEB_CLIENT_ID }}
+          OL_APP_API_KEY: ${{ secrets.OL_APP_API_KEY }}
         run: flutter build apk --release --dart-define=OL_APP_API_KEY="$OL_APP_API_KEY"
       - name: Report APK signing certificate
         run: |
