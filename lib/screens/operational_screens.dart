@@ -333,7 +333,17 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const _Intro('Pembayaran', 'Catat pembayaran lanjutan sesuai nomor invoice.', Icons.payments_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(children: [
-      _field(invoice, 'Nomor invoice *'),
+      _field(invoice, 'Nomor invoice resmi *'),
+      const Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text(
+            'Masukkan nomor invoice yang sudah diterbitkan. Nomor dan sisa tagihan akan divalidasi oleh sistem database.',
+            style: TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+        ),
+      ),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
       DropdownButtonFormField<String>(
         value: method,
@@ -354,7 +364,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       title: Text('Rp ' + p.amount.toString()),
       subtitle: Text(p.invoiceNumber + ' • ' + p.method),
     ))),
-    const _LocalNote(),
   ]);
 }
 
