@@ -697,7 +697,7 @@ class _LocalNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.only(top: 14, bottom: 12),
-    child: Text('Transaksi dikirim langsung dari aplikasi ke Apps Script setelah sesi Google diverifikasi. Invoice dan kuitansi resmi tetap diproses oleh sistem yang sudah ada.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+    child: Text('Transaksi dikirim langsung dari aplikasi ke Apps Script melalui kunci akses aplikasi. Invoice dan kuitansi resmi tetap diproses oleh sistem yang sudah ada.', style: TextStyle(fontSize: 11, color: Colors.black54)),
   );
 }
 
