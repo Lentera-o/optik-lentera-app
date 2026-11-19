@@ -75,6 +75,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final address = TextEditingController();
   final doctor = TextEditingController();
   final lensType = TextEditingController();
+  final lensDescription = TextEditingController();
   final rxNote = TextEditingController();
   final frameDescription = TextEditingController();
   final frame = TextEditingController();
@@ -111,7 +112,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frameDescription, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frameDescription, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
@@ -131,12 +132,12 @@ class _TransactionScreenState extends State<TransactionScreen> {
         osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
       ),
       frame: OrderItem(description: frameDescription.text.trim().isEmpty ? 'Frame' : frameDescription.text.trim(), price: amount(frame)),
-      lens: OrderItem(description: lensType.text.trim().isEmpty ? 'Lensa' : lensType.text.trim(), price: amount(lens)),
+      lens: OrderItem(description: lensDescription.text.trim(), price: amount(lens)), 
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
       initialPaymentMethod: method,
     ));
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
+    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
     setState(() { selectedCustomerIndex = null; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
@@ -200,6 +201,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(rxNote, 'Catatan resep'),
       _field(frameDescription, 'Merek / model / keterangan frame'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
+      _field(lensDescription, 'Lensa - Jenis, Ukuran, Coating'),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
       _field(otherPrice, 'Harga lain-lain (Rp)', type: TextInputType.number),
