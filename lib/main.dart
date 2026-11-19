@@ -168,27 +168,14 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _syncOrderToServer(OptikOrder value) async {
-    if (!ApiService.isConfigured) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pesanan tersimpan lokal. Token API belum dipasang untuk sinkronisasi.')),
-      );
-      return;
-    }
     try {
-      final result = await ApiService.createOrder(value);
-      final invoice = result['invoiceNumber']?.toString() ?? '';
-      if (invoice.isEmpty) throw StateError('Backend tidak mengembalikan nomor invoice.');
-      final index = orders.indexWhere((item) => item.invoiceNumber == value.invoiceNumber);
-      if (index >= 0) {
-        setState(() => orders[index] = orders[index].copyWith(invoiceNumber: invoice));
-        await _saveLocalData();
-      }
+      await GoogleFormsService.submitOrder(value);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pesanan tersinkron ke Google Sheets: $invoice')),
+        const SnackBar(content: Text('Jawaban pesanan diterima Google Formulir. Periksa DATA_PESANAN untuk nomor invoice resmi.')),
       );
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pesanan tetap tersimpan lokal; sinkronisasi gagal: $error')),
+        SnackBar(content: Text('Pesanan tetap tersimpan di perangkat, tetapi pengiriman Google Forms gagal atau belum terkonfirmasi: $error')),
       );
     }
   }
@@ -200,21 +187,14 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _syncPaymentToServer(OptikPayment value) async {
-    if (!ApiService.isConfigured) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pembayaran tersimpan lokal. Token API belum dipasang untuk sinkronisasi.')),
-      );
-      return;
-    }
     try {
-      final result = await ApiService.createPayment(value);
-      final receipt = result['receiptNumber']?.toString() ?? '';
+      await GoogleFormsService.submitPayment(value);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(receipt.isEmpty ? 'Pembayaran tersinkron ke Google Sheets.' : 'Pembayaran tersinkron: kuitansi $receipt')),
+        const SnackBar(content: Text('Jawaban pembayaran diterima Google Formulir. Periksa DATA_PEMBAYARAN untuk verifikasi dan kuitansi resmi.')),
       );
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pembayaran tetap tersimpan lokal; sinkronisasi gagal: $error')),
+        SnackBar(content: Text('Pembayaran tetap tersimpan di perangkat, tetapi pengiriman Google Forms gagal atau belum terkonfirmasi: $error')),
       );
     }
   }
