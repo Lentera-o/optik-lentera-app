@@ -23,10 +23,6 @@ jobs:
           cache: true
       - name: Install dependencies
         run: flutter pub get
-      - name: Prepare full-bleed launcher artwork
-        run: |
-          python3 -m pip install --quiet Pillow
-          python3 tool/prepare_launcher_icon.py
       - name: Generate branded Android launcher icon
         run: dart run flutter_launcher_icons
       - name: Analyze
