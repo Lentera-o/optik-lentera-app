@@ -314,20 +314,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
       return;
     }
-    final matches = widget.orders.where((o) => o.invoiceNumber == invoice.text.trim());
-    if (matches.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice tidak ditemukan pada daftar pesanan sesi ini.')));
-      return;
-    }
-    final order = matches.first;
-    final alreadyPaid = order.initialPayment + widget.payments
-        .where((p) => p.invoiceNumber == order.invoiceNumber)
-        .fold<int>(0, (sum, p) => sum + p.amount);
-    final balance = order.total - alreadyPaid;
-    if (balance <= 0 || value > balance) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(balance <= 0 ? 'Invoice sudah lunas.' : 'Pembayaran melebihi sisa tagihan Rp $balance.')));
-      return;
-    }
+    // Daftar pesanan lokal hanya memuat data sesi/perangkat ini. Validasi invoice
+    // dan sisa tagihan yang sebenarnya dilakukan oleh Apps Script pada database.
+    // Karena itu pembayaran untuk invoice lama tetap boleh dikirim dari perangkat ini.
     widget.onAdd(OptikPayment(
       invoiceNumber: invoice.text.trim(),
       paymentDate: DateTime.now(),
