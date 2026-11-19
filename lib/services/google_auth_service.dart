@@ -14,6 +14,7 @@ class GoogleAuthService extends ChangeNotifier {
   GoogleSignInAccount? _account;
   StreamSubscription<GoogleSignInAuthenticationEvent>? _events;
   bool _initialized = false;
+  Future<void>? _initialization;
   bool _loading = true;
   String? _error;
 
@@ -22,7 +23,9 @@ class GoogleAuthService extends ChangeNotifier {
   bool get isLoading => _loading;
   String? get error => _error;
 
-  Future<void> initialize() async {
+  Future<void> initialize() => _initialization ??= _initializeOnce();
+
+  Future<void> _initializeOnce() async {
     if (_initialized) return;
     try {
       await _google.initialize(
@@ -49,7 +52,8 @@ class GoogleAuthService extends ChangeNotifier {
 
       final restore = _google.attemptLightweightAuthentication();
       if (restore != null) {
-        _account = await restore;
+        final restoredAccount = await restore;
+        _account ??= restoredAccount;
       }
     } catch (error) {
       _error = _friendlyError(error);
