@@ -1,4 +1,7 @@
 from PIL import Image
+from pathlib import Path
+
+Path("build").mkdir(parents=True, exist_ok=True)
 
 source = "assets/optik_lentera_launcher.jpg"
 target = "build/optik_lentera_launcher_zoom.png"
