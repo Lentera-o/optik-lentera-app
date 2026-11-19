@@ -483,6 +483,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
       }
       final result = response.data;
       final invoiceNumber = result is Map ? (result['invoice']?.toString() ?? '') : '';
+      final invoiceVerificationUrl = result is Map
+          ? (result['invoiceVerificationUrl'] ?? result['verificationUrl'] ?? '').toString().trim()
+          : '';
       if (invoiceNumber.isEmpty) {
         throw Exception('Server menerima respons tanpa nomor invoice. Periksa DATA_PESANAN sebelum mengulang transaksi.');
       }
@@ -509,9 +512,29 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ));
       await _loadOfficialOrderHistory();
       if (!mounted) return;
+      final verificationUri = Uri.tryParse(invoiceVerificationUrl);
+      final canVerifyInvoice = verificationUri != null &&
+          verificationUri.scheme == 'https' &&
+          (verificationUri.host == 'script.google.com' ||
+           verificationUri.host == 'script.googleusercontent.com');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Pesanan berhasil tersimpan. Invoice $invoiceNumber sudah diproses oleh sistem.'),
-        duration: const Duration(seconds: 6),
+        content: Text(
+          canVerifyInvoice
+              ? 'Pesanan berhasil tersimpan. Invoice $invoiceNumber siap diverifikasi.'
+              : 'Pesanan berhasil tersimpan. Invoice $invoiceNumber sudah diproses; tautan verifikasi belum diterima.',
+        ),
+        duration: const Duration(seconds: 8),
+        action: canVerifyInvoice
+            ? SnackBarAction(
+                label: 'VERIFIKASI',
+                onPressed: () async {
+                  await launchUrl(
+                    verificationUri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+              )
+            : null,
       ));
     } catch (error) {
       if (!mounted) return;
