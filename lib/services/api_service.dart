@@ -53,15 +53,14 @@ class ApiService {
   /// the transaction body is never replayed.
   static Future<ApiResponse> postTransaction({
     required String action,
-    required String idToken,
     required String requestId,
     required Map<String, dynamic> data,
   }) async {
     if (action != 'createOrder' && action != 'createPayment') {
       throw ArgumentError.value(action, 'action', 'Unsupported transaction action');
     }
-    if (idToken.isEmpty || requestId.isEmpty) {
-      throw ArgumentError('A verified Google ID token and stable request ID are required.');
+    if (AppConfig.appApiKey.isEmpty || requestId.isEmpty) {
+      throw ArgumentError('App access key and stable request ID are required.');
     }
 
     final uri = Uri.parse(AppConfig.appsScriptUrl);
@@ -73,7 +72,7 @@ class ApiService {
     request.write(jsonEncode({
       'action': action,
       'requestId': requestId,
-      'idToken': idToken,
+      'apiKey': AppConfig.appApiKey,
       'data': data,
     }));
 
@@ -100,15 +99,15 @@ class ApiService {
     return _readResponse(response);
   }
 
-  /// Authenticated, read-only request to the Apps Script API.
+  /// App-key-protected, read-only request to the Apps Script API.
   /// This endpoint is separate from transaction writes and never replays a POST.
   static Future<ApiResponse> postAuthorizedRead({
     required String action,
     required String idToken,
     required Map<String, dynamic> data,
   }) async {
-    if (action != 'readTable' || idToken.isEmpty) {
-      throw ArgumentError('Authenticated read action and Google ID token are required.');
+    if (action != 'readTable' || AppConfig.appApiKey.isEmpty) {
+      throw ArgumentError('App access key and read action are required.');
     }
     final uri = Uri.parse(AppConfig.appsScriptUrl);
     final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
@@ -116,7 +115,7 @@ class ApiService {
     request.headers
       ..contentType = ContentType.json
       ..set(HttpHeaders.acceptHeader, 'application/json');
-    request.write(jsonEncode({'action': action, 'idToken': idToken, 'data': data}));
+    request.write(jsonEncode({'action': action, 'apiKey': AppConfig.appApiKey, 'data': data}));
     final response = await request.close().timeout(AppConfig.apiTimeout);
     if (response.statusCode >= 300 && response.statusCode < 400) {
       final location = response.headers.value(HttpHeaders.locationHeader);
@@ -138,18 +137,15 @@ class ApiService {
   }
 
   static Future<ApiResponse> createOrder({
-    required String idToken,
     required String requestId,
     required Map<String, dynamic> data,
   }) => postTransaction(
     action: 'createOrder',
-    idToken: idToken,
     requestId: requestId,
     data: data,
   );
 
   static Future<ApiResponse> createPayment({
-    required String idToken,
     required String requestId,
     required Map<String, dynamic> data,
   }) => postTransaction(
