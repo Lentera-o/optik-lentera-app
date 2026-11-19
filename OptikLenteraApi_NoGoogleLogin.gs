@@ -7,7 +7,7 @@
  *
  * Required Script Properties:
  *   OL_SPREADSHEET_ID           = ID spreadsheet operasional OPTIK LENTERA
- *   OL_APP_API_KEY              = long random key shared with the signed APK build secret
+ *   OL_APP_API_KEY              = same long random key configured as GitHub Actions secret
  *
  * Deploy the existing Web App as "Execute as me". The endpoint may be
  * reachable publicly, but every action requires a valid Google ID token AND
@@ -78,59 +78,15 @@ function doPost(e) {
   }
 }
 
-function olApiVerifyGoogleIdToken_(token) {
-  token = String(token || '');
-  if (!token || token.length > 10000 || token.split('.').length !== 3) {
-    throw new Error('Silakan masuk kembali dengan Google.');
-  }
-
-  const props = PropertiesService.getScriptProperties();
-  const webClientId = String(props.getProperty('OL_GOOGLE_WEB_CLIENT_ID') || '').trim();
-  if (!webClientId) {
-    throw new Error('Autentikasi Google belum dikonfigurasi oleh administrator.');
-  }
-
-  const url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(token);
-  const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-  if (response.getResponseCode() !== 200) {
-    throw new Error('Sesi Google tidak valid atau sudah kedaluwarsa. Silakan masuk kembali.');
-  }
-
-  const claims = JSON.parse(response.getContentText());
-  const issuer = String(claims.iss || '');
-  const expiresAt = Number(claims.exp || 0);
-  const now = Math.floor(Date.now() / 1000);
-  const verified = claims.email_verified === true || String(claims.email_verified).toLowerCase() === 'true';
-
-  if (issuer !== 'accounts.google.com' && issuer !== 'https://accounts.google.com') {
-    throw new Error('Penerbit token Google tidak valid.');
-  }
-  if (String(claims.aud || '') !== webClientId) {
-    throw new Error('Token bukan untuk aplikasi OPTIK LENTERA.');
-  }
-  if (!expiresAt || expiresAt <= now || expiresAt > now + 3600) {
-    throw new Error('Sesi Google tidak valid atau sudah kedaluwarsa.');
-  }
-  if (!verified) throw new Error('Email Google belum terverifikasi.');
-
-  const email = String(claims.email || '').trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error('Akun Google tidak memiliki email yang valid.');
-  }
-  // Prescription, phone, and payment data are sensitive: authorize staff explicitly.
-  // Fail closed when the allowlist is missing or empty.
-  const allowedEmails = String(props.getProperty('OL_ALLOWED_EMAILS') || '')
-    .split(/[;,\s]+/)
-    .map(value => value.trim().toLowerCase())
-    .filter(Boolean);
-  if (!allowedEmails.length) {
-    throw new Error('Daftar akun petugas belum dikonfigurasi administrator.');
-  }
-  if (allowedEmails.indexOf(email) < 0) {
-    throw new Error('Akun Google ini belum diizinkan menggunakan OPTIK LENTERA.');
-  }
-
-  return { email: email, name: String(claims.name || '') };
+function olApiVerifyAppKey_(providedKey) {
+  const expected = String(PropertiesService.getScriptProperties().getProperty('OL_APP_API_KEY') || '').trim();
+  const supplied = String(providedKey || '').trim();
+  if (expected.length < 32) throw new Error('Kunci aplikasi belum dipasang di Script Properties.');
+  if (supplied.length !== expected.length) throw new Error('Kunci koneksi aplikasi tidak valid.');
+  let mismatch = 0;
+  for (let i = 0; i < expected.length; i++) mismatch |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
+  if (mismatch !== 0) throw new Error('Kunci koneksi aplikasi tidak valid.');
+  return { email: 'Aplikasi OPTIK LENTERA', name: 'APK' };
 }
 
 function olApiCreateOrder_(data, requestId, actor) {
