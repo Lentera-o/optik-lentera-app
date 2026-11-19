@@ -44,7 +44,6 @@ jobs:
             fi
           done
       - name: Configure stable Android release signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -64,9 +63,6 @@ jobs:
           keyAlias=$ANDROID_KEY_ALIAS
           storeFile=upload-keystore.jks
           EOF
-      - name: Warn when stable Android signing is not configured
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
-        run: echo "::warning::APK will use a temporary CI debug certificate; configure owner-managed signing for consistent future app updates."
       - name: Build release APK
         env:
           OL_GOOGLE_WEB_CLIENT_ID: ${{ secrets.OL_GOOGLE_WEB_CLIENT_ID }}
