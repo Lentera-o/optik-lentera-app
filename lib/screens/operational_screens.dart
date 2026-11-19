@@ -185,7 +185,18 @@ class _TransactionScreenState extends State<TransactionScreen> {
         Expanded(child: _field(osAxis, 'AXIS')),
       ]),
       Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
-      _field(lensType, 'Jenis / model lensa'),
+      DropdownButtonFormField<String>(
+        value: lensType.text.isEmpty ? null : lensType.text,
+        decoration: InputDecoration(
+          labelText: 'Jenis ukuran',
+          hintText: 'Pilih single fokus atau double fokus',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        items: const ['Single Fokus', 'Double Fokus']
+            .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+            .toList(),
+        onChanged: (v) => setState(() => lensType.text = v ?? ''),
+      ),
       _field(rxNote, 'Catatan resep'),
       _field(frameDescription, 'Merek / model / keterangan frame'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
