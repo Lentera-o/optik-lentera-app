@@ -35,11 +35,11 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          OL_GOOGLE_WEB_CLIENT_ID: ${{ secrets.OL_GOOGLE_WEB_CLIENT_ID }}
+          OL_APP_API_KEY: ${{ secrets.OL_APP_API_KEY }}
         run: |
-          for value in "$ANDROID_KEYSTORE_BASE64" "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" "$OL_GOOGLE_WEB_CLIENT_ID"; do
+          for value in "$ANDROID_KEYSTORE_BASE64" "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" "$OL_APP_API_KEY"; do
             if [ -z "$value" ]; then
-              echo "::error::Persistent Android signing and Google OAuth secrets are required; refusing to build an APK that cannot safely update the baseline."
+              echo "::error::Persistent Android signing and OL_APP_API_KEY secrets are required; refusing to build an APK without its backend access key."
               exit 1
             fi
           done
@@ -66,7 +66,7 @@ jobs:
       - name: Build release APK
         env:
           OL_GOOGLE_WEB_CLIENT_ID: ${{ secrets.OL_GOOGLE_WEB_CLIENT_ID }}
-        run: flutter build apk --release --dart-define=OL_GOOGLE_WEB_CLIENT_ID="$OL_GOOGLE_WEB_CLIENT_ID"
+        run: flutter build apk --release --dart-define=OL_APP_API_KEY="$OL_APP_API_KEY"
       - name: Report APK signing certificate
         run: |
           BUILD_TOOLS_VERSION="$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
