@@ -103,7 +103,6 @@ class ApiService {
   /// This endpoint is separate from transaction writes and never replays a POST.
   static Future<ApiResponse> postAuthorizedRead({
     required String action,
-    required String idToken,
     required Map<String, dynamic> data,
   }) async {
     if (action != 'readTable' || AppConfig.appApiKey.isEmpty) {
@@ -150,7 +149,6 @@ class ApiService {
     required Map<String, dynamic> data,
   }) => postTransaction(
     action: 'createPayment',
-    idToken: idToken,
     requestId: requestId,
     data: data,
   );
