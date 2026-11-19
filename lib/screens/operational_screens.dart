@@ -201,7 +201,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(rxNote, 'Catatan resep'),
       _field(frameDescription, 'Merek / model / keterangan frame'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
-      _field(lensDescription, 'Lensa - Jenis, Ukuran, Coating'),
+      _field(lensDescription, 'Lensa - Jenis Ukuran Coating'),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
       _field(otherPrice, 'Harga lain-lain (Rp)', type: TextInputType.number),
