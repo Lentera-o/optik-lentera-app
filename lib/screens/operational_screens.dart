@@ -188,7 +188,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       DropdownButtonFormField<String>(
         value: lensType.text.isEmpty ? null : lensType.text,
         decoration: InputDecoration(
-          labelText: 'Jenis ukuran',
+          labelText: 'Jenis Lensa',
           hintText: 'Pilih single fokus atau double fokus',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
