@@ -62,6 +62,7 @@ class GoogleFormsService {
       'entry.266758159': dateValue,
       'entry.448728880': payment.amount.toString(),
       'entry.1530690867': payment.method,
+      'entry.1651033565': payment.category,
       'entry.284716454': payment.note,
     };
     await _submit(_paymentFormId, fields);
