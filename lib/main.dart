@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/api_service.dart';
+import 'services/google_auth_service.dart';
 import 'services/sheets_read_service.dart';
 import 'models/optik_models.dart';
 import 'screens/operational_screens.dart';
@@ -104,7 +105,7 @@ class OptikLenteraApp extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
-      home: const MainScreen(),
+      home: const AuthGate(child: MainScreen()),
     );
   }
 }
