@@ -879,7 +879,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
 
     setState(() => submitting = true);
     try {
-      final idToken = await GoogleAuthService.instance.requireIdToken();
       final paymentPayload = <String, dynamic>{
         'invoice': invoice.text.trim(),
         'paymentDate': date,
@@ -894,7 +893,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         _pendingPaymentRequestId = _newTransactionRequestId();
       }
       final response = await ApiService.createPayment(
-        idToken: idToken,
         requestId: _pendingPaymentRequestId!,
         data: paymentPayload,
       );
