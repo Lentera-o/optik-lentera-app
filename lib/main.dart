@@ -164,7 +164,12 @@ class _MainScreenState extends State<MainScreen> {
   void _addOrder(OptikOrder value) {
     setState(() => orders.add(value));
     _saveLocalData();
-    _syncOrderToServer(value);
+  }
+
+  void _updateDraftOrder(int index, OptikOrder value) {
+    if (index < 0 || index >= orders.length) return;
+    setState(() => orders[index] = value);
+    _saveLocalData();
   }
 
   Future<void> _syncOrderToServer(OptikOrder value) async {
@@ -306,7 +311,7 @@ class _MainScreenState extends State<MainScreen> {
             orderCount: orders.length,
             paymentTotal: payments.fold<int>(0, (sum, item) => sum + item.amount),
           ),
-          1 => TransactionScreen(customers: customers, orders: orders, onAdd: _addOrder),
+          1 => TransactionScreen(customers: customers, orders: orders, onAdd: _addOrder, onUpdate: _updateDraftOrder, onSubmit: _syncOrderToServer),
           2 => CustomerScreen(customers: customers, onAdd: _addCustomer),
           3 => WhatsAppCenterScreen(customers: customers, orders: orders, payments: payments),
           4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
