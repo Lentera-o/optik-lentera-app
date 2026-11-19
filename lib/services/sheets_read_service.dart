@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'api_service.dart';
-import 'google_auth_service.dart';
 
-/// Authenticated, read-only access to OPTIK LENTERA operational tables.
-/// Uses Google ID-token verification through Apps Script; no public CSV export.
+/// Read-only access to OPTIK LENTERA operational tables using the app API key.
 class SheetsReadService {
   SheetsReadService._();
 
@@ -61,10 +59,8 @@ class SheetsReadService {
     if (worksheetName != 'DATA_PESANAN' && worksheetName != 'DATA_PEMBAYARAN') {
       throw ArgumentError.value(worksheetName, 'worksheetName', 'Tab tidak diizinkan');
     }
-    final idToken = await GoogleAuthService.instance.requireIdToken();
     final response = await ApiService.postAuthorizedRead(
       action: 'readTable',
-      idToken: idToken,
       data: {'sheetName': worksheetName},
     );
     if (!response.isSuccessful) {
