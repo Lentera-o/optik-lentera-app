@@ -113,10 +113,17 @@ class OptikPdfService {
               width: double.infinity,
               padding: const pw.EdgeInsets.all(8),
               decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line)),
-              child: pw.Text(
-                'Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA. Simpan invoice ini sebagai bukti transaksi.',
-                textAlign: pw.TextAlign.center,
-                style: const pw.TextStyle(fontSize: 7, color: ink),
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.SizedBox(width: 52, height: 52, child: qr(o.invoiceNumber)),
+                  pw.SizedBox(width: 10),
+                  pw.Expanded(child: pw.Text(
+                    'Pindai QR untuk membaca nomor invoice: ' + o.invoiceNumber + '. Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.',
+                    textAlign: pw.TextAlign.left,
+                    style: const pw.TextStyle(fontSize: 7, color: ink),
+                  )),
+                ],
               ),
             ),
             pw.SizedBox(height: 5),
@@ -174,7 +181,19 @@ class OptikPdfService {
             pair('Total dibayar', money(paid)), pair('Sisa tagihan', money(remaining)),
           ])),
           pw.SizedBox(width: 25),
-          pw.Container(width: 110, padding: const pw.EdgeInsets.all(8), decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line)), child: pw.Text('OPTIK LENTERA\nJernih Melihat, Nyaman Melangkah.', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 8, color: ink))),
+          pw.Container(
+            width: 112,
+            padding: const pw.EdgeInsets.all(6),
+            decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line)),
+            child: pw.Column(
+              mainAxisSize: pw.MainAxisSize.min,
+              children: [
+                pw.SizedBox(width: 82, height: 82, child: qr(o.invoiceNumber + '|' + receiptNumber)),
+                pw.SizedBox(height: 3),
+                pw.Text('QR INVOICE • KUITANSI', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 6, color: ink)),
+              ],
+            ),
+          ),
         ]),
         pw.Spacer(), pw.Center(child: pw.Text('Terima kasih atas pembayaran Anda. Simpan kuitansi ini sebagai bukti pembayaran.', style: const pw.TextStyle(fontSize: 8, color: ink))),
         pw.SizedBox(height: 5), pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
