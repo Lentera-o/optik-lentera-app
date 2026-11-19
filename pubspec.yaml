@@ -101,8 +101,8 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: assets/optik_lentera_launcher.jpg
+  image_path: build/optik_lentera_launcher_zoom.png
   adaptive_icon_background: '#111111'
-  adaptive_icon_foreground: assets/optik_lentera_launcher.jpg
+  adaptive_icon_foreground: build/optik_lentera_launcher_zoom.png
   adaptive_icon_foreground_inset: 18
   min_sdk_android: 21
