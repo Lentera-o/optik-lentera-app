@@ -83,6 +83,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final otherPrice = TextEditingController();
   final otherDescription = TextEditingController();
   final dp = TextEditingController();
+  final invoiceNote = TextEditingController();
   final odSph = TextEditingController();
   final odCyl = TextEditingController();
   final odAxis = TextEditingController();
@@ -112,7 +113,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frameDescription, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frameDescription, frame, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
@@ -136,8 +137,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
       initialPaymentMethod: method,
+      note: invoiceNote.text.trim(),
     ));
-    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
+    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frame, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
     setState(() { selectedCustomerIndex = null; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
@@ -206,6 +208,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(otherDescription, 'Keterangan biaya lain-lain'),
       _field(otherPrice, 'Harga lain-lain (Rp)', type: TextInputType.number),
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
+      _field(invoiceNote, 'Catatan invoice'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
@@ -299,7 +302,7 @@ class _LocalNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.only(top: 14, bottom: 12),
-    child: Text('Data ini masih sementara di memori aplikasi dan belum dikirim ke Google Sheets. Sinkronisasi menunggu pencocokan kontrak API Apps Script yang aktif.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+    child: Text('Draft disimpan di perangkat dan dikirim otomatis ke Google Forms. Status penerimaan formulir ditampilkan setelah proses pengiriman; pencatatan akhir tetap perlu diverifikasi di DATA_PESANAN / DATA_PEMBAYARAN.', style: TextStyle(fontSize: 11, color: Colors.black54)),
   );
 }
 
@@ -316,10 +319,11 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   final nominal = TextEditingController();
+  final paymentNote = TextEditingController();
   String method = 'Tunai';
 
   @override
-  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+  void dispose() { invoice.dispose(); nominal.dispose(); paymentNote.dispose(); super.dispose(); }
 
   void save() {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -335,9 +339,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       paymentDate: DateTime.now(),
       amount: value,
       method: method,
+      note: paymentNote.text.trim(),
       requestId: 'PAY-' + DateTime.now().microsecondsSinceEpoch.toString(),
     ));
-    invoice.clear(); nominal.clear();
+    invoice.clear(); nominal.clear(); paymentNote.clear();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
   }
 
@@ -358,6 +363,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         ),
       ),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
+      _field(paymentNote, 'Catatan pembayaran'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
