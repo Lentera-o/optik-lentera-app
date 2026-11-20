@@ -48,6 +48,18 @@ function doPost(e) {
       }
       return olApiReadTable_(request.data, actor);
     }
+    if (action === 'updateOrderStatus') {
+      if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
+        throw new Error('Parameter status pesanan tidak valid.');
+      }
+      const statusLock = LockService.getScriptLock();
+      statusLock.waitLock(30000);
+      try {
+        return olApiUpdateOrderStatus_(request.data, actor);
+      } finally {
+        statusLock.releaseLock();
+      }
+    }
     const requestId = String(request.requestId || '');
     if (!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)) {
       throw new Error('ID permintaan tidak valid.');
@@ -273,4 +285,39 @@ function olApiJson_(value) {
   return ContentService
     .createTextOutput(JSON.stringify(value))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+
+/** Update only the appended fulfillment-status column; existing order fields remain untouched. */
+function olApiUpdateOrderStatus_(data, actor) {
+  const invoice = olApiText_(data.invoice, 'Nomor invoice', 80, true);
+  const allowedStatuses = ['Menunggu diproses', 'Sedang dikerjakan', 'Siap diambil', 'Sudah diserahkan'];
+  const status = String(data.status || '').trim();
+  if (allowedStatuses.indexOf(status) < 0) throw new Error('Status pengerjaan tidak valid.');
+
+  const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
+  const sh = ss.getSheetByName(OL.SHEET_ORDER);
+  if (!sh) throw new Error('Tab data pesanan tidak ditemukan.');
+
+  const row = olFindRow_(sh, OL_FIELDS.invoice, invoice);
+  if (!row) throw new Error('Nomor invoice tidak ditemukan di DATA_PESANAN.');
+
+  const lastCol = sh.getLastColumn();
+  if (lastCol > 100) throw new Error('Kolom DATA_PESANAN melebihi batas aman.');
+  const headers = sh.getRange(1, 1, 1, Math.max(lastCol, 1)).getDisplayValues()[0];
+  let statusCol = headers.findIndex(value =>
+    String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '') === 'statuspengerjaan'
+  ) + 1;
+  if (statusCol === 0) {
+    statusCol = lastCol + 1;
+    sh.getRange(1, statusCol).setValue('Status Pengerjaan');
+  }
+  sh.getRange(row, statusCol).setValue(status);
+  return olApiJson_({
+    ok: true,
+    action: 'updateOrderStatus',
+    invoice: invoice,
+    status: status,
+    processedBy: actor.email
+  });
 }
