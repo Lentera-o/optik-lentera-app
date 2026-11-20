@@ -514,29 +514,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ));
       await _loadOfficialOrderHistory();
       if (!mounted) return;
-      final invoiceUri = Uri.tryParse(invoicePdfUrl);
-      final canOpenInvoice = invoiceUri != null &&
-          invoiceUri.scheme == 'https' &&
-          (invoiceUri.host == 'drive.google.com' ||
-           invoiceUri.host.endsWith('.google.com'));
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          canOpenInvoice
-              ? 'Pesanan berhasil tersimpan. Invoice $invoiceNumber siap dibuka.'
-              : 'Pesanan berhasil tersimpan. Invoice $invoiceNumber sudah diproses; tautan PDF belum diterima.',
-        ),
-        duration: const Duration(seconds: 8),
-        action: canOpenInvoice
-            ? SnackBarAction(
-                label: 'BUKA INVOICE',
-                onPressed: () async {
-                  await launchUrl(
-                    invoiceUri,
-                    mode: LaunchMode.externalApplication,
-                  );
-                },
-              )
-            : null,
+        content: Text('Pesanan berhasil tersimpan. Invoice $invoiceNumber masuk ke notifikasi dokumen.'),
+        duration: const Duration(seconds: 5),
       ));
     } catch (error) {
       if (!mounted) return;
@@ -943,27 +923,11 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ));
       await _loadOfficialInvoices();
       if (!mounted) return;
-      final receiptUri = Uri.tryParse(receiptPdf);
-      final canOpenReceipt = receiptUri != null &&
-          receiptUri.scheme == 'https' &&
-          (receiptUri.host == 'drive.google.com' ||
-           receiptUri.host.endsWith('.google.com'));
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(receipt.isEmpty
             ? 'Pembayaran berhasil dicatat untuk invoice ${invoice.text.trim()}.'
-            : 'Pembayaran berhasil dicatat. Kuitansi $receipt berhasil diproses.'),
-        duration: const Duration(seconds: 8),
-        action: canOpenReceipt
-            ? SnackBarAction(
-                label: 'BUKA KUITANSI',
-                onPressed: () async {
-                  await launchUrl(
-                    receiptUri,
-                    mode: LaunchMode.externalApplication,
-                  );
-                },
-              )
-            : null,
+            : 'Pembayaran berhasil dicatat. Kuitansi $receipt masuk ke notifikasi dokumen.'),
+        duration: const Duration(seconds: 5),
       ));
       nominal.clear();
       paymentNote.clear();
