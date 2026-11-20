@@ -786,14 +786,30 @@ class _DashboardContentState extends State<DashboardContent> {
                       child: const Text('LAYANAN OPTIK TERPADU', style: TextStyle(color: Colors.white, fontSize: 9, letterSpacing: 1.35, fontWeight: FontWeight.w800)),
                     ),
                     const SizedBox(height: 13),
-                    Text(
-                      'Jelas Lihatnya,\nJelas Rezekinya.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 23,
-                        height: 1.24,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: -.65,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: RichText(
+                        maxLines: 1,
+                        softWrap: false,
+                        text: TextSpan(
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 21,
+                            height: 1.2,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -.45,
+                          ),
+                          children: const [
+                            TextSpan(
+                              text: 'JELAS LIHATNYA ',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            TextSpan(
+                              text: 'JELAS REJEKINYA',
+                              style: TextStyle(color: Color(0xFFFFE2A6)),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 9),
