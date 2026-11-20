@@ -232,14 +232,34 @@ function olApiReadTable_(data, actor) {
   if (lastRow > 5001 || lastCol > 100) {
     throw new Error('Ukuran tabel melebihi batas aman pembacaan API.');
   }
-  const values = sh.getRange(1, 1, lastRow, lastCol).getDisplayValues();
+  const range = sh.getRange(1, 1, lastRow, lastCol);
+  const values = range.getDisplayValues();
+  const rich = range.getRichTextValues();
+  const formulas = range.getFormulas();
   const headers = values[0].map((value, index) => {
     const header = String(value || '').trim();
     return header || ('Kolom ' + (index + 1));
   });
-  const rows = values.slice(1).filter(row => row.some(value => String(value || '').trim() !== '')).map(row => {
+  const rows = values.slice(1).filter(row => row.some(value => String(value || '').trim() !== '')).map((row, rowIndex) => {
     const record = {};
-    headers.forEach((header, index) => { record[header] = String(row[index] || ''); });
+    headers.forEach((header, colIndex) => {
+      let value = String(row[colIndex] || '').trim();
+      // A Sheets cell may display friendly text while its actual PDF URL is
+      // stored as a rich-text link or as =HYPERLINK(url, label). Return the
+      // real URL to the APK instead of the visible label.
+      if (/pdf|invoice|kuitansi|kwitansi/i.test(header)) {
+        const richUrl = rich[rowIndex + 1][colIndex] &&
+          rich[rowIndex + 1][colIndex].getLinkUrl();
+        if (richUrl) {
+          value = richUrl;
+        } else {
+          const formula = String(formulas[rowIndex + 1][colIndex] || '');
+          const match = formula.match(/^=HYPERLINK\\(\\s*"((?:[^"]|"")+)"/i);
+          if (match) value = match[1].replace(/""/g, '"');
+        }
+      }
+      record[header] = value;
+    });
     return record;
   });
   return olApiJson_({ ok: true, action: 'readTable', sheetName: sheetName, rows: rows, processedBy: actor.email });
