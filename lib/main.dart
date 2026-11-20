@@ -100,7 +100,7 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
             borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: darkGold, width: 1.5),
           ),
-          labelStyle: const TextStyle(color: Color(0xFF82766A), fontSize: 13),
+
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
