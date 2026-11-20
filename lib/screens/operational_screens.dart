@@ -2124,6 +2124,300 @@ class _InvoiceReceiptScreenState extends State<InvoiceReceiptScreen> {
 }
 
 
+
+class OrderStatusScreen extends StatefulWidget {
+  const OrderStatusScreen({super.key});
+
+  @override
+  State<OrderStatusScreen> createState() => _OrderStatusScreenState();
+}
+
+class _OrderStatusScreenState extends State<OrderStatusScreen> {
+  static const _statuses = [
+    'Menunggu diproses',
+    'Sedang dikerjakan',
+    'Siap diambil',
+    'Sudah diserahkan',
+  ];
+  List<Map<String, String>> _orders = [];
+  bool _loading = true;
+  String? _error;
+  String _query = '';
+
+  String _key(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+  String _cell(Map<String, String> row, List<String> aliases) {
+    for (final alias in aliases) {
+      final wanted = _key(alias);
+      for (final entry in row.entries) {
+        if (_key(entry.key) == wanted && entry.value.trim().isNotEmpty) {
+          return entry.value.trim();
+        }
+      }
+    }
+    return '';
+  }
+
+  Future<void> _load() async {
+    if (mounted) setState(() { _loading = true; _error = null; });
+    try {
+      final rows = await SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true);
+      if (!mounted) return;
+      setState(() { _orders = rows; _loading = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _changeStatus(Map<String, String> row, String invoice, String status) async {
+    final oldStatus = _cell(row, ['Status Pengerjaan']);
+    setState(() {
+      final index = _orders.indexOf(row);
+      if (index >= 0) _orders[index]['Status Pengerjaan'] = status;
+    });
+    try {
+      final response = await ApiService.updateOrderStatus(invoice: invoice, status: status);
+      if (!response.isSuccessful) throw Exception(response.errorMessage ?? 'Status gagal disimpan.');
+      await SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Status $invoice berhasil diperbarui: $status')),
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        final index = _orders.indexOf(row);
+        if (index >= 0) _orders[index]['Status Pengerjaan'] = oldStatus;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan status: $e')),
+      );
+    }
+  }
+
+  Color _statusColor(String status) {
+    if (status == 'Sudah diserahkan') return const Color(0xFF2E7D32);
+    if (status == 'Siap diambil') return const Color(0xFF1565C0);
+    if (status == 'Sedang dikerjakan') return const Color(0xFFB7791F);
+    return _darkGold;
+  }
+
+  @override
+  void initState() { super.initState(); _load(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = _orders.where((row) {
+      final q = _query.trim().toLowerCase();
+      if (q.isEmpty) return true;
+      return row.values.any((value) => value.toLowerCase().contains(q));
+    }).toList().reversed.toList();
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: _darkGold,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const _Intro(
+            title: 'Status Pesanan',
+            subtitle: 'Pantau proses setiap pesanan dan perbarui tahap pengerjaannya. Perubahan tersimpan ke Google Sheets.',
+            icon: Icons.track_changes_outlined,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            onChanged: (value) => setState(() => _query = value),
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              hintText: 'Cari nomor invoice atau nama pelanggan',
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator(color: _darkGold)),
+            )
+          else if (_error != null)
+            _Panel(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Data status belum dapat dimuat.'),
+                const SizedBox(height: 6),
+                Text(_error!, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                TextButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Coba lagi')),
+              ],
+            ))
+          else if (rows.isEmpty)
+            const _Empty(message: 'Belum ada pesanan yang cocok dengan pencarian.')
+          else
+            ...rows.map((row) {
+              final invoice = _cell(row, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice', 'Nomor Tagihan']);
+              if (invoice.isEmpty) return const SizedBox.shrink();
+              final name = _cell(row, ['Nama', 'Nama Pelanggan', 'Nama pelanggan', 'Pelanggan']);
+              final phone = _cell(row, ['Nomor HP / WhatsApp', 'No HP', 'Nomor HP', 'WhatsApp']);
+              final date = _cell(row, ['Cap waktu', 'Tanggal', 'Tanggal Pesanan']);
+              final savedStatus = _cell(row, ['Status Pengerjaan']);
+              final status = _statuses.contains(savedStatus) ? savedStatus : _statuses.first;
+              final remaining = _cell(row, ['Sisa', 'Sisa Tagihan', 'Sisa Pembayaran']);
+              return Card(
+                color: Colors.white,
+                elevation: 0,
+                margin: const EdgeInsets.only(bottom: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: _gold.withValues(alpha: .25)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        const Icon(Icons.receipt_long_outlined, color: _darkGold),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(invoice, style: const TextStyle(fontWeight: FontWeight.w800, color: _ink))),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: _statusColor(status).withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(status, style: TextStyle(color: _statusColor(status), fontSize: 10, fontWeight: FontWeight.w700)),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      Text(name.isEmpty ? 'Nama pelanggan tidak tersedia' : name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      if (phone.isNotEmpty || date.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text([phone, date].where((v) => v.isNotEmpty).join(' • '), style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                        ),
+                      if (remaining.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text('Sisa tagihan: $remaining', style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                        ),
+                      const Divider(height: 20),
+                      DropdownButtonFormField<String>(
+                        value: status,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Perbarui status pengerjaan',
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        items: _statuses.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+                        onChanged: (value) {
+                          if (value != null && value != status) _changeStatus(row, invoice, value);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          const SizedBox(height: 12),
+          const Text('Catatan: status pengerjaan disimpan pada kolom tambahan “Status Pengerjaan” di DATA_PESANAN. Kolom dan data transaksi yang sudah ada tidak diubah.',
+            style: TextStyle(fontSize: 11, color: Colors.black54)),
+        ],
+      ),
+    );
+  }
+}
+
+
+class SettingsScreen extends StatefulWidget {
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+  const SettingsScreen({super.key, required this.themeMode, required this.onThemeModeChanged});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _documentNotifications = true;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _documentNotifications = prefs.getBool('ol_document_notifications_enabled') ?? true;
+      _loading = false;
+    });
+  }
+
+  Future<void> _setNotifications(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('ol_document_notifications_enabled', value);
+    if (mounted) setState(() => _documentNotifications = value);
+  }
+
+  String _themeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light: return 'Terang';
+      case ThemeMode.dark: return 'Gelap';
+      case ThemeMode.system: return 'Ikuti perangkat';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      const _Intro(
+        title: 'Pengaturan Aplikasi',
+        subtitle: 'Atur tampilan dan preferensi OPTIK LENTERA. Pengaturan transaksi dan koneksi data tetap terpisah.',
+        icon: Icons.settings_outlined,
+      ),
+      const SizedBox(height: 12),
+      _Panel(child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Tampilan aplikasi', style: TextStyle(fontWeight: FontWeight.w800, color: _ink)),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<ThemeMode>(
+            value: widget.themeMode,
+            decoration: const InputDecoration(labelText: 'Tema'),
+            items: ThemeMode.values.map((mode) => DropdownMenuItem(value: mode, child: Text(_themeLabel(mode)))).toList(),
+            onChanged: (mode) { if (mode != null) widget.onThemeModeChanged(mode); },
+          ),
+          const SizedBox(height: 8),
+          const Text('Pilihan tema disimpan dan diterapkan ke aplikasi.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+        ],
+      )),
+      const SizedBox(height: 10),
+      _Panel(child: SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        value: _documentNotifications,
+        onChanged: _loading ? null : _setNotifications,
+        activeColor: _darkGold,
+        title: const Text('Notifikasi dokumen', style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text('Aktifkan indikator dokumen invoice dan kuitansi baru.', style: TextStyle(fontSize: 11)),
+      )),
+      const SizedBox(height: 10),
+      _Panel(child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Tentang OPTIK LENTERA', style: TextStyle(fontWeight: FontWeight.w800, color: _ink)),
+          SizedBox(height: 8),
+          Text('Aplikasi operasional OPTIK LENTERA', style: TextStyle(fontSize: 12)),
+          Text('Data transaksi tersimpan melalui Google Sheets dan Apps Script.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+          Text('Versi fitur dapat diperbarui melalui pembaruan aplikasi.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+        ],
+      )),
+    ],
+  );
+}
+
 class _DocumentNotice {
   final String id, type, title, detail, url;
   const _DocumentNotice({required this.id, required this.type, required this.title, required this.detail, required this.url});
