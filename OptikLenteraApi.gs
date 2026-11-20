@@ -254,7 +254,7 @@ function olApiReadTable_(data, actor) {
           value = richUrl;
         } else {
           const formula = String(formulas[rowIndex + 1][colIndex] || '');
-          const match = formula.match(/^=HYPERLINK\\(\\s*"((?:[^"]|"")+)"/i);
+          const match = formula.match(/^=HYPERLINK\(\s*"((?:[^"]|"")+)"/i);
           if (match) value = match[1].replace(/""/g, '"');
         }
       }
