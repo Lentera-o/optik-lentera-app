@@ -2140,6 +2140,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     'Sudah diserahkan',
   ];
   List<Map<String, String>> _orders = [];
+  final Set<String> _savingInvoices = {};
   bool _loading = true;
   String? _error;
   String _query = '';
@@ -2171,29 +2172,24 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   }
 
   Future<void> _changeStatus(Map<String, String> row, String invoice, String status) async {
-    final oldStatus = _cell(row, ['Status Pengerjaan']);
-    setState(() {
-      final index = _orders.indexOf(row);
-      if (index >= 0) _orders[index]['Status Pengerjaan'] = status;
-    });
+    if (_savingInvoices.contains(invoice)) return;
+    setState(() => _savingInvoices.add(invoice));
     try {
       final response = await ApiService.updateOrderStatus(invoice: invoice, status: status);
       if (!response.isSuccessful) throw Exception(response.errorMessage ?? 'Status gagal disimpan.');
-      await SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true);
+      SheetsReadService.clearCache('DATA_PESANAN');
+      await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Status $invoice berhasil diperbarui: $status')),
       );
-      await _load();
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        final index = _orders.indexOf(row);
-        if (index >= 0) _orders[index]['Status Pengerjaan'] = oldStatus;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menyimpan status: $e')),
       );
+    } finally {
+      if (mounted) setState(() => _savingInvoices.remove(invoice));
     }
   }
 
@@ -2308,7 +2304,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                         items: _statuses.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                        onChanged: (value) {
+                        onChanged: _savingInvoices.contains(invoice) ? null : (value) {
                           if (value != null && value != status) _changeStatus(row, invoice, value);
                         },
                       ),
