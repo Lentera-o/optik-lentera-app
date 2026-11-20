@@ -2,7 +2,7 @@ name: Flutter Android CI
 
 on:
   push:
-    branches: [main, ui/black-gold-preserve-final, ui-final-preserve-base]
+    branches: [main, ui/black-gold-preserve-final, ui-final-preserve-base, fix/transaction-pdf-response-contract]
   pull_request:
     branches: [main, test/pdf-qr-layout, ui-final-preserve-base]
   workflow_dispatch:

@@ -482,9 +482,11 @@ class _TransactionScreenState extends State<TransactionScreen> {
         throw Exception(response.errorMessage ?? 'Pesanan gagal disimpan ke server.');
       }
       final result = response.data;
-      final invoiceNumber = result is Map ? (result['invoice']?.toString() ?? '') : '';
-      final invoiceVerificationUrl = result is Map
-          ? (result['invoiceVerificationUrl'] ?? result['verificationUrl'] ?? '').toString().trim()
+      final invoiceNumber = result is Map
+          ? (result['invoiceNumber'] ?? result['invoice'] ?? result['invoiceNo'] ?? '').toString().trim()
+          : '';
+      final invoicePdfUrl = result is Map
+          ? (result['invoicePdf'] ?? result['invoiceUrl'] ?? '').toString().trim()
           : '';
       if (invoiceNumber.isEmpty) {
         throw Exception('Server menerima respons tanpa nomor invoice. Periksa DATA_PESANAN sebelum mengulang transaksi.');
@@ -512,24 +514,24 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ));
       await _loadOfficialOrderHistory();
       if (!mounted) return;
-      final verificationUri = Uri.tryParse(invoiceVerificationUrl);
-      final canVerifyInvoice = verificationUri != null &&
-          verificationUri.scheme == 'https' &&
-          (verificationUri.host == 'script.google.com' ||
-           verificationUri.host == 'script.googleusercontent.com');
+      final invoiceUri = Uri.tryParse(invoicePdfUrl);
+      final canOpenInvoice = invoiceUri != null &&
+          invoiceUri.scheme == 'https' &&
+          (invoiceUri.host == 'drive.google.com' ||
+           invoiceUri.host.endsWith('.google.com'));
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          canVerifyInvoice
-              ? 'Pesanan berhasil tersimpan. Invoice $invoiceNumber siap diverifikasi.'
-              : 'Pesanan berhasil tersimpan. Invoice $invoiceNumber sudah diproses; tautan verifikasi belum diterima.',
+          canOpenInvoice
+              ? 'Pesanan berhasil tersimpan. Invoice $invoiceNumber siap dibuka.'
+              : 'Pesanan berhasil tersimpan. Invoice $invoiceNumber sudah diproses; tautan PDF belum diterima.',
         ),
         duration: const Duration(seconds: 8),
-        action: canVerifyInvoice
+        action: canOpenInvoice
             ? SnackBarAction(
-                label: 'VERIFIKASI',
+                label: 'BUKA INVOICE',
                 onPressed: () async {
                   await launchUrl(
-                    verificationUri,
+                    invoiceUri,
                     mode: LaunchMode.externalApplication,
                   );
                 },
@@ -923,7 +925,12 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         throw Exception(response.errorMessage ?? 'Pembayaran gagal disimpan ke server.');
       }
       final result = response.data;
-      final receipt = result is Map ? (result['receipt']?.toString() ?? '') : '';
+      final receipt = result is Map
+          ? (result['receiptNumber'] ?? result['receipt'] ?? '').toString().trim()
+          : '';
+      final receiptPdf = result is Map
+          ? (result['receiptPdf'] ?? result['receiptUrl'] ?? '').toString().trim()
+          : '';
       _pendingPaymentRequestId = null;
       _pendingPaymentPayload = null;
       widget.onAdd(OptikPayment(
@@ -936,11 +943,27 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ));
       await _loadOfficialInvoices();
       if (!mounted) return;
+      final receiptUri = Uri.tryParse(receiptPdf);
+      final canOpenReceipt = receiptUri != null &&
+          receiptUri.scheme == 'https' &&
+          (receiptUri.host == 'drive.google.com' ||
+           receiptUri.host.endsWith('.google.com'));
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(receipt.isEmpty
             ? 'Pembayaran berhasil dicatat untuk invoice ${invoice.text.trim()}.'
-            : 'Pembayaran berhasil dicatat. Kuitansi $receipt sedang diproses.'),
-        duration: const Duration(seconds: 6),
+            : 'Pembayaran berhasil dicatat. Kuitansi $receipt berhasil diproses.'),
+        duration: const Duration(seconds: 8),
+        action: canOpenReceipt
+            ? SnackBarAction(
+                label: 'BUKA KUITANSI',
+                onPressed: () async {
+                  await launchUrl(
+                    receiptUri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+              )
+            : null,
       ));
       nominal.clear();
       paymentNote.clear();
