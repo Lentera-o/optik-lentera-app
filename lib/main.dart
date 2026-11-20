@@ -16,10 +16,10 @@ void main() {
   runApp(const OptikLenteraApp());
 }
 
-const Color cream = Color(0xFFFBF8F2);
-const Color gold = Color(0xFFC5A66F);
-const Color darkGold = Color(0xFF8A6B3F);
-const Color pink = Color(0xFFEAD9D8);
+const Color cream = Color(0xFF101216); // Obsidian background
+const Color gold = Color(0xFFD6B56F); // Champagne gold
+const Color darkGold = Color(0xFFB38B45); // Deep champagne gold
+const Color pink = Color(0xFF29251D); // Warm dark-gold surface
 const Color ink = Color(0xFF292722);
 
 class OptikLenteraApp extends StatefulWidget {
@@ -64,7 +64,8 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
         scaffoldBackgroundColor: cream,
         colorScheme: ColorScheme.fromSeed(
           seedColor: gold,
-          surface: cream,
+          brightness: Brightness.light,
+          surface: const Color(0xFF191C21),
         ),
         textTheme: GoogleFonts.plusJakartaSansTextTheme().apply(bodyColor: ink, displayColor: ink),
         textSelectionTheme: const TextSelectionThemeData(
@@ -118,8 +119,8 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
-          backgroundColor: const Color(0xFFFFFCF8),
-          indicatorColor: pink.withValues(alpha: .52),
+          backgroundColor: const Color(0xFF111318),
+          indicatorColor: pink.withValues(alpha: .90),
           height: 70,
           elevation: 0,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -127,17 +128,17 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
             fontSize: 9.5,
             letterSpacing: .1,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w500,
-            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF8A8177),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFAAA397),
           )),
           iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
             size: 21,
-            color: states.contains(WidgetState.selected) ? darkGold : const Color(0xFF9A9186),
+            color: states.contains(WidgetState.selected) ? gold : const Color(0xFFAAA397),
           )),
         ),
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: ink,
-          contentTextStyle: const TextStyle(color: Colors.white, fontSize: 13),
+          backgroundColor: const Color(0xFF29251D),
+          contentTextStyle: const TextStyle(color: Color(0xFFF1EEE7), fontSize: 13),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
@@ -146,13 +147,13 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
       darkTheme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: cream,
-        colorScheme: ColorScheme.fromSeed(seedColor: gold, surface: cream),
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(),
+        colorScheme: ColorScheme.fromSeed(seedColor: gold, brightness: Brightness.light, surface: const Color(0xFF191C21)),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme().apply(bodyColor: ink, displayColor: ink),
         iconTheme: const IconThemeData(color: darkGold),
-        dividerColor: const Color(0xFFE5D9C8),
+        dividerColor: const Color(0xFF3A3428),
         appBarTheme: const AppBarTheme(
           backgroundColor: cream,
-          foregroundColor: darkGold,
+          foregroundColor: gold,
           elevation: 0,
           scrolledUnderElevation: 0,
         ),
@@ -743,9 +744,9 @@ class _DashboardContentState extends State<DashboardContent> {
                       ),
                     ),
                     const SizedBox(height: 11),
-                    const Text('Selamat datang,', style: TextStyle(color: ink, fontSize: 25, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: -.45)),
+                    const Text('Selamat datang,', style: TextStyle(color: Color(0xFFF1EEE7), fontSize: 25, fontWeight: FontWeight.w800, height: 1.1, letterSpacing: -.45)),
                     const SizedBox(height: 4),
-                    const Text('Apa yang ingin dikerjakan hari ini?', style: TextStyle(color: Color(0xFF81766B), fontSize: 11.5)),
+                    const Text('Apa yang ingin dikerjakan hari ini?', style: TextStyle(color: Color(0xFFB9B2A5), fontSize: 11.5)),
                   ],
                 ),
               ),
@@ -852,9 +853,9 @@ class _DashboardContentState extends State<DashboardContent> {
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ringkasan aktivitas', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: ink)),
+                  Text('Ringkasan aktivitas', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: Color(0xFFF1EEE7))),
                   SizedBox(height: 3),
-                  Text('Rekap resmi dari Google Sheets', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
+                  Text('Rekap resmi dari Google Sheets', style: TextStyle(fontSize: 10, color: Color(0xFFAAA397))),
                 ],
               ),
               Row(mainAxisSize: MainAxisSize.min, children: [
@@ -890,7 +891,7 @@ class _DashboardContentState extends State<DashboardContent> {
                 _lastSyncedAt!.month.toString().padLeft(2, '0') + ' ' +
                 _lastSyncedAt!.hour.toString().padLeft(2, '0') + ':' +
                 _lastSyncedAt!.minute.toString().padLeft(2, '0'),
-                style: const TextStyle(fontSize: 9, color: Colors.black45)),
+                style: const TextStyle(fontSize: 9, color: Color(0xFFB9B2A5))),
             ),
           const SizedBox(height: 12),
           Row(
@@ -912,9 +913,9 @@ class _DashboardContentState extends State<DashboardContent> {
             ],
           ),
           const SizedBox(height: 24),
-          const Text('Akses cepat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+          const Text('Akses cepat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFFF1EEE7))),
           const SizedBox(height: 3),
-          const Text('Buka pekerjaan yang paling sering digunakan.', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
+          const Text('Buka pekerjaan yang paling sering digunakan.', style: TextStyle(fontSize: 10, color: Color(0xFFAAA397))),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -926,9 +927,9 @@ class _DashboardContentState extends State<DashboardContent> {
             ],
           ),
           const SizedBox(height: 24),
-          const Text('Semua layanan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+          const Text('Semua layanan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFFF1EEE7))),
           const SizedBox(height: 3),
-          const Text('Pilih modul untuk melanjutkan pekerjaan.', style: TextStyle(fontSize: 10, color: Color(0xFF8A8177))),
+          const Text('Pilih modul untuk melanjutkan pekerjaan.', style: TextStyle(fontSize: 10, color: Color(0xFFAAA397))),
           const SizedBox(height: 12),
           GridView.builder(
             shrinkWrap: true,
