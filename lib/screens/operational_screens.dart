@@ -2217,9 +2217,9 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           const _Intro(
-            title: 'Status Pesanan',
-            subtitle: 'Pantau proses setiap pesanan dan perbarui tahap pengerjaannya. Perubahan tersimpan ke Google Sheets.',
-            icon: Icons.track_changes_outlined,
+            'Status Pesanan',
+            'Pantau proses setiap pesanan dan perbarui tahap pengerjaannya. Perubahan tersimpan ke Google Sheets.',
+            Icons.track_changes_outlined,
           ),
           const SizedBox(height: 12),
           TextField(
@@ -2246,7 +2246,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
               ],
             ))
           else if (rows.isEmpty)
-            const _Empty(message: 'Belum ada pesanan yang cocok dengan pencarian.')
+            const _Empty('Belum ada pesanan yang cocok dengan pencarian.')
           else
             ...rows.map((row) {
               final invoice = _cell(row, ['No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice', 'Nomor Tagihan']);
@@ -2370,9 +2370,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     padding: const EdgeInsets.all(16),
     children: [
       const _Intro(
-        title: 'Pengaturan Aplikasi',
-        subtitle: 'Atur tampilan dan preferensi OPTIK LENTERA. Pengaturan transaksi dan koneksi data tetap terpisah.',
-        icon: Icons.settings_outlined,
+        'Pengaturan Aplikasi',
+        'Atur tampilan dan preferensi OPTIK LENTERA. Pengaturan transaksi dan koneksi data tetap terpisah.',
+        Icons.settings_outlined,
       ),
       const SizedBox(height: 12),
       _Panel(child: Column(
