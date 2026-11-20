@@ -104,9 +104,27 @@ class ApiService {
   static Future<ApiResponse> postAuthorizedRead({
     required String action,
     required Map<String, dynamic> data,
+  }) {
+    if (action != 'readTable') {
+      throw ArgumentError('Only readTable is allowed for this method.');
+    }
+    return _postAuthorizedAction(action: action, data: data);
+  }
+
+  static Future<ApiResponse> updateOrderStatus({
+    required String invoice,
+    required String status,
+  }) => _postAuthorizedAction(
+    action: 'updateOrderStatus',
+    data: {'invoice': invoice, 'status': status},
+  );
+
+  static Future<ApiResponse> _postAuthorizedAction({
+    required String action,
+    required Map<String, dynamic> data,
   }) async {
-    if (action != 'readTable' || AppConfig.appApiKey.isEmpty) {
-      throw ArgumentError('App access key and read action are required.');
+    if (!['readTable', 'updateOrderStatus'].contains(action) || AppConfig.appApiKey.isEmpty) {
+      throw ArgumentError('App access key and an allowed action are required.');
     }
     final uri = Uri.parse(AppConfig.appsScriptUrl);
     final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
