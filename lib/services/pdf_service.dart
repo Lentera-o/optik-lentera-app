@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../assets/optik_brand_assets.dart';
+import '../app_config.dart';
 import '../models/optik_models.dart';
 
 class OptikPdfService {
@@ -13,6 +14,11 @@ class OptikPdfService {
   static const line = PdfColor.fromInt(0xFFDDCBA8);
   static const ink = PdfColor.fromInt(0xFF51484A);
   static pw.MemoryImage get logo => pw.MemoryImage(base64Decode(optikLogoBase64));
+  static String invoiceVerificationUrl(String invoiceNumber) =>
+      Uri.parse(AppConfig.appsScriptUrl).replace(
+        queryParameters: {'verify': invoiceNumber.trim()},
+      ).toString();
+
   static pw.Widget qr(String value) => pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: value, width: 92, height: 92, drawText: false);
 
   static String money(int n) => 'Rp ' + n.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
@@ -116,10 +122,10 @@ class OptikPdfService {
               child: pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
-                  pw.SizedBox(width: 52, height: 52, child: qr(o.invoiceNumber)),
+                  pw.SizedBox(width: 52, height: 52, child: qr(invoiceVerificationUrl(o.invoiceNumber))),
                   pw.SizedBox(width: 10),
                   pw.Expanded(child: pw.Text(
-                    'Pindai QR untuk membaca nomor invoice: ' + o.invoiceNumber + '. Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.',
+                    'Pindai QR untuk membuka verifikasi invoice ' + o.invoiceNumber + '. Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.',
                     textAlign: pw.TextAlign.left,
                     style: const pw.TextStyle(fontSize: 7, color: ink),
                   )),
