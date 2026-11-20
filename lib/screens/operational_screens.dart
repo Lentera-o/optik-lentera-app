@@ -75,12 +75,15 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final address = TextEditingController();
   final doctor = TextEditingController();
   final lensType = TextEditingController();
+  final lensDescription = TextEditingController();
   final rxNote = TextEditingController();
+  final frameDescription = TextEditingController();
   final frame = TextEditingController();
   final lens = TextEditingController();
   final otherPrice = TextEditingController();
   final otherDescription = TextEditingController();
   final dp = TextEditingController();
+  final invoiceNote = TextEditingController();
   final odSph = TextEditingController();
   final odCyl = TextEditingController();
   final odAxis = TextEditingController();
@@ -110,7 +113,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frameDescription, frame, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
@@ -129,13 +132,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
         odSph: odSph.text, odCyl: odCyl.text, odAxis: odAxis.text, odAdd: odAdd.text, odPd: odPd.text,
         osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
       ),
-      frame: OrderItem(description: 'Frame', price: amount(frame)),
-      lens: OrderItem(description: lensType.text.trim().isEmpty ? 'Lensa' : lensType.text.trim(), price: amount(lens)),
+      frame: OrderItem(description: frameDescription.text.trim().isEmpty ? 'Frame' : frameDescription.text.trim(), price: amount(frame)),
+      lens: OrderItem(description: lensDescription.text.trim(), price: amount(lens)), 
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
       initialPaymentMethod: method,
+      note: invoiceNote.text.trim(),
     ));
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
+    for (final c in [customer, phone, address, doctor, lensType, lensDescription, rxNote, frame, lens, otherPrice, otherDescription, dp, invoiceNote, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
     setState(() { selectedCustomerIndex = null; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
@@ -184,13 +188,27 @@ class _TransactionScreenState extends State<TransactionScreen> {
         Expanded(child: _field(osAxis, 'AXIS')),
       ]),
       Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
-      _field(lensType, 'Jenis / model lensa'),
+      DropdownButtonFormField<String>(
+        value: lensType.text.isEmpty ? null : lensType.text,
+        decoration: InputDecoration(
+          labelText: 'Jenis Lensa',
+          hintText: 'Pilih single fokus atau double fokus',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        items: const ['Single Fokus', 'Double Fokus']
+            .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+            .toList(),
+        onChanged: (v) => setState(() => lensType.text = v ?? ''),
+      ),
       _field(rxNote, 'Catatan resep'),
+      _field(frameDescription, 'Merek / model / keterangan frame'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
+      _field(lensDescription, 'Lensa - Jenis Ukuran Coating'),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
       _field(otherPrice, 'Harga lain-lain (Rp)', type: TextInputType.number),
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
+      _field(invoiceNote, 'Catatan invoice'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
@@ -284,7 +302,7 @@ class _LocalNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
     padding: EdgeInsets.only(top: 14, bottom: 12),
-    child: Text('Data ini masih sementara di memori aplikasi dan belum dikirim ke Google Sheets. Sinkronisasi menunggu pencocokan kontrak API Apps Script yang aktif.', style: TextStyle(fontSize: 11, color: Colors.black54)),
+    child: Text('Draft disimpan di perangkat dan dikirim otomatis ke Google Forms. Status penerimaan formulir ditampilkan setelah proses pengiriman; pencatatan akhir tetap perlu diverifikasi di DATA_PESANAN / DATA_PEMBAYARAN.', style: TextStyle(fontSize: 11, color: Colors.black54)),
   );
 }
 
@@ -301,10 +319,11 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   final nominal = TextEditingController();
+  final paymentNote = TextEditingController();
   String method = 'Tunai';
 
   @override
-  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+  void dispose() { invoice.dispose(); nominal.dispose(); paymentNote.dispose(); super.dispose(); }
 
   void save() {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -312,28 +331,18 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
       return;
     }
-    final matches = widget.orders.where((o) => o.invoiceNumber == invoice.text.trim());
-    if (matches.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice tidak ditemukan pada daftar pesanan sesi ini.')));
-      return;
-    }
-    final order = matches.first;
-    final alreadyPaid = order.initialPayment + widget.payments
-        .where((p) => p.invoiceNumber == order.invoiceNumber)
-        .fold<int>(0, (sum, p) => sum + p.amount);
-    final balance = order.total - alreadyPaid;
-    if (balance <= 0 || value > balance) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(balance <= 0 ? 'Invoice sudah lunas.' : 'Pembayaran melebihi sisa tagihan Rp $balance.')));
-      return;
-    }
+    // Daftar pesanan lokal hanya memuat data sesi/perangkat ini. Validasi invoice
+    // dan sisa tagihan yang sebenarnya dilakukan oleh Apps Script pada database.
+    // Karena itu pembayaran untuk invoice lama tetap boleh dikirim dari perangkat ini.
     widget.onAdd(OptikPayment(
       invoiceNumber: invoice.text.trim(),
       paymentDate: DateTime.now(),
       amount: value,
       method: method,
+      note: paymentNote.text.trim(),
       requestId: 'PAY-' + DateTime.now().microsecondsSinceEpoch.toString(),
     ));
-    invoice.clear(); nominal.clear();
+    invoice.clear(); nominal.clear(); paymentNote.clear();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
   }
 
@@ -342,8 +351,19 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const _Intro('Pembayaran', 'Catat pembayaran lanjutan sesuai nomor invoice.', Icons.payments_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(children: [
-      _field(invoice, 'Nomor invoice *'),
+      _field(invoice, 'Nomor invoice resmi *'),
+      const Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text(
+            'Masukkan nomor invoice yang sudah diterbitkan. Nomor dan sisa tagihan akan divalidasi oleh sistem database.',
+            style: TextStyle(fontSize: 11, color: Colors.black54),
+          ),
+        ),
+      ),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
+      _field(paymentNote, 'Catatan pembayaran'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
@@ -363,7 +383,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       title: Text('Rp ' + p.amount.toString()),
       subtitle: Text(p.invoiceNumber + ' • ' + p.method),
     ))),
-    const _LocalNote(),
   ]);
 }
 
