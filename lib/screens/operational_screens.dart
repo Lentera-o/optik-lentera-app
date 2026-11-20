@@ -2244,7 +2244,6 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
   }
 
   Future<void> _open(_DocumentNotice notice) async {
-    await _markRead(notice);
     final uri = Uri.tryParse(notice.url);
     var opened = false;
     try {
@@ -2253,7 +2252,11 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
     } catch (_) {
       opened = false;
     }
-    if (!opened) await _setStatus(notice, 'review');
+    if (opened) {
+      await _markRead(notice);
+    } else {
+      await _setStatus(notice, 'review');
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(opened
       ? 'Tautan dibuka. Periksa PDF; tandai terkirim hanya setelah WhatsApp benar-benar dikirim.'
