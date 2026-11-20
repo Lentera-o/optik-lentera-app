@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
+import '../services/google_forms_service.dart';
 
 const _gold = Color(0xFFB99555);
 const _darkGold = Color(0xFF80612F);
@@ -77,6 +78,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final lensType = TextEditingController();
   final rxNote = TextEditingController();
   final frame = TextEditingController();
+  final frameDescription = TextEditingController();
   final lens = TextEditingController();
   final otherPrice = TextEditingController();
   final otherDescription = TextEditingController();
@@ -93,6 +95,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final osPd = TextEditingController();
   String method = 'Tunai';
   int? selectedCustomerIndex;
+  bool submitting = false;
 
   void selectSavedCustomer(int? index) {
     setState(() {
@@ -110,34 +113,56 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, frameDescription, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
-  void save() {
+  Future<void> save() async {
+    if (submitting) return;
     final total = amount(frame) + amount(lens) + amount(otherPrice);
     if (customer.text.trim().isEmpty || total <= 0 || amount(dp) > total) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
       return;
     }
-    widget.onAdd(OptikOrder(
-      invoiceNumber: 'DRAFT-' + DateTime.now().microsecondsSinceEpoch.toString(),
-      orderDate: DateTime.now(),
+
+    setState(() => submitting = true);
+    final orderDate = DateTime.now();
+    final order = OptikOrder(
+      invoiceNumber: 'FORM-PENDING-${orderDate.microsecondsSinceEpoch}',
+      orderDate: orderDate,
       customer: Customer(name: customer.text.trim(), phone: phone.text.trim(), address: address.text.trim()),
       prescription: EyePrescription(
         doctor: doctor.text.trim(), lensType: lensType.text.trim(), note: rxNote.text.trim(),
-        odSph: odSph.text, odCyl: odCyl.text, odAxis: odAxis.text, odAdd: odAdd.text, odPd: odPd.text,
-        osSph: osSph.text, osCyl: osCyl.text, osAxis: osAxis.text, osAdd: osAdd.text, osPd: osPd.text,
+        odSph: odSph.text.trim(), odCyl: odCyl.text.trim(), odAxis: odAxis.text.trim(), odAdd: odAdd.text.trim(), odPd: odPd.text.trim(),
+        osSph: osSph.text.trim(), osCyl: osCyl.text.trim(), osAxis: osAxis.text.trim(), osAdd: osAdd.text.trim(), osPd: osPd.text.trim(),
       ),
-      frame: OrderItem(description: 'Frame', price: amount(frame)),
+      frame: OrderItem(description: frameDescription.text.trim(), price: amount(frame)),
       lens: OrderItem(description: lensType.text.trim().isEmpty ? 'Lensa' : lensType.text.trim(), price: amount(lens)),
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
       initialPaymentMethod: method,
-    ));
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
-    setState(() { selectedCustomerIndex = null; });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
+    );
+
+    try {
+      await GoogleFormsService.submitOrder(order);
+      for (final field in [customer, phone, address, doctor, lensType, rxNote, frame, frameDescription, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) {
+        field.clear();
+      }
+      selectedCustomerIndex = null;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Permintaan pesanan dikirim ke Google Forms. Invoice resmi masih menunggu proses Apps Script dan verifikasi di Sheets. Jangan buat pembayaran sebelum nomor invoice resmi muncul.'),
+        duration: Duration(seconds: 8),
+      ));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Status kirim belum dapat dipastikan: ${error.toString().replaceFirst('Exception: ', '')}. Periksa Google Forms/Sheets sebelum mencoba ulang agar tidak tercatat ganda.'),
+        duration: const Duration(seconds: 10),
+      ));
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
   }
 
   @override
@@ -186,6 +211,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
       _field(lensType, 'Jenis / model lensa'),
       _field(rxNote, 'Catatan resep'),
+      _field(frameDescription, 'Frame - merek / model / warna'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
@@ -200,7 +226,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan draft pesanan'),
+        onPressed: submitting ? null : save, icon: const Icon(Icons.save_outlined), label: Text(submitting ? 'Mengirim ke Google Forms…' : 'Kirim Pesanan'),
       )),
     ])),
     const SizedBox(height: 18),
@@ -301,40 +327,53 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   final nominal = TextEditingController();
+  final category = TextEditingController();
+  final note = TextEditingController();
   String method = 'Tunai';
 
   @override
-  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+  void dispose() { invoice.dispose(); nominal.dispose(); category.dispose(); note.dispose(); super.dispose(); }
 
-  void save() {
+  bool submitting = false;
+
+  Future<void> save() async {
+    if (submitting) return;
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-    if (invoice.text.trim().isEmpty || value <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomor invoice dan nominal pembayaran wajib diisi.')));
+    final invoiceNumber = invoice.text.trim();
+    if (invoiceNumber.isEmpty || invoiceNumber.startsWith('FORM-PENDING-') || invoiceNumber.startsWith('DRAFT-') || value <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Masukkan nomor invoice resmi dari Sheets dan nominal pembayaran.')));
       return;
     }
-    final matches = widget.orders.where((o) => o.invoiceNumber == invoice.text.trim());
-    if (matches.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invoice tidak ditemukan pada daftar pesanan sesi ini.')));
-      return;
-    }
-    final order = matches.first;
-    final alreadyPaid = order.initialPayment + widget.payments
-        .where((p) => p.invoiceNumber == order.invoiceNumber)
-        .fold<int>(0, (sum, p) => sum + p.amount);
-    final balance = order.total - alreadyPaid;
-    if (balance <= 0 || value > balance) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(balance <= 0 ? 'Invoice sudah lunas.' : 'Pembayaran melebihi sisa tagihan Rp $balance.')));
-      return;
-    }
-    widget.onAdd(OptikPayment(
+    final payment = OptikPayment(
       invoiceNumber: invoice.text.trim(),
       paymentDate: DateTime.now(),
       amount: value,
       method: method,
+      category: category.text.trim(),
+      note: note.text.trim(),
       requestId: 'PAY-' + DateTime.now().microsecondsSinceEpoch.toString(),
-    ));
-    invoice.clear(); nominal.clear();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
+    );
+    setState(() => submitting = true);
+    try {
+      await GoogleFormsService.submitPayment(payment);
+      invoice.clear();
+      nominal.clear();
+      category.clear();
+      note.clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Permintaan pembayaran dikirim ke Google Forms. Kuitansi resmi menunggu proses Apps Script dan verifikasi di Sheets.'),
+        duration: Duration(seconds: 8),
+      ));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Status kirim belum dapat dipastikan: ${error.toString().replaceFirst('Exception: ', '')}. Periksa Google Forms/Sheets sebelum mencoba ulang agar tidak tercatat ganda.'),
+        duration: const Duration(seconds: 10),
+      ));
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
   }
 
   @override
@@ -342,8 +381,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     const _Intro('Pembayaran', 'Catat pembayaran lanjutan sesuai nomor invoice.', Icons.payments_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(children: [
-      _field(invoice, 'Nomor invoice *'),
+      _field(invoice, 'Nomor invoice resmi dari Sheets *'),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
+      _field(category, 'Keterangan pembayaran'),
+      _field(note, 'Catatan pembayaran'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
@@ -353,7 +394,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Catat pembayaran'),
+        onPressed: submitting ? null : save, icon: const Icon(Icons.save_outlined), label: Text(submitting ? 'Mengirim ke Google Forms…' : 'Kirim Pembayaran'),
       )),
     ])),
     const SizedBox(height: 18),
