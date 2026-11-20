@@ -485,8 +485,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       final invoiceNumber = result is Map
           ? (result['invoiceNumber'] ?? result['invoice'] ?? result['invoiceNo'] ?? '').toString().trim()
           : '';
-      final invoiceVerificationUrl = result is Map
-          ? (result['invoicePdf'] ?? result['invoiceVerificationUrl'] ?? result['verificationUrl'] ?? '').toString().trim()
+      final invoicePdfUrl = result is Map
+          ? (result['invoicePdf'] ?? result['invoiceUrl'] ?? '').toString().trim()
           : '';
       if (invoiceNumber.isEmpty) {
         throw Exception('Server menerima respons tanpa nomor invoice. Periksa DATA_PESANAN sebelum mengulang transaksi.');
@@ -514,24 +514,24 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ));
       await _loadOfficialOrderHistory();
       if (!mounted) return;
-      final verificationUri = Uri.tryParse(invoiceVerificationUrl);
-      final canVerifyInvoice = verificationUri != null &&
-          verificationUri.scheme == 'https' &&
-          (verificationUri.host == 'script.google.com' ||
-           verificationUri.host == 'script.googleusercontent.com');
+      final invoiceUri = Uri.tryParse(invoicePdfUrl);
+      final canOpenInvoice = invoiceUri != null &&
+          invoiceUri.scheme == 'https' &&
+          (invoiceUri.host == 'drive.google.com' ||
+           invoiceUri.host.endsWith('.google.com'));
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
-          canVerifyInvoice
-              ? 'Pesanan berhasil tersimpan. Invoice $invoiceNumber siap diverifikasi.'
-              : 'Pesanan berhasil tersimpan. Invoice $invoiceNumber sudah diproses; tautan verifikasi belum diterima.',
+          canOpenInvoice
+              ? 'Pesanan berhasil tersimpan. Invoice $invoiceNumber siap dibuka.'
+              : 'Pesanan berhasil tersimpan. Invoice $invoiceNumber sudah diproses; tautan PDF belum diterima.',
         ),
         duration: const Duration(seconds: 8),
-        action: canVerifyInvoice
+        action: canOpenInvoice
             ? SnackBarAction(
-                label: 'VERIFIKASI',
+                label: 'BUKA INVOICE',
                 onPressed: () async {
                   await launchUrl(
-                    verificationUri,
+                    invoiceUri,
                     mode: LaunchMode.externalApplication,
                   );
                 },
