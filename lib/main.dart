@@ -22,8 +22,37 @@ const Color darkGold = Color(0xFF8A6B3F);
 const Color pink = Color(0xFFEAD9D8);
 const Color ink = Color(0xFF292722);
 
-class OptikLenteraApp extends StatelessWidget {
+class OptikLenteraApp extends StatefulWidget {
   const OptikLenteraApp({super.key});
+
+  @override
+  State<OptikLenteraApp> createState() => _OptikLenteraAppState();
+}
+
+class _OptikLenteraAppState extends State<OptikLenteraApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemeMode();
+  }
+
+  Future<void> _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString('ol_theme_mode') ?? 'system';
+    if (!mounted) return;
+    setState(() => _themeMode = ThemeMode.values.firstWhere(
+      (mode) => mode.name == value,
+      orElse: () => ThemeMode.system,
+    ));
+  }
+
+  Future<void> _setThemeMode(ThemeMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ol_theme_mode', mode.name);
+    if (mounted) setState(() => _themeMode = mode);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,13 +133,28 @@ class OptikLenteraApp extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
-      home: const MainScreen(),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(seedColor: gold, brightness: Brightness.dark),
+        scaffoldBackgroundColor: const Color(0xFF171614),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF211F1B),
+          foregroundColor: Color(0xFFE0C58F),
+          elevation: 0,
+        ),
+        cardTheme: const CardThemeData(color: Color(0xFF26231F), elevation: 0),
+      ),
+      themeMode: _themeMode,
+      home: MainScreen(themeMode: _themeMode, onThemeModeChanged: _setThemeMode),
     );
   }
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+  const MainScreen({super.key, required this.themeMode, required this.onThemeModeChanged});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -172,6 +216,10 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _refreshDocumentNotificationCount() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool('ol_document_notifications_enabled') ?? true)) {
+        if (mounted) setState(() => _unreadDocumentCount = 0);
+        return;
+      }
       final decoded = jsonDecode(prefs.getString('ol_document_notice_read_ids') ?? '[]');
       final readIds = decoded is List ? decoded.map((item) => item.toString()).toSet() : <String>{};
       final tables = await Future.wait([
@@ -314,6 +362,20 @@ class _MainScreenState extends State<MainScreen> {
                 subtitle: 'Lihat, cetak, dan bagikan dokumen',
                 onTap: () => Navigator.pop(sheetContext, 5),
               ),
+              const SizedBox(height: 9),
+              _MoreMenuTile(
+                icon: Icons.track_changes_outlined,
+                title: 'Status Pesanan',
+                subtitle: 'Pantau dan perbarui tahap pengerjaan pesanan',
+                onTap: () => Navigator.pop(sheetContext, 8),
+              ),
+              const SizedBox(height: 9),
+              _MoreMenuTile(
+                icon: Icons.settings_outlined,
+                title: 'Pengaturan',
+                subtitle: 'Tema aplikasi dan preferensi notifikasi',
+                onTap: () => Navigator.pop(sheetContext, 9),
+              ),
             ],
           ),
         ),
@@ -394,6 +456,8 @@ class _MainScreenState extends State<MainScreen> {
           5 => const InvoiceReceiptScreen(),
           6 => const ReportsScreen(),
           7 => DocumentNotificationsScreen(onRead: _refreshDocumentNotificationCount),
+          8 => const OrderStatusScreen(),
+          9 => SettingsScreen(themeMode: widget.themeMode, onThemeModeChanged: widget.onThemeModeChanged),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
