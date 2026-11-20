@@ -154,7 +154,7 @@ class _MainScreenState extends State<MainScreen> {
           .where((entry) => RegExp(r'pdf|invoice|kuitansi|kwitansi', caseSensitive: false).hasMatch(entry.key))
           .map((entry) => entry.value),
     ];
-    final pattern = RegExp(r'https?://[^\\s<>"\\x27]+', caseSensitive: false);
+    final pattern = RegExp(r'https?://[^\s<>"\x27]+', caseSensitive: false);
     for (final candidate in candidates) {
       for (final match in pattern.allMatches(candidate.trim())) {
         final uri = Uri.tryParse(match.group(0)!.replaceFirst(RegExp(r'[.,;)]+
