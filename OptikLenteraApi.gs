@@ -125,7 +125,7 @@ function olApiCreateOrder_(data, requestId, actor) {
 
   // Preserve the result from the existing production order processor: it
   // carries the QR verification URL generated with the invoice token.
-  olProcessOrder_(answers, eventKey);
+  const processedOrder = olProcessOrder_(answers, eventKey) || {};
 
   const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
   const sh = ss.getSheetByName(OL.SHEET_ORDER);
@@ -142,6 +142,8 @@ function olApiCreateOrder_(data, requestId, actor) {
     remaining: order.remaining,
     status: order.status,
     invoicePdf: String(olGetField_(sh, row, OL_FIELDS.invoicePdf) || processedOrder.invoicePdf || ''),
+    invoiceVerificationUrl: String(processedOrder.invoiceVerificationUrl || processedOrder.verificationUrl || ''),
+    verificationUrl: String(processedOrder.verificationUrl || processedOrder.invoiceVerificationUrl || ''),
     processedBy: actor.email
   });
 }
