@@ -76,6 +76,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   final doctor = TextEditingController();
   final lensType = TextEditingController();
   final rxNote = TextEditingController();
+  final invoiceNote = TextEditingController();
   final frame = TextEditingController();
   final lens = TextEditingController();
   final otherPrice = TextEditingController();
@@ -110,7 +111,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   void dispose() {
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, invoiceNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.dispose(); }
     super.dispose();
   }
 
@@ -134,8 +135,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
       other: OrderItem(description: otherDescription.text.trim(), price: amount(otherPrice)),
       initialPayment: amount(dp),
       initialPaymentMethod: method,
+      note: invoiceNote.text.trim(),
     ));
-    for (final c in [customer, phone, address, doctor, lensType, rxNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
+    for (final c in [customer, phone, address, doctor, lensType, rxNote, invoiceNote, frame, lens, otherPrice, otherDescription, dp, odSph, odCyl, odAxis, odAdd, odPd, osSph, osCyl, osAxis, osAdd, osPd]) { c.clear(); }
     setState(() { selectedCustomerIndex = null; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft pesanan disimpan sementara.')));
   }
@@ -186,6 +188,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       Row(children: [Expanded(child: _field(osAdd, 'ADD')), const SizedBox(width: 6), Expanded(child: _field(osPd, 'PD'))]),
       _field(lensType, 'Jenis / model lensa'),
       _field(rxNote, 'Catatan resep'),
+      _field(invoiceNote, 'Catatan invoice'),
       _field(frame, 'Harga frame (Rp)', type: TextInputType.number),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
@@ -200,7 +203,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: _darkGold),
-        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan draft pesanan'),
+        onPressed: save, icon: const Icon(Icons.save_outlined), label: const Text('Simpan & kirim pesanan'),
       )),
     ])),
     const SizedBox(height: 18),
@@ -301,10 +304,11 @@ class PaymentEntryScreen extends StatefulWidget {
 class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
   final invoice = TextEditingController();
   final nominal = TextEditingController();
+  final paymentNote = TextEditingController();
   String method = 'Tunai';
 
   @override
-  void dispose() { invoice.dispose(); nominal.dispose(); super.dispose(); }
+  void dispose() { invoice.dispose(); nominal.dispose(); paymentNote.dispose(); super.dispose(); }
 
   void save() {
     final value = int.tryParse(nominal.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -331,9 +335,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       paymentDate: DateTime.now(),
       amount: value,
       method: method,
+      note: paymentNote.text.trim(),
       requestId: 'PAY-' + DateTime.now().microsecondsSinceEpoch.toString(),
     ));
-    invoice.clear(); nominal.clear();
+    invoice.clear(); nominal.clear(); paymentNote.clear();
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran dicatat sementara pada sesi ini.')));
   }
 
@@ -344,6 +349,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     _Panel(child: Column(children: [
       _field(invoice, 'Nomor invoice *'),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
+      _field(paymentNote, 'Catatan pembayaran'),
       DropdownButtonFormField<String>(
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
