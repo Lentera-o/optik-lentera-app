@@ -3,7 +3,7 @@ class AppConfig {
   AppConfig._();
 
   static const String appsScriptUrl =
-      'https://script.google.com/macros/s/AKfycbz6LykoZH9w3LM9elrD5qRhDrEpPWfiK2vb1WYrAD9b-m1NIwLMfkph82EOFRrSZY4/exec';
+      'https://script.google.com/macros/s/AKfycbxmsqzBvZyF36NernbNuG9nV3EC3BbuoBENuu868_ORjwzONT_W_AzNF-os99Q9Org/exec';
 
   // App access key is injected by the release workflow; no Google login UI.
   static const String appApiKey = String.fromEnvironment('OL_APP_API_KEY');
