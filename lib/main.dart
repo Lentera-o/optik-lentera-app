@@ -66,7 +66,7 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
           seedColor: gold,
           surface: cream,
         ),
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(),
+        textTheme: GoogleFonts.plusJakartaSansTextTheme().apply(bodyColor: ink, displayColor: ink),
         textSelectionTheme: const TextSelectionThemeData(
           cursorColor: darkGold,
           selectionColor: Color(0x66C5A66F),
@@ -82,8 +82,6 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: const Color(0xFFFFFCF8),
-          // High-contrast input: typed text must stay dark on the cream surface.
-          textStyle: const TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w600),
           hintStyle: const TextStyle(color: Color(0xFF71685F), fontSize: 13),
           labelStyle: const TextStyle(color: Color(0xFF66594B), fontSize: 13, fontWeight: FontWeight.w600),
           floatingLabelStyle: const TextStyle(color: darkGold, fontSize: 13, fontWeight: FontWeight.w700),
@@ -162,7 +160,6 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: const Color(0xFFFFFCF8),
-          textStyle: const TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w600),
           hintStyle: const TextStyle(color: Color(0xFF71685F), fontSize: 13),
           labelStyle: const TextStyle(color: Color(0xFF66594B), fontSize: 13, fontWeight: FontWeight.w600),
           floatingLabelStyle: const TextStyle(color: darkGold, fontSize: 13, fontWeight: FontWeight.w700),
