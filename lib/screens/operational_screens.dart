@@ -2166,7 +2166,8 @@ class _DocumentNotice {
 }
 
 class DocumentNotificationsScreen extends StatefulWidget {
-  const DocumentNotificationsScreen({super.key});
+  final VoidCallback? onRead;
+  const DocumentNotificationsScreen({super.key, this.onRead});
   @override
   State<DocumentNotificationsScreen> createState() => _DocumentNotificationsScreenState();
 }
@@ -2174,6 +2175,7 @@ class DocumentNotificationsScreen extends StatefulWidget {
 class _DocumentNotificationsScreenState extends State<DocumentNotificationsScreen> {
   List<_DocumentNotice> _notices = [];
   Map<String, String> _statuses = {};
+  Set<String> _readIds = {};
   bool _loading = true;
   String? _error;
 
@@ -2219,6 +2221,10 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
       final statuses = decoded is Map
           ? decoded.map((key, value) => MapEntry(key.toString(), value.toString()))
           : <String, String>{};
+      final readDecoded = jsonDecode(prefs.getString('ol_document_notice_read_ids') ?? '[]');
+      final readIds = readDecoded is List
+          ? readDecoded.map((item) => item.toString()).toSet()
+          : <String>{};
       final tables = await Future.wait([
         SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
@@ -2245,7 +2251,12 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
           detail: invoice.isEmpty ? 'Dokumen pembayaran resmi' : 'Invoice ' + invoice, url: url));
       }
       if (!mounted) return;
-      setState(() { _notices = notices; _statuses = statuses; _loading = false; });
+      setState(() {
+        _notices = notices;
+        _statuses = statuses;
+        _readIds = readIds;
+        _loading = false;
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() { _error = error.toString(); _loading = false; });
@@ -2259,7 +2270,17 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
     if (mounted) setState(() => _statuses = next);
   }
 
+  Future<void> _markRead(_DocumentNotice notice) async {
+    if (_readIds.contains(notice.id)) return;
+    final next = Set<String>.from(_readIds)..add(notice.id);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ol_document_notice_read_ids', jsonEncode(next.toList()));
+    if (mounted) setState(() => _readIds = next);
+    widget.onRead?.call();
+  }
+
   Future<void> _open(_DocumentNotice notice) async {
+    await _markRead(notice);
     final uri = Uri.tryParse(notice.url);
     var opened = false;
     try {
@@ -2278,13 +2299,14 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
   @override
   Widget build(BuildContext context) {
     final pending = _notices.where((n) => _statuses[n.id] != 'sent').length;
+    final unread = _notices.where((n) => !_readIds.contains(n.id)).length;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(18), children: [
         const _Intro('Notifikasi Dokumen', 'Pengingat dari tautan PDF resmi pada Google Sheets. Pengiriman WhatsApp tetap manual.', Icons.notifications_active_outlined),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: Text(pending.toString() + ' dokumen perlu ditindaklanjuti', style: const TextStyle(color: _darkGold, fontWeight: FontWeight.w700))),
+          Expanded(child: Text('$unread belum dibaca · $pending dokumen perlu ditindaklanjuti', style: const TextStyle(color: _darkGold, fontWeight: FontWeight.w700))),
           IconButton(onPressed: _loading ? null : _load, tooltip: 'Segarkan', icon: const Icon(Icons.sync)),
         ]),
         if (_loading) const Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator()))
@@ -2305,7 +2327,14 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
                 Icon(notice.type == 'Invoice' ? Icons.receipt_long_outlined : Icons.payments_outlined, color: _darkGold),
                 const SizedBox(width: 9),
                 Expanded(child: Text(notice.type + ' • ' + notice.title, style: const TextStyle(fontWeight: FontWeight.bold, color: _ink))),
-                Text(sent ? 'Terkirim' : review ? 'Perlu cek' : 'Siap ditinjau',
+                if (!_readIds.contains(notice.id))
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 7),
+                    decoration: const BoxDecoration(color: Color(0xFFE53935), shape: BoxShape.circle),
+                  ),
+                Text(!_readIds.contains(notice.id) ? 'Baru' : sent ? 'Terkirim' : review ? 'Perlu cek' : 'Siap ditinjau',
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: sent ? Colors.green : review ? Colors.deepOrange : _darkGold)),
               ]),
               const SizedBox(height: 5),
