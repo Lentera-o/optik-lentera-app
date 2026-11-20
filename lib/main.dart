@@ -67,6 +67,11 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
           surface: cream,
         ),
         textTheme: GoogleFonts.plusJakartaSansTextTheme(),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: darkGold,
+          selectionColor: Color(0x66C5A66F),
+          selectionHandleColor: darkGold,
+        ),
         appBarTheme: const AppBarTheme(
           backgroundColor: cream,
           foregroundColor: darkGold,
@@ -77,6 +82,11 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: const Color(0xFFFFFCF8),
+          // High-contrast input: typed text must stay dark on the cream surface.
+          textStyle: const TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w600),
+          hintStyle: const TextStyle(color: Color(0xFF71685F), fontSize: 13),
+          labelStyle: const TextStyle(color: Color(0xFF66594B), fontSize: 13, fontWeight: FontWeight.w600),
+          floatingLabelStyle: const TextStyle(color: darkGold, fontSize: 13, fontWeight: FontWeight.w700),
           contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -144,6 +154,32 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
           elevation: 0,
         ),
         cardTheme: const CardThemeData(color: Color(0xFF26231F), elevation: 0),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF302D28),
+          textStyle: const TextStyle(color: Color(0xFFF7F2E9), fontSize: 14, fontWeight: FontWeight.w600),
+          hintStyle: const TextStyle(color: Color(0xFFB8AEA0), fontSize: 13),
+          labelStyle: const TextStyle(color: Color(0xFFD0C2AD), fontSize: 13, fontWeight: FontWeight.w600),
+          floatingLabelStyle: const TextStyle(color: Color(0xFFE0C58F), fontSize: 13, fontWeight: FontWeight.w700),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFF75664F)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFF75664F)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFE0C58F), width: 1.5),
+          ),
+        ),
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Color(0xFFE0C58F),
+          selectionColor: Color(0x66E0C58F),
+          selectionHandleColor: Color(0xFFE0C58F),
+        ),
       ),
       themeMode: _themeMode,
       home: MainScreen(themeMode: _themeMode, onThemeModeChanged: _setThemeMode),
