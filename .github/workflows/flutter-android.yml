@@ -30,7 +30,7 @@ jobs:
       - name: Tests
         run: flutter test
       - name: Build release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --dart-define=OL_API_TOKEN="${{ secrets.OL_API_TOKEN }}"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
