@@ -513,6 +513,7 @@ class _DashboardContentState extends State<DashboardContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Column(
@@ -536,8 +537,6 @@ class _DashboardContentState extends State<DashboardContent> {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              const _OptikLogo(size: 48),
             ],
           ),
           const SizedBox(height: 20),
@@ -546,7 +545,7 @@ class _DashboardContentState extends State<DashboardContent> {
             padding: const EdgeInsets.fromLTRB(20, 20, 18, 18),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF3D3324), darkGold, gold],
+                colors: [Color(0xFF594323), Color(0xFF80612F), Color(0xFFC19B5C)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -560,7 +559,7 @@ class _DashboardContentState extends State<DashboardContent> {
                 Positioned(
                   right: -20,
                   top: -18,
-                  child: Icon(Icons.remove_red_eye_outlined, size: 126, color: Colors.white.withValues(alpha: .055)),
+                  child: Icon(Icons.remove_red_eye_outlined, size: 126, color: Colors.white.withValues(alpha: .045)),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,7 +589,12 @@ class _DashboardContentState extends State<DashboardContent> {
                       constraints: const BoxConstraints(maxWidth: 285),
                       child: Text(
                         'Kelola pelayanan dan transaksi optik dalam satu tempat.',
-                        style: TextStyle(color: Colors.white.withValues(alpha: .84), fontSize: 11, height: 1.55),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: .84),
+                          fontSize: 11,
+                          height: 1.55,
+                          letterSpacing: .05,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
