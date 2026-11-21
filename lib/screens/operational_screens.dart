@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/pdf_service.dart';
@@ -9,6 +10,14 @@ import '../models/optik_models.dart';
 import '../services/api_service.dart';
 import '../services/sheets_read_service.dart';
 import '../services/whatsapp_phone_service.dart';
+
+Future<void> _playPdfReadySound() async {
+  try {
+    await SystemSound.play(SystemSoundType.alert);
+  } catch (_) {
+    // Sound is optional; never interrupt a successful transaction.
+  }
+}
 
 const _gold = Color(0xFFC5A66F);
 const _darkGold = Color(0xFF8A6B3F);
@@ -517,6 +526,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       if (invoiceNumber.isEmpty) {
         throw Exception('Server menerima respons tanpa nomor invoice. Periksa DATA_PESANAN sebelum mengulang transaksi.');
       }
+      if (invoicePdfUrl.isNotEmpty) await _playPdfReadySound();
       _pendingOrderRequestId = null;
       _pendingOrderPayload = null;
       _pendingOrderDate = null;
@@ -974,6 +984,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       final receiptPdf = result is Map
           ? (result['receiptPdf'] ?? result['receiptUrl'] ?? '').toString().trim()
           : '';
+      if (receiptPdf.isNotEmpty) await _playPdfReadySound();
       _pendingPaymentRequestId = null;
       _pendingPaymentPayload = null;
       widget.onAdd(OptikPayment(
