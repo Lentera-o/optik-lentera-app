@@ -568,6 +568,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       else if (_historyError != null) Text('Data pesanan lama belum dapat dimuat: $_historyError', style: const TextStyle(color: Colors.deepOrange, fontSize: 11))
       else if (_officialOrderHistory.isEmpty) const Text('Belum ada rincian pesanan resmi yang tersedia untuk dipilih.', style: TextStyle(fontSize: 11, color: Colors.black54))
       else DropdownButtonFormField<String>(
+  dropdownColor: const Color(0xFFFFFCF7),
+  style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
         value: _selectedHistoryInvoice,
         isExpanded: true,
         decoration: InputDecoration(
@@ -586,6 +588,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       const SizedBox(height: 12),
       if (widget.customers.isNotEmpty) ...[
         DropdownButtonFormField<int>(
+  dropdownColor: const Color(0xFFFFFCF7),
+  style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
           value: selectedCustomerIndex,
           isExpanded: true,
           decoration: InputDecoration(
@@ -636,6 +640,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
       _field(invoiceNote, 'Catatan tambahan untuk invoice'),
       DropdownButtonFormField<String>(
+  dropdownColor: const Color(0xFFFFFCF7),
+  style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
         value: method,
         decoration: InputDecoration(labelText: 'Metode DP', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
         items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/kartu', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
@@ -1006,6 +1012,8 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     _Panel(child: Column(children: [
       if (officialInvoices.isNotEmpty)
         DropdownButtonFormField<String>(
+  dropdownColor: const Color(0xFFFFFCF7),
+  style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
           value: officialInvoices.any((item) => item['invoice'] == invoice.text)
               ? invoice.text
               : null,
@@ -1109,6 +1117,8 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       ListTile(contentPadding: EdgeInsets.zero, title: const Text('Tanggal pembayaran'), subtitle: Text(paymentDate.toString().split(' ').first), trailing: const Icon(Icons.calendar_month_outlined, color: _darkGold), onTap: choosePaymentDate),
       _field(nominal, 'Nominal pembayaran (Rp) *', type: TextInputType.number),
       DropdownButtonFormField<String>(
+  dropdownColor: const Color(0xFFFFFCF7),
+  style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
         value: method,
         decoration: InputDecoration(labelText: 'Metode pembayaran', border: OutlineInputBorder()),
         items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/kartu', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
@@ -1778,7 +1788,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
             value: customerOptions.contains(selectedCustomer) ? selectedCustomer : null,
             isExpanded: true,
             dropdownColor: const Color(0xFFFFFCF7),
-            style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w600),
+            style: const TextStyle(color: _ink, fontSize: 14, fontWeight: FontWeight.w600),
             decoration: const InputDecoration(
               labelText: 'Pilih pelanggan',
               border: OutlineInputBorder(),
@@ -1800,7 +1810,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
             value: invoiceIsValid ? selectedInvoice : null,
             isExpanded: true,
             dropdownColor: const Color(0xFFFFFCF7),
-            style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w600),
+            style: const TextStyle(color: _ink, fontSize: 14, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               filled: true,
               fillColor: const Color(0xFFFFFCF7),
@@ -1884,6 +1894,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
           ],
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
+  dropdownColor: const Color(0xFFFFFCF7),
+  style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
             value: template,
             decoration: const InputDecoration(labelText: 'Template pesan', border: OutlineInputBorder()),
             items: const ['Konfirmasi pesanan', 'Pesanan siap diambil', 'Pengingat pembayaran', 'Tindak lanjut pelanggan'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
@@ -2372,6 +2384,8 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                         ),
                       const Divider(height: 20),
                       DropdownButtonFormField<String>(
+  dropdownColor: const Color(0xFFFFFCF7),
+  style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
                         value: status,
                         isExpanded: true,
                         decoration: const InputDecoration(
@@ -2456,6 +2470,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Text('Tampilan aplikasi', style: TextStyle(fontWeight: FontWeight.w800, color: _ink)),
           const SizedBox(height: 8),
           DropdownButtonFormField<ThemeMode>(
+  dropdownColor: const Color(0xFFFFFCF7),
+  style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
             value: widget.themeMode,
             decoration: const InputDecoration(labelText: 'Tema'),
             items: ThemeMode.values.map((mode) => DropdownMenuItem(value: mode, child: Text(_themeLabel(mode)))).toList(),
