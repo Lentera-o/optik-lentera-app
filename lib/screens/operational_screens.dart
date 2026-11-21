@@ -11,9 +11,11 @@ import '../services/api_service.dart';
 import '../services/sheets_read_service.dart';
 import '../services/whatsapp_phone_service.dart';
 
+const MethodChannel _successSoundChannel = MethodChannel('optik_lentera/sound');
+
 Future<void> _playPdfReadySound() async {
   try {
-    await SystemSound.play(SystemSoundType.alert);
+    await _successSoundChannel.invokeMethod<bool>('playSuccess');
   } catch (_) {
     // Sound is optional; never interrupt a successful transaction.
   }
