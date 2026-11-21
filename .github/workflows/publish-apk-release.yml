@@ -1,0 +1,64 @@
+name: Publish APK to GitHub Releases
+
+on:
+  workflow_run:
+    workflows: ["Flutter Android CI"]
+    types: [completed]
+    branches: [ui-final-preserve-base]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Successful Flutter Android CI run ID"
+        required: true
+        default: "44851801018"
+      release_tag:
+        description: "Release tag (for example build-525)"
+        required: true
+        default: "build-525"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'ui-final-preserve-base')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select source build
+        id: source
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "run_id=${{ inputs.run_id }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            echo "tag=build-${{ github.event.workflow_run.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download APK artifact from successful build
+        uses: actions/download-artifact@v4
+        with:
+          name: optik-lentera-release-apk
+          run-id: ${{ steps.source.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare APK asset
+        shell: bash
+        run: |
+          APK="$(find . -type f -name '*.apk' -print -quit)"
+          test -n "$APK"
+          cp "$APK" OPTIK-LENTERA-${{ steps.source.outputs.tag }}.apk
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.source.outputs.tag }}
+          RUN_ID: ${{ steps.source.outputs.run_id }}
+        shell: bash
+        run: |
+          gh release create "$TAG" "OPTIK-LENTERA-$TAG.apk" \
+            --repo "${{ github.repository }}" \
+            --title "OPTIK LENTERA | ${TAG}" \
+            --notes "APK OPTIK LENTERA hasil build CI yang sukses.\n\nBuild workflow: https://github.com/${{ github.repository }}/actions/runs/$RUN_ID\n\nSilakan uji instalasi dan alur aplikasi pada perangkat sebelum penggunaan operasional."
