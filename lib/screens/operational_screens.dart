@@ -1124,7 +1124,14 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         items: const ['Tunai', 'Transfer', 'QRIS', 'Debit/kartu', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
         onChanged: (v) => setState(() => method = v ?? 'Tunai'),
       ),
-      DropdownButtonFormField<String>(value: category, decoration: InputDecoration(labelText: 'Keterangan pembayaran', border: OutlineInputBorder()), items: const ['DP tambahan', 'Cicilan', 'Pelunasan', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => category = v ?? 'DP tambahan')),
+      DropdownButtonFormField<String>(
+        value: category,
+        dropdownColor: const Color(0xFFFFFCF7),
+        style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
+        decoration: InputDecoration(labelText: 'Keterangan pembayaran', border: OutlineInputBorder()),
+        items: const ['DP tambahan', 'Cicilan', 'Pelunasan', 'Lainnya'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+        onChanged: (v) => setState(() => category = v ?? 'DP tambahan'),
+      ),
       _field(paymentNote, 'Catatan pembayaran'),
       const SizedBox(height: 12),
       SizedBox(width: double.infinity, child: FilledButton.icon(
