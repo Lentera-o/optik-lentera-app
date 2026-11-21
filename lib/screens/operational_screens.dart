@@ -1720,15 +1720,33 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
           DropdownButtonFormField<Customer>(
             value: customerOptions.contains(selectedCustomer) ? selectedCustomer : null,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Pilih pelanggan', border: OutlineInputBorder()),
-            items: customerOptions.map((c) => DropdownMenuItem(value: c, child: Text(c.name + ' • ' + c.phone, overflow: TextOverflow.ellipsis))).toList(),
+            dropdownColor: const Color(0xFFFFFCF7),
+            style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w600),
+            decoration: const InputDecoration(
+              labelText: 'Pilih pelanggan',
+              border: OutlineInputBorder(),
+              filled: true,
+              fillColor: Color(0xFFFFFCF7),
+            ),
+            items: customerOptions.map((c) => DropdownMenuItem(
+              value: c,
+              child: Text(
+                c.name + ' • ' + c.phone,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: _ink, fontWeight: FontWeight.w600),
+              ),
+            )).toList(),
             onChanged: customerOptions.isEmpty ? null : _chooseCustomer,
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: invoiceIsValid ? selectedInvoice : null,
             isExpanded: true,
+            dropdownColor: const Color(0xFFFFFCF7),
+            style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFFFFFCF7),
               labelText: 'Pilih invoice (opsional)',
               helperText: loadingOfficialData ? 'Mengambil nomor invoice resmi…' : (syncError == null ? 'Diambil dari DATA_PESANAN' : 'Sinkronisasi gagal; tekan muat ulang'),
               border: const OutlineInputBorder(),
