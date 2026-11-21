@@ -59,13 +59,16 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'OPTIK LENTERA',
-      theme: ThemeData(
-        useMaterial3: true,
-        dropdownButtonTheme: DropdownButtonThemeData(
+      builder: (context, child) => DropdownButtonTheme(
+        data: DropdownButtonThemeData(
           dropdownColor: const Color(0xFFFFFCF7),
           style: const TextStyle(color: Color(0xFF292722), fontSize: 13, fontWeight: FontWeight.w600),
           borderRadius: BorderRadius.circular(12),
         ),
+        child: child ?? const SizedBox.shrink(),
+      ),
+      theme: ThemeData(
+        useMaterial3: true,
         scaffoldBackgroundColor: cream,
         colorScheme: ColorScheme.fromSeed(
           seedColor: gold,
@@ -151,11 +154,6 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
       // This avoids dark surfaces behind legacy screens that intentionally use dark text.
       darkTheme: ThemeData(
         useMaterial3: true,
-        dropdownButtonTheme: DropdownButtonThemeData(
-          dropdownColor: const Color(0xFFFFFCF7),
-          style: const TextStyle(color: Color(0xFF292722), fontSize: 13, fontWeight: FontWeight.w600),
-          borderRadius: BorderRadius.circular(12),
-        ),
         scaffoldBackgroundColor: cream,
         colorScheme: ColorScheme.fromSeed(seedColor: gold, brightness: Brightness.light, surface: const Color(0xFF191C21)),
         textTheme: GoogleFonts.plusJakartaSansTextTheme().apply(bodyColor: ink, displayColor: ink),
