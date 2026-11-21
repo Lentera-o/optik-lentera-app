@@ -59,14 +59,6 @@ class _OptikLenteraAppState extends State<OptikLenteraApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'OPTIK LENTERA',
-      builder: (context, child) => DropdownButtonTheme(
-        data: DropdownButtonThemeData(
-          dropdownColor: const Color(0xFFFFFCF7),
-          style: const TextStyle(color: Color(0xFF292722), fontSize: 13, fontWeight: FontWeight.w600),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: child ?? const SizedBox.shrink(),
-      ),
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: cream,
