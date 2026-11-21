@@ -164,13 +164,39 @@ class _CustomerScreenState extends State<CustomerScreen> {
       const _Intro('Data & Riwayat Pelanggan','Profil pelanggan dan seluruh transaksi resmi.',Icons.people_outline),
       const SizedBox(height:16),
       _Panel(child:Column(children:[
-        _field(name,'Nama pelanggan *'), _field(phone,'Nomor WhatsApp / telepon',type:TextInputType.phone), _field(address,'Alamat'),
+        _customerInput(name, 'Nama pelanggan *'),
+        _customerInput(phone, 'Nomor WhatsApp / telepon', type: TextInputType.phone),
+        _customerInput(address, 'Alamat'),
         SizedBox(width:double.infinity,child:FilledButton.icon(style:FilledButton.styleFrom(backgroundColor:_darkGold),onPressed:save,icon:const Icon(Icons.person_add_alt_1),label:const Text('Tambah pelanggan'))),
       ])),
       const SizedBox(height:18),
       Text('RIWAYAT TRANSAKSI RESMI · ${orders.length} invoice',style:const TextStyle(fontWeight:FontWeight.bold,color:_ink)),
       const SizedBox(height:8),
-      TextField(controller:search,onChanged:(_)=>setState((){}),decoration:InputDecoration(hintText:'Cari nama, nomor WhatsApp, atau invoice',prefixIcon:const Icon(Icons.search),suffixIcon:search.text.isEmpty?null:IconButton(onPressed:(){search.clear();setState((){});},icon:const Icon(Icons.close)))),
+      TextField(
+        controller: search,
+        onChanged: (_) => setState(() {}),
+        style: const TextStyle(color: _ink, fontWeight: FontWeight.w600),
+        decoration: InputDecoration(
+          hintText: 'Cari nama, nomor WhatsApp, atau invoice',
+          hintStyle: const TextStyle(color: Color(0xFF777064)),
+          prefixIcon: const Icon(Icons.search, color: _darkGold),
+          suffixIcon: search.text.isEmpty ? null : IconButton(
+            onPressed: () { search.clear(); setState(() {}); },
+            icon: const Icon(Icons.close, color: _darkGold),
+          ),
+          filled: true,
+          fillColor: const Color(0xFFFFFCF7),
+          border: const OutlineInputBorder(),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFD8C8AD)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _darkGold, width: 1.5),
+          ),
+        ),
+      ),
       const SizedBox(height:10),
       if(loading) const Padding(padding:EdgeInsets.all(28),child:Center(child:CircularProgressIndicator()))
       else if(error!=null) _Panel(child:Column(children:[const Text('Riwayat pelanggan belum dapat dimuat.'),Text(error!,style:const TextStyle(fontSize:11,color:Colors.deepOrange)),TextButton.icon(onPressed:loadHistory,icon:const Icon(Icons.refresh),label:const Text('Coba lagi'))]))
@@ -688,6 +714,37 @@ class _Panel extends StatelessWidget {
 Widget _field(TextEditingController c, String label, {TextInputType? type}) => Padding(
   padding: const EdgeInsets.only(bottom: 10),
   child: TextField(controller: c, keyboardType: type, decoration: InputDecoration(labelText: label, isDense: true)),
+);
+
+Widget _customerInput(
+  TextEditingController controller,
+  String label, {
+  TextInputType? type,
+}) => Padding(
+  padding: const EdgeInsets.only(bottom: 10),
+  child: TextField(
+    controller: controller,
+    keyboardType: type,
+    style: const TextStyle(color: _ink, fontWeight: FontWeight.w600),
+    cursorColor: _darkGold,
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Color(0xFF766B5D)),
+      floatingLabelStyle: const TextStyle(color: _darkGold, fontWeight: FontWeight.w700),
+      isDense: true,
+      filled: true,
+      fillColor: const Color(0xFFFFFCF7),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFD8C8AD)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _darkGold, width: 1.5),
+      ),
+    ),
+  ),
 );
 
 class _Empty extends StatelessWidget {
