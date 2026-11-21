@@ -520,13 +520,12 @@ class _TransactionScreenState extends State<TransactionScreen> {
       final invoiceNumber = result is Map
           ? (result['invoiceNumber'] ?? result['invoice'] ?? result['invoiceNo'] ?? '').toString().trim()
           : '';
-      final invoicePdfUrl = result is Map
-          ? (result['invoicePdf'] ?? result['invoiceUrl'] ?? '').toString().trim()
-          : '';
       if (invoiceNumber.isEmpty) {
         throw Exception('Server menerima respons tanpa nomor invoice. Periksa DATA_PESANAN sebelum mengulang transaksi.');
       }
-      if (invoicePdfUrl.isNotEmpty) await _playPdfReadySound();
+      // Play after the server confirms the invoice was created. The PDF URL
+      // may be populated separately, so do not gate the sound on response fields.
+      await _playPdfReadySound();
       _pendingOrderRequestId = null;
       _pendingOrderPayload = null;
       _pendingOrderDate = null;
@@ -981,10 +980,8 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       final receipt = result is Map
           ? (result['receiptNumber'] ?? result['receipt'] ?? '').toString().trim()
           : '';
-      final receiptPdf = result is Map
-          ? (result['receiptPdf'] ?? result['receiptUrl'] ?? '').toString().trim()
-          : '';
-      if (receiptPdf.isNotEmpty) await _playPdfReadySound();
+      // Play after the server confirms the payment/receipt was recorded.
+      await _playPdfReadySound();
       _pendingPaymentRequestId = null;
       _pendingPaymentPayload = null;
       widget.onAdd(OptikPayment(
