@@ -429,19 +429,21 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: cream,
+        // Pearl-champagne header gives the original logo a natural place
+        // instead of presenting it as a separate app-icon tile.
+        backgroundColor: const Color(0xFFFFF8EF),
         elevation: 0,
-        titleSpacing: 20,
+        titleSpacing: 18,
         title: Row(
           children: [
-            const _OptikLogo(size: 42),
+            const _OptikLogo(size: 46),
             const SizedBox(width: 10),
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('OPTIK LENTERA', style: TextStyle(color: darkGold, fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                Text('Sistem Manajemen Optik', style: TextStyle(color: Colors.black54, fontSize: 10)),
+                Text('OPTIK LENTERA', style: TextStyle(color: Color(0xFF9B7137), fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 1.05)),
+                Text('Sistem Manajemen Optik', style: TextStyle(color: Color(0xFF766B5D), fontSize: 10, fontWeight: FontWeight.w500)),
               ],
             ),
           ],
@@ -477,7 +479,7 @@ class _MainScreenState extends State<MainScreen> {
                   ),
               ],
             ),
-            color: darkGold,
+            color: const Color(0xFF9B7137),
           ),
         ],
       ),
@@ -1358,18 +1360,13 @@ class _OptikLogo extends StatelessWidget {
   const _OptikLogo({required this.size});
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(size * 0.18),
-    child: Container(
-      width: size,
-      height: size,
-      color: Colors.white,
-      padding: EdgeInsets.all(size * 0.035),
-      child: Image.memory(
-        base64Decode(optikLogoBase64),
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Icon(Icons.visibility_outlined, color: darkGold, size: size * 0.65),
-      ),
+  Widget build(BuildContext context) => SizedBox(
+    width: size,
+    height: size,
+    child: Image.memory(
+      base64Decode(optikLogoBase64),
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => Icon(Icons.visibility_outlined, color: darkGold, size: size * 0.65),
     ),
   );
 }
