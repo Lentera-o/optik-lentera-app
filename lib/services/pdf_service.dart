@@ -151,6 +151,14 @@ class OptikPdfService {
 
   static const MethodChannel _pdfSaveChannel = MethodChannel('optik_lentera/pdf_save');
 
+  static Future<void> shareExaminationPdf(String examId) async {
+    final safeId = examId.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    await _pdfSaveChannel.invokeMethod<bool>(
+      'sharePdf',
+      <String, dynamic>{'fileName': 'Hasil_Pemeriksaan_$safeId.pdf'},
+    );
+  }
+
   static Future<String> saveExaminationPdf({
     required String examId,
     required String qrPayload,
