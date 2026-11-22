@@ -80,8 +80,9 @@ class OptikPdfService {
     required String address,
     required Map<String, String> values,
   }) async {
-    // Build the complete PDF before returning bytes to the save operation.
-    // MultiPage prevents content from being clipped if notes or addresses are long.
+    // Generate every PDF page before the save channel receives the bytes.
+    // MultiPage lays out each section in sequence and creates another page
+    // when long customer details or notes need more room.
     final pdf = pw.Document();
     String v(String key) =>
         (values[key] ?? '').trim().isEmpty ? '-' : values[key]!.trim();
@@ -91,66 +92,58 @@ class OptikPdfService {
       margin: const pw.EdgeInsets.fromLTRB(28, 22, 28, 20),
       maxPages: 4,
       build: (_) => [
+        brand(),
+        pw.Center(child: heading('HASIL PEMERIKSAAN REFRAKSI', 'RESEP KACAMATA')),
+        pw.Row(children: [
+          pw.Expanded(child: pair('No. dokumen', examId)),
+          pw.SizedBox(width: 18),
+          pw.Expanded(child: pair('Tanggal', date(examDate))),
+        ]),
+        pw.SizedBox(height: 6),
+        section('DATA PELANGGAN'),
+        pw.Row(children: [
+          pw.Expanded(child: pair('Nama pelanggan', name)),
+          pw.SizedBox(width: 18),
+          pw.Expanded(child: pair('No. HP / WA', phone)),
+        ]),
+        pair('Alamat', address),
+        section('HASIL PEMERIKSAAN'),
+        dataTable(['MATA','SPH','CYL','AXIS','ADD','PD'], [
+          ['OD - Kanan',v('odSph'),v('odCyl'),v('odAxis'),v('odAdd'),v('odPd')],
+          ['OS - Kiri',v('osSph'),v('osCyl'),v('osAxis'),v('osAdd'),v('osPd')],
+        ]),
+        pair('Jenis lensa', values['lensType']),
+        section('CATATAN / REKOMENDASI'),
         pw.Container(
-          color: PdfColor.fromInt(0xFFFFFFFF),
-          child: pw.Column(
+          width: double.infinity,
+          constraints: const pw.BoxConstraints(minHeight: 38),
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(
+            color: pink,
+            border: pw.Border.all(color: line, width: .6),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+          ),
+          child: pw.Text(v('note'), style: const pw.TextStyle(fontSize: 8, color: ink)),
+        ),
+        pw.SizedBox(height: 14),
+        pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+          pw.Expanded(child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              brand(),
-              pw.Center(child: heading('HASIL PEMERIKSAAN REFRAKSI', 'RESEP KACAMATA')),
-              pw.Row(children: [
-                pw.Expanded(child: pair('No. dokumen', examId)),
-                pw.SizedBox(width: 18),
-                pw.Expanded(child: pair('Tanggal', date(examDate))),
-              ]),
-              pw.SizedBox(height: 6),
-              section('DATA PELANGGAN'),
-              pw.Row(children: [
-                pw.Expanded(child: pair('Nama pelanggan', name)),
-                pw.SizedBox(width: 18),
-                pw.Expanded(child: pair('No. HP / WA', phone)),
-              ]),
-              pair('Alamat', address),
-              section('HASIL PEMERIKSAAN'),
-              dataTable(['MATA','SPH','CYL','AXIS','ADD','PD'], [
-                ['OD - Kanan',v('odSph'),v('odCyl'),v('odAxis'),v('odAdd'),v('odPd')],
-                ['OS - Kiri',v('osSph'),v('osCyl'),v('osAxis'),v('osAdd'),v('osPd')],
-              ]),
-              pair('Jenis lensa', values['lensType']),
-              section('CATATAN / REKOMENDASI'),
-              pw.Container(
-                width: double.infinity,
-                constraints: const pw.BoxConstraints(minHeight: 38),
-                padding: const pw.EdgeInsets.all(8),
-                decoration: pw.BoxDecoration(
-                  color: pink,
-                  border: pw.Border.all(color: line, width: .6),
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
-                ),
-                child: pw.Text(v('note'), style: const pw.TextStyle(fontSize: 8, color: ink)),
+              pw.Container(height: .7, color: line),
+              pw.SizedBox(height: 5),
+              pw.Text(
+                'OPTIK LENTERA - Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang - 0858 9312 8257',
+                style: const pw.TextStyle(fontSize: 7, color: ink),
               ),
-              pw.SizedBox(height: 14),
-              pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-                pw.Expanded(child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Container(height: .7, color: line),
-                    pw.SizedBox(height: 5),
-                    pw.Text(
-                      'OPTIK LENTERA - Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang - 0858 9312 8257',
-                      style: const pw.TextStyle(fontSize: 7, color: ink),
-                    ),
-                  ],
-                )),
-                pw.SizedBox(width: 14),
-                pw.Column(children: [
-                  pw.SizedBox(width: 66, height: 66, child: qr(qrPayload)),
-                  pw.Text('QR DOKUMEN', style: pw.TextStyle(fontSize: 6, font: pw.Font.helveticaBold(), color: gold)),
-                ]),
-              ]),
             ],
-          ),
-        ),
+          )),
+          pw.SizedBox(width: 14),
+          pw.Column(children: [
+            pw.SizedBox(width: 66, height: 66, child: qr(qrPayload)),
+            pw.Text('QR DOKUMEN', style: pw.TextStyle(fontSize: 6, font: pw.Font.helveticaBold(), color: gold)),
+          ]),
+        ]),
       ],
     ));
     return await pdf.save();
