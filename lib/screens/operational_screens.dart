@@ -778,8 +778,25 @@ class _TransactionScreenState extends State<TransactionScreen> {
       ));
       await _loadOfficialOrderHistory();
       if (!mounted) return;
+      // A confirmed order starts a clean form for the next customer. Keep
+      // the existing server-side request ID protection for in-flight retries.
+      for (final controller in [
+        customer, phone, address, doctor, lensType, rxNote,
+        frameDescription, frame, lensDescription, lens,
+        otherDescription, otherPrice, dp, invoiceNote,
+        odSph, odCyl, odAxis, odAdd, odPd,
+        osSph, osCyl, osAxis, osAdd, osPd,
+      ]) {
+        controller.clear();
+      }
+      setState(() {
+        selectedCustomerIndex = null;
+        _selectedExaminationId = null;
+        _selectedHistoryInvoice = null;
+        method = 'Tunai';
+      });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Pesanan berhasil tersimpan. Invoice $invoiceNumber masuk ke notifikasi dokumen.'),
+        content: Text('Pesanan berhasil tersimpan. Invoice $invoiceNumber masuk ke notifikasi dokumen. Form sudah dikosongkan untuk pelanggan berikutnya.'),
         duration: const Duration(seconds: 5),
       ));
     } catch (error) {
@@ -1259,8 +1276,15 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
             : 'Pembayaran berhasil dicatat. Kuitansi $receipt masuk ke notifikasi dokumen.'),
         duration: const Duration(seconds: 5),
       ));
+      // Clear every payment field only after the server confirms success.
+      invoice.clear();
       nominal.clear();
       paymentNote.clear();
+      setState(() {
+        paymentDate = DateTime.now();
+        method = 'Tunai';
+        category = 'DP tambahan';
+      });
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
