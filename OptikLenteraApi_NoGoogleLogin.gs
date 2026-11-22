@@ -52,7 +52,7 @@ function doPost(e) {
     if (!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)) {
       throw new Error('ID permintaan tidak valid.');
     }
-    if (action !== 'createOrder' && action !== 'createPayment') {
+    if (action !== 'createOrder' && action !== 'createPayment' && action !== 'saveExamination') {
       throw new Error('Aksi transaksi tidak dikenal.');
     }
     if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
@@ -62,10 +62,9 @@ function doPost(e) {
     const lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
-      if (action === 'createOrder') {
-        return olApiCreateOrder_(request.data, requestId, actor);
-      }
-      return olApiCreatePayment_(request.data, requestId, actor);
+      if (action === 'createOrder') return olApiCreateOrder_(request.data, requestId, actor);
+      if (action === 'createPayment') return olApiCreatePayment_(request.data, requestId, actor);
+      return olApiSaveExamination_(request.data, requestId, actor);
     } finally {
       lock.releaseLock();
     }
@@ -222,7 +221,7 @@ function olApiMethod_(value, required) {
 /** Read only the two operational tables after app-key verification. */
 function olApiReadTable_(data, actor) {
   const sheetName = String(data.sheetName || '').trim();
-  const allowed = [OL.SHEET_ORDER, OL.SHEET_PAY];
+  const allowed = [OL.SHEET_ORDER, OL.SHEET_PAY, 'DATA_PEMERIKSAAN'];
   if (allowed.indexOf(sheetName) < 0) throw new Error('Tab yang diminta tidak diizinkan.');
 
   const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
@@ -253,4 +252,59 @@ function olApiJson_(value) {
   return ContentService
     .createTextOutput(JSON.stringify(value))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+
+/**
+ * Save an independent refractive examination without creating an order,
+ * invoice, payment, or receipt. Creates only the dedicated examination tab.
+ */
+function olApiSaveExamination_(data, requestId, actor) {
+  const lock = LockService.getScriptLock();
+  // doPost already holds the script lock; do not acquire it again here.
+  const eventKey = 'APP_EXAM_' + requestId;
+  const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
+  const sheetName = 'DATA_PEMERIKSAAN';
+  const headers = [
+    'ID Pemeriksaan','Event Key','Tanggal Pemeriksaan','Nama Pelanggan','Nomor HP/WA','Alamat',
+    'OD SPH','OD CYL','OD AXIS','OD ADD','OD PD',
+    'OS SPH','OS CYL','OS AXIS','OS ADD','OS PD',
+    'Jenis Lensa','Catatan Pemeriksaan','QR Payload','Dibuat Oleh'
+  ];
+  let sh = ss.getSheetByName(sheetName);
+  if (!sh) {
+    sh = ss.insertSheet(sheetName);
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sh.setFrozenRows(1);
+  }
+  const lastCol = sh.getLastColumn();
+  const currentHeaders = lastCol ? sh.getRange(1,1,1,lastCol).getDisplayValues()[0] : [];
+  const eventCol = currentHeaders.indexOf('Event Key') + 1;
+  if (eventCol > 0 && sh.getLastRow() > 1) {
+    const existing = sh.getRange(2,eventCol,sh.getLastRow()-1,1).getDisplayValues();
+    for (let i=0;i<existing.length;i++) {
+      if (String(existing[i][0]) === eventKey) {
+        const row = i + 2;
+        return olApiJson_({ok:true,action:'saveExamination',examId:String(sh.getRange(row,1).getDisplayValue()),qrPayload:String(sh.getRange(row,19).getDisplayValue()),reused:true,processedBy:actor.email});
+      }
+    }
+  }
+  const date = olApiText_(data.examDate,'Tanggal pemeriksaan',40,true);
+  if (isNaN(new Date(date).getTime())) throw new Error('Tanggal pemeriksaan tidak valid.');
+  const name = olApiText_(data.name,'Nama pelanggan',120,true);
+  const examId = 'RE-' + Utilities.formatDate(new Date(date), Session.getScriptTimeZone(), 'yyyyMMdd') + '-' + Utilities.getUuid().slice(0,8).toUpperCase();
+  const qrPayload = 'OPTIK-LENTERA|REFRAKSI|' + examId;
+  const values = [
+    examId,eventKey,date,name,olApiText_(data.phone,'Nomor HP/WA',40,false),
+    olApiText_(data.address,'Alamat',500,false),
+    olApiText_(data.odSph,'OD SPH',30,false),olApiText_(data.odCyl,'OD CYL',30,false),
+    olApiText_(data.odAxis,'OD AXIS',30,false),olApiText_(data.odAdd,'OD ADD',30,false),
+    olApiText_(data.odPd,'OD PD',30,false),olApiText_(data.osSph,'OS SPH',30,false),
+    olApiText_(data.osCyl,'OS CYL',30,false),olApiText_(data.osAxis,'OS AXIS',30,false),
+    olApiText_(data.osAdd,'OS ADD',30,false),olApiText_(data.osPd,'OS PD',30,false),
+    olApiText_(data.lensType,'Jenis lensa',160,false),
+    olApiText_(data.note,'Catatan pemeriksaan',1000,false),qrPayload,String(actor.email || 'APK')
+  ];
+  sh.appendRow(values);
+  return olApiJson_({ok:true,action:'saveExamination',examId:examId,qrPayload:qrPayload,reused:false,processedBy:actor.email});
 }
