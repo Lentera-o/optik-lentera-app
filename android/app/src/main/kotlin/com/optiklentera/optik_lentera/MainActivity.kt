@@ -1,6 +1,8 @@
 package com.optiklentera.optik_lentera
 
 import android.content.ContentValues
+import android.content.Intent
+import android.content.ClipData
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.Build
@@ -40,12 +42,38 @@ class MainActivity : FlutterActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, pdfChannel)
             .setMethodCallHandler { call, result ->
-                if (call.method != "savePdf") {
+                if (call.method != "savePdf" && call.method != "sharePdf") {
                     result.notImplemented()
                     return@setMethodCallHandler
                 }
                 try {
                     val fileName = call.argument<String>("fileName") ?: "Hasil_Pemeriksaan.pdf"
+                    if (call.method == "sharePdf") {
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                            throw IllegalStateException("Berbagi PDF langsung memerlukan Android 10 atau lebih baru.")
+                        }
+                        val projection = arrayOf(MediaStore.Downloads._ID)
+                        val selection = "${MediaStore.Downloads.DISPLAY_NAME} = ? AND ${MediaStore.Downloads.RELATIVE_PATH} = ?"
+                        val args = arrayOf(fileName, Environment.DIRECTORY_DOWNLOADS + "/OPTIK LENTERA/")
+                        val uri = contentResolver.query(
+                            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                            projection, selection, args, null
+                        )?.use { cursor ->
+                            if (cursor.moveToFirst()) {
+                                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                                android.content.ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id)
+                            } else null
+                        } ?: throw IllegalStateException("File PDF pemeriksaan tidak ditemukan di Download/OPTIK LENTERA.")
+                        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/pdf"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            clipData = ClipData.newUri(contentResolver, fileName, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(sendIntent, "Kirim PDF hasil pemeriksaan"))
+                        result.success(true)
+                        return@setMethodCallHandler
+                    }
                     val bytes = call.argument<ByteArray>("bytes")
                         ?: throw IllegalArgumentException("Data PDF kosong")
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
