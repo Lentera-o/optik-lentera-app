@@ -56,7 +56,7 @@ class ApiService {
     required String requestId,
     required Map<String, dynamic> data,
   }) async {
-    if (action != 'createOrder' && action != 'createPayment') {
+    if (action != 'createOrder' && action != 'createPayment' && action != 'saveExamination') {
       throw ArgumentError.value(action, 'action', 'Unsupported transaction action');
     }
     if (AppConfig.appApiKey.isEmpty || requestId.isEmpty) {
@@ -167,6 +167,16 @@ class ApiService {
     required Map<String, dynamic> data,
   }) => postTransaction(
     action: 'createPayment',
+    requestId: requestId,
+    data: data,
+  );
+
+  /// Save an independent eye examination; this never creates an order.
+  static Future<ApiResponse> saveExamination({
+    required String requestId,
+    required Map<String, dynamic> data,
+  }) => postTransaction(
+    action: 'saveExamination',
     requestId: requestId,
     data: data,
   );
