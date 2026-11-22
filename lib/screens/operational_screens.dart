@@ -312,7 +312,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final qr = result['qrPayload'].toString();
       if (!mounted) return;
       setState(() { examId=id; qrPayload=qr; });
-      final pdfPath = await OptikPdfService.saveExaminationPdf(
+      await OptikPdfService.saveExaminationPdf(
         examId:id,qrPayload:qr,examDate:date,name:_value(name),phone:_value(phone),
         address:_value(address),values:rx,
       );
