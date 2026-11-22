@@ -56,7 +56,7 @@ class ApiService {
     required String requestId,
     required Map<String, dynamic> data,
   }) async {
-    if (action != 'createOrder' && action != 'createPayment' && action != 'saveExamination') {
+    if (action != 'createOrder' && action != 'createPayment' && action != 'saveExamination' && action != 'uploadExaminationPdf') {
       throw ArgumentError.value(action, 'action', 'Unsupported transaction action');
     }
     if (AppConfig.appApiKey.isEmpty || requestId.isEmpty) {
@@ -177,6 +177,16 @@ class ApiService {
     required Map<String, dynamic> data,
   }) => postTransaction(
     action: 'saveExamination',
+    requestId: requestId,
+    data: data,
+  );
+
+  /// Uploads an already-generated examination PDF to the secured Apps Script API.
+  static Future<ApiResponse> uploadExaminationPdf({
+    required String requestId,
+    required Map<String, dynamic> data,
+  }) => postTransaction(
+    action: 'uploadExaminationPdf',
     requestId: requestId,
     data: data,
   );
