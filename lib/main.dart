@@ -714,6 +714,10 @@ class _DashboardContentState extends State<DashboardContent> {
         widget.onOpenModule(3);
       } else if (title == 'Laporan') {
         widget.onOpenModule(6);
+      } else if (title == 'Status Pesanan') {
+        widget.onOpenModule(8);
+      } else if (title == 'Pengaturan') {
+        widget.onOpenModule(9);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$title sedang disiapkan.')),
