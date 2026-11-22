@@ -313,10 +313,26 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final qr = result['qrPayload'].toString();
       if (!mounted) return;
       setState(() { examId=id; qrPayload=qr; });
-      await OptikPdfService.saveExaminationPdf(
+      final pdfBytes = await OptikPdfService.saveExaminationPdf(
         examId:id,qrPayload:qr,examDate:date,name:_value(name),phone:_value(phone),
         address:_value(address),values:rx,
       );
+      final safeExamId = id.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      final driveResponse = await ApiService.uploadExaminationPdf(
+        requestId: pendingRequestId!,
+        data: {
+          'examId': id,
+          'fileName': 'Hasil_Pemeriksaan_$safeExamId.pdf',
+          'pdfBase64': base64Encode(pdfBytes),
+        },
+      );
+      if (!driveResponse.isSuccessful || driveResponse.data is! Map ||
+          driveResponse.data['fileUrl'] == null) {
+        throw Exception(
+          'PDF sudah tersimpan di HP, tetapi upload ke Google Drive gagal: '
+          '${driveResponse.errorMessage ?? 'tautan file tidak diterima server.'}',
+        );
+      }
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
@@ -336,7 +352,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         lastSavedExamId = id;
         examDate = DateTime.now();
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan. Form siap untuk pelanggan berikutnya. PDF tersimpan di Download/OPTIK LENTERA.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan. Form siap untuk pelanggan berikutnya. PDF tersimpan di HP dan Google Drive.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
