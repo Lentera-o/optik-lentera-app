@@ -251,6 +251,112 @@ class _CustomerScreenState extends State<CustomerScreen> {
   }
 }
 
+class ExaminationScreen extends StatefulWidget {
+  const ExaminationScreen({super.key});
+  @override
+  State<ExaminationScreen> createState() => _ExaminationScreenState();
+}
+
+class _ExaminationScreenState extends State<ExaminationScreen> {
+  final name = TextEditingController();
+  final phone = TextEditingController();
+  final address = TextEditingController();
+  final odSph = TextEditingController(), odCyl = TextEditingController(), odAxis = TextEditingController(), odAdd = TextEditingController(), odPd = TextEditingController();
+  final osSph = TextEditingController(), osCyl = TextEditingController(), osAxis = TextEditingController(), osAdd = TextEditingController(), osPd = TextEditingController();
+  final lensType = TextEditingController(), note = TextEditingController();
+  bool saving = false;
+  String? examId, qrPayload;
+  DateTime examDate = DateTime.now();
+  String? pendingRequestId;
+  String _value(TextEditingController c) => c.text.trim();
+
+  @override
+  void dispose() {
+    for (final c in [name,phone,address,odSph,odCyl,odAxis,odAdd,odPd,osSph,osCyl,osAxis,osAdd,osPd,lensType,note]) { c.dispose(); }
+    super.dispose();
+  }
+
+  Map<String,String> get rx => {
+    'odSph':_value(odSph),'odCyl':_value(odCyl),'odAxis':_value(odAxis),'odAdd':_value(odAdd),'odPd':_value(odPd),
+    'osSph':_value(osSph),'osCyl':_value(osCyl),'osAxis':_value(osAxis),'osAdd':_value(osAdd),'osPd':_value(osPd),
+    'lensType':_value(lensType),'note':_value(note),
+  };
+
+  Future<void> saveAndPrint() async {
+    if (saving) return;
+    if (_value(name).isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama pelanggan wajib diisi.')));
+      return;
+    }
+    setState(() => saving = true);
+    try {
+      final date = examDate;
+      final payload = <String,dynamic>{
+        'examDate':date.toIso8601String(),'name':_value(name),'phone':_value(phone),'address':_value(address),...rx,
+      };
+      final fingerprint = jsonEncode(payload);
+      pendingRequestId ??= _newTransactionRequestId();
+      final response = await ApiService.saveExamination(requestId:pendingRequestId!,data:payload);
+      if (!response.isSuccessful || response.data is! Map || response.data['examId'] == null) {
+        throw Exception(response.errorMessage ?? 'Pemeriksaan belum tersimpan di server.');
+      }
+      final result = response.data as Map;
+      final id = result['examId'].toString();
+      final qr = result['qrPayload'].toString();
+      if (!mounted) return;
+      setState(() { examId=id; qrPayload=qr; });
+      await OptikPdfService.printExamination(
+        examId:id,qrPayload:qr,examDate:date,name:_value(name),phone:_value(phone),
+        address:_value(address),values:rx,
+      );
+      pendingRequestId = null;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hasil pemeriksaan $id tersimpan. PDF siap dicetak atau disimpan.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
+    } finally {
+      if (mounted) setState(() => saving=false);
+    }
+  }
+
+  Widget field(TextEditingController c,String label,{TextInputType? type}) => Padding(
+    padding: const EdgeInsets.only(bottom:10),
+    child: TextField(controller:c,keyboardType:type,decoration:InputDecoration(labelText:label,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))),
+  );
+
+  Widget eyeFields(String label,List<TextEditingController> c) => Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    Text(label,style:const TextStyle(color:_darkGold,fontWeight:FontWeight.w800)),
+    const SizedBox(height:8),
+    Row(children:List.generate(3,(i)=>Expanded(child:Padding(padding:EdgeInsets.only(right:i==2?0:6),child:field(c[i],['SPH','CYL','AXIS'][i],type:TextInputType.text))))),
+    Row(children:List.generate(2,(i)=>Expanded(child:Padding(padding:EdgeInsets.only(right:i==1?0:6),child:field(c[i+3],['ADD','PD'][i]))))),
+  ]);
+
+  @override
+  Widget build(BuildContext context) => ListView(padding:const EdgeInsets.all(18),children:[
+    const _Intro('Pemeriksaan Mata','Catat hasil pemeriksaan secara mandiri tanpa membuat invoice atau transaksi pembelian.',Icons.visibility_outlined),
+    const SizedBox(height:14),
+    _Panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      const Text('DATA PELANGGAN',style:TextStyle(color:_darkGold,fontWeight:FontWeight.w800)),
+      const SizedBox(height:10),
+      field(name,'Nama pelanggan *'),field(phone,'Nomor HP / WhatsApp',type:TextInputType.phone),field(address,'Alamat'),
+      const Divider(),
+      eyeFields('OD — MATA KANAN',[odSph,odCyl,odAxis,odAdd,odPd]),
+      const SizedBox(height:8),
+      eyeFields('OS — MATA KIRI',[osSph,osCyl,osAxis,osAdd,osPd]),
+      field(lensType,'Jenis lensa (opsional)'),field(note,'Catatan pemeriksaan / rekomendasi'),
+      if(examId!=null) Padding(padding:const EdgeInsets.only(bottom:10),child:Text('Dokumen tersimpan: $examId',style:const TextStyle(color:_darkGold,fontWeight:FontWeight.w700))),
+      SizedBox(width:double.infinity,child:FilledButton.icon(
+        onPressed:saving?null:saveAndPrint,
+        icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.picture_as_pdf_outlined),
+        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan & Cetak Resep PDF'),
+        style:FilledButton.styleFrom(backgroundColor:_darkGold),
+      )),
+      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. Tidak membuat invoice maupun kuitansi.',style:TextStyle(fontSize:11,color:Colors.black54))),
+    ])),
+  ]);
+}
+
 class TransactionScreen extends StatefulWidget {
   final List<Customer> customers;
   final List<OptikOrder> orders;
