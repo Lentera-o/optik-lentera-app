@@ -268,6 +268,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   String? examId, qrPayload;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
+  String? _pendingPayloadFingerprint;
   String _value(TextEditingController c) => c.text.trim();
 
   @override
@@ -294,7 +295,14 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final payload = <String,dynamic>{
         'examDate':date.toIso8601String(),'name':_value(name),'phone':_value(phone),'address':_value(address),...rx,
       };
-      pendingRequestId ??= _newTransactionRequestId();
+      // Reuse the same id only when retrying the exact same payload. This
+      // prevents duplicate rows after a timeout, while ensuring edited data
+      // cannot accidentally reuse an earlier examination record.
+      final fingerprint = jsonEncode(payload);
+      if (pendingRequestId == null || _pendingPayloadFingerprint != fingerprint) {
+        pendingRequestId = _newTransactionRequestId();
+        _pendingPayloadFingerprint = fingerprint;
+      }
       final response = await ApiService.saveExamination(requestId:pendingRequestId!,data:payload);
       if (!response.isSuccessful || response.data is! Map || response.data['examId'] == null) {
         throw Exception(response.errorMessage ?? 'Pemeriksaan belum tersimpan di server.');
@@ -309,6 +317,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         address:_value(address),values:rx,
       );
       pendingRequestId = null;
+      _pendingPayloadFingerprint = null;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hasil pemeriksaan $id tersimpan. PDF siap dicetak atau disimpan.')));
     } catch (e) {
