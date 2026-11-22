@@ -816,10 +816,11 @@ class _DashboardContentState extends State<DashboardContent> {
                       ),
                     ),
                     const SizedBox(height: 9),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 285),
+                    SizedBox(
+                      width: double.infinity,
                       child: Text(
                         'Kelola pelayanan dan transaksi optik dalam satu tempat.',
+                        softWrap: true,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: .84),
                           fontSize: 11,
@@ -960,8 +961,24 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 }
 
-class _LenteraTodayCard extends StatelessWidget {
+class _LearningSlideData {
+  final String label;
+  final IconData icon;
+  final String text;
+  final String category;
+  final bool canOpen;
+  const _LearningSlideData({required this.label, required this.icon, required this.text, required this.category, this.canOpen = false});
+}
+
+class _LenteraTodayCard extends StatefulWidget {
   const _LenteraTodayCard();
+  @override
+  State<_LenteraTodayCard> createState() => _LenteraTodayCardState();
+}
+
+class _LenteraTodayCardState extends State<_LenteraTodayCard> {
+  final PageController _controller = PageController();
+  int _pageIndex = 0;
 
   static const List<String> _motivations = [
     'Jelas Lihatnya, Jelas Rezekinya. Layani dengan hati, bertumbuh bersama.',
@@ -972,7 +989,6 @@ class _LenteraTodayCard extends StatelessWidget {
     'Jangan berhenti belajar; kemampuan baik lahir dari kebiasaan baik.',
     'Keberhasilan dimulai dari niat baik dan tindakan yang konsisten.',
   ];
-
   static const List<String> _serviceTips = [
     'Sambut pelanggan dengan ramah, lalu dengarkan kebutuhannya sebelum menawarkan produk.',
     'Jelaskan pilihan produk dengan bahasa sederhana, jujur, dan tanpa memaksa.',
@@ -982,7 +998,6 @@ class _LenteraTodayCard extends StatelessWidget {
     'Tanggapi keluhan dengan tenang: dengarkan, pahami, lalu jelaskan langkah penyelesaiannya.',
     'Akhiri pelayanan dengan memastikan pelanggan memahami cara penggunaan dan perawatan produk.',
   ];
-
   static const List<String> _opticalInsights = [
     'Ukuran lensa harus mengikuti resep pemeriksaan yang valid; jangan menebak ukuran mata pelanggan.',
     'Lensa single vision memiliki satu area koreksi utama, sedangkan lensa progresif dirancang untuk beberapa jarak pandang.',
@@ -994,98 +1009,209 @@ class _LenteraTodayCard extends StatelessWidget {
   ];
 
   @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+
+  @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final dayIndex = today.difference(DateTime(today.year, 1, 1)).inDays % _motivations.length;
+    final now = DateTime.now();
+    final dayIndex = now.difference(DateTime(now.year, 1, 1)).inDays % 7;
+    final slides = <_LearningSlideData>[
+      _LearningSlideData(label: 'MOTIVASI', icon: Icons.favorite_border_rounded, text: _motivations[dayIndex], category: 'motivasi'),
+      _LearningSlideData(label: 'PANDUAN PELAYANAN', icon: Icons.handshake_outlined, text: _serviceTips[dayIndex], category: 'pelayanan', canOpen: true),
+      _LearningSlideData(label: 'WAWASAN OPTIK', icon: Icons.visibility_outlined, text: _opticalInsights[dayIndex], category: 'optik', canOpen: true),
+    ];
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFFFFFCF8),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: gold.withValues(alpha: .24)),
-        boxShadow: [
-          BoxShadow(color: ink.withValues(alpha: .035), blurRadius: 12, offset: const Offset(0, 4)),
-        ],
+        boxShadow: [BoxShadow(color: ink.withValues(alpha: .035), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5EBDD),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.wb_sunny_outlined, color: darkGold, size: 20),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('LENTERA HARI INI', style: TextStyle(color: darkGold, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .8)),
-                    SizedBox(height: 2),
-                    Text('Motivasi, pelayanan, dan wawasan optik', style: TextStyle(color: Color(0xFF8A8177), fontSize: 10)),
-                  ],
-                ),
-              ),
-              const Icon(Icons.auto_awesome_outlined, color: gold, size: 19),
-            ],
+          Row(children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(color: const Color(0xFFF5EBDD), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.wb_sunny_outlined, color: darkGold, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('LENTERA HARI INI', style: TextStyle(color: darkGold, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .8)),
+              SizedBox(height: 2),
+              Text('Motivasi, pelayanan, dan wawasan optik', style: TextStyle(color: Color(0xFF8A8177), fontSize: 10)),
+            ])),
+            const Icon(Icons.auto_awesome_outlined, color: gold, size: 19),
+          ]),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 166,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: slides.length,
+              onPageChanged: (index) => setState(() => _pageIndex = index),
+              itemBuilder: (context, index) {
+                final slide = slides[index];
+                final content = Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: const Color(0xFFFAF7F0), borderRadius: BorderRadius.circular(15), border: Border.all(color: gold.withValues(alpha: .12))),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Icon(slide.icon, color: darkGold, size: 18),
+                      const SizedBox(width: 9),
+                      Expanded(child: Text(slide.label, style: const TextStyle(color: darkGold, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: .7))),
+                      if (slide.canOpen) const Icon(Icons.open_in_full_rounded, color: darkGold, size: 16),
+                    ]),
+                    const SizedBox(height: 10),
+                    Expanded(child: Text(slide.text, maxLines: 4, overflow: TextOverflow.fade, style: const TextStyle(color: ink, fontSize: 13, height: 1.45, fontWeight: FontWeight.w600))),
+                    const SizedBox(height: 5),
+                    Text(slide.canOpen ? 'Ketuk untuk membaca materi lengkap' : 'Geser untuk melihat materi lainnya', style: const TextStyle(color: Color(0xFF8A8177), fontSize: 9.5, fontWeight: FontWeight.w600)),
+                  ]),
+                );
+                if (!slide.canOpen) return content;
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(15),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => LearningDetailScreen(category: slide.category, dayIndex: dayIndex),
+                    )),
+                    child: content,
+                  ),
+                );
+              },
+            ),
           ),
-          const SizedBox(height: 14),
-          _LearningItem(label: 'MOTIVASI', icon: Icons.favorite_border_rounded, text: _motivations[dayIndex], prominent: true),
-          const SizedBox(height: 10),
-          _LearningItem(label: 'TIPS PELAYANAN', icon: Icons.handshake_outlined, text: _serviceTips[dayIndex]),
-          const SizedBox(height: 10),
-          _LearningItem(label: 'WAWASAN OPTIK', icon: Icons.visibility_outlined, text: _opticalInsights[dayIndex]),
+          const SizedBox(height: 11),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(slides.length, (index) {
+            final selected = index == _pageIndex;
+            return InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _controller.animateToPage(index, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: selected ? 20 : 7, height: 6,
+                  decoration: BoxDecoration(color: selected ? darkGold : gold.withValues(alpha: .35), borderRadius: BorderRadius.circular(20)),
+                ),
+              ),
+            );
+          })),
         ],
       ),
     );
   }
 }
 
-class _LearningItem extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final String text;
-  final bool prominent;
+class _LearningLesson {
+  final String title;
+  final String body;
+  final String practice;
+  const _LearningLesson(this.title, this.body, this.practice);
+}
 
-  const _LearningItem({
-    required this.label,
-    required this.icon,
-    required this.text,
-    this.prominent = false,
-  });
+class LearningDetailScreen extends StatelessWidget {
+  final String category;
+  final int dayIndex;
+  const LearningDetailScreen({super.key, required this.category, required this.dayIndex});
+
+  static const List<_LearningLesson> _serviceLessons = [
+    _LearningLesson('1. Sambut dan pahami kebutuhan', 'Mulai dengan sapaan ramah. Beri pelanggan waktu menjelaskan kebutuhan, aktivitas sehari-hari, dan hal yang membuat kacamata sebelumnya kurang nyaman.', 'Gunakan pertanyaan terbuka, dengarkan tanpa memotong, lalu ulangi inti kebutuhan untuk memastikan pemahaman.'),
+    _LearningLesson('2. Jelaskan pilihan dengan jujur', 'Terangkan perbedaan pilihan frame dan lensa dengan bahasa mudah dipahami. Sampaikan manfaat, batasan, harga, dan ketentuan garansi.', 'Rekomendasikan sesuai kebutuhan dan anggaran. Hindari janji berlebihan atau membuat pelanggan merasa terpaksa.'),
+    _LearningLesson('3. Utamakan kenyamanan fitting', 'Frame yang sesuai membantu kacamata terasa nyaman dan berada pada posisi yang tepat. Perhatikan bridge, tangkai, dan kestabilan frame.', 'Lakukan penyesuaian sesuai keterampilan dan prosedur toko. Minta bantuan rekan terlatih bila diperlukan.'),
+    _LearningLesson('4. Konfirmasi detail pesanan', 'Pastikan resep valid, jenis lensa, frame, ukuran yang diperlukan, harga, dan perkiraan waktu selesai dipahami bersama.', 'Baca ulang rincian pesanan kepada pelanggan sebelum disimpan. Jangan menebak atau mengubah nilai resep.'),
+    _LearningLesson('5. Tangani keluhan secara profesional', 'Keluhan adalah kesempatan memahami masalah. Tetap tenang, dengarkan, dan hindari menyalahkan pelanggan atau pihak lain.', 'Catat keluhan, periksa sesuai prosedur, jelaskan langkah berikutnya, dan eskalasi kepada penanggung jawab.'),
+    _LearningLesson('6. Tutup pelayanan dengan baik', 'Pastikan pelanggan memahami cara memakai, menyimpan, dan merawat kacamata serta mengetahui cara menghubungi toko bila ada pertanyaan.', 'Ucapkan terima kasih dan pastikan tidak ada hal penting yang masih membingungkan.'),
+  ];
+
+  static const List<_LearningLesson> _opticalLessons = [
+    _LearningLesson('1. Mengenal kelainan refraksi', 'Miopia, hipermetropia, dan astigmatisme adalah kondisi refraksi yang berbeda. Lensa koreksi membantu mengarahkan cahaya agar penglihatan lebih jelas.', 'Penentuan kondisi dan resep harus berdasarkan pemeriksaan profesional yang berwenang; jangan mendiagnosis atau menebak resep.'),
+    _LearningLesson('2. Jenis desain lensa', 'Single vision memiliki satu area koreksi utama. Bifokal memiliki dua area koreksi, sedangkan progresif menyediakan perubahan daya bertahap untuk beberapa jarak.', 'Jelaskan cara adaptasi dan batas pandang sesuai informasi produk serta arahan pemeriksa.'),
+    _LearningLesson('3. PD dan posisi pusat optik', 'Jarak pupil (PD) membantu menentukan posisi pusat optik lensa terhadap mata. Pengukuran dan pemasangan tepat berperan dalam kenyamanan dan fungsi kacamata.', 'Gunakan metode pengukuran yang sesuai dan periksa data fitting. Jangan mengisi nilai PD dengan perkiraan.'),
+    _LearningLesson('4. Material dan indeks lensa', 'Material dan indeks refraksi memengaruhi ketebalan, berat, dan karakter lensa. Lensa lebih tipis belum tentu pilihan terbaik untuk semua resep atau frame.', 'Pertimbangkan resep, ukuran frame, desain, kenyamanan, dan standar keselamatan material.'),
+    _LearningLesson('5. Memahami lapisan lensa', 'Lapisan anti-refleksi, hard coat, dan perlindungan UV memiliki fungsi berbeda. Ketersediaan dan performanya bergantung pada produk.', 'Sampaikan manfaat dan batasan berdasarkan spesifikasi resmi. Jangan menjanjikan lensa anti-gores sepenuhnya.'),
+    _LearningLesson('6. Perawatan kacamata', 'Debu dapat menggores permukaan saat lensa digosok kering. Panas berlebih juga dapat merusak frame atau lapisan lensa.', 'Bersihkan dengan cara dan cairan yang sesuai serta kain microfiber. Hindari mengelap dengan baju atau tisu kasar.'),
+    _LearningLesson('7. Kenali kapan perlu dirujuk', 'Keluhan penglihatan baru, memburuk, atau disertai gejala mengkhawatirkan tidak selalu dapat diselesaikan dengan mengganti kacamata.', 'Arahkan ke pemeriksaan profesional, terutama jika ada perubahan mendadak, nyeri mata, kilatan cahaya, atau gejala berat.'),
+  ];
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(11),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFAF7F0),
-      borderRadius: BorderRadius.circular(13),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: darkGold, size: 17),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: TextStyle(color: darkGold, fontSize: prominent ? 10 : 9, fontWeight: FontWeight.w800, letterSpacing: .8)),
-              const SizedBox(height: 5),
-              Text(text, style: TextStyle(color: ink, fontSize: prominent ? 13 : 11, height: 1.45, fontWeight: prominent ? FontWeight.w600 : FontWeight.normal)),
-            ],
+  Widget build(BuildContext context) {
+    final service = category == 'pelayanan';
+    final title = service ? 'Panduan Pelayanan' : 'Pengetahuan Dunia Optik';
+    final lessons = service ? _serviceLessons : _opticalLessons;
+    final daily = service
+        ? _LenteraTodayCardState._serviceTips[dayIndex % 7]
+        : _LenteraTodayCardState._opticalInsights[dayIndex % 7];
+
+    return Scaffold(
+      backgroundColor: cream,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF8EF),
+        title: const Text('LENTERA HARI INI', style: TextStyle(color: Color(0xFF9B7137), fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: .7)),
+      ),
+      body: SafeArea(child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            decoration: BoxDecoration(color: const Color(0xFFF3E8D6), borderRadius: BorderRadius.circular(30)),
+            child: Text(service ? 'PANDUAN TIM • PELAYANAN' : 'EDUKASI • DUNIA OPTIK', style: const TextStyle(color: darkGold, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: .8)),
           ),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 14),
+          Text(title, style: const TextStyle(color: Color(0xFFF1EEE7), fontSize: 25, fontWeight: FontWeight.w800, height: 1.15)),
+          const SizedBox(height: 7),
+          Text(service ? 'Bekal praktis untuk pelayanan yang ramah, jujur, dan konsisten.' : 'Wawasan dasar untuk memahami lensa, fitting, dan pelayanan optik.', style: const TextStyle(color: Color(0xFFB9B2A5), fontSize: 12, height: 1.5)),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF594323), Color(0xFF80612F), Color(0xFFC19B5C)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('LENTERA HARI INI', style: TextStyle(color: Colors.white.withValues(alpha: .75), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1)),
+              const SizedBox(height: 8),
+              Text(daily, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+          const SizedBox(height: 22),
+          const Text('MATERI PEMBELAJARAN', style: TextStyle(color: Color(0xFFD6B56F), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1)),
+          const SizedBox(height: 10),
+          ...lessons.map((lesson) => Padding(
+            padding: const EdgeInsets.only(bottom: 11),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(color: const Color(0xFFFFFCF8), borderRadius: BorderRadius.circular(17), border: Border.all(color: gold.withValues(alpha: .20))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(lesson.title, style: const TextStyle(color: darkGold, fontSize: 13, fontWeight: FontWeight.w800, height: 1.35)),
+                const SizedBox(height: 8),
+                Text(lesson.body, style: const TextStyle(color: ink, fontSize: 12, height: 1.55)),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(color: const Color(0xFFFAF7F0), borderRadius: BorderRadius.circular(12)),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Icon(Icons.lightbulb_outline_rounded, color: darkGold, size: 17),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(lesson.practice, style: const TextStyle(color: ink, fontSize: 11, height: 1.5))),
+                  ]),
+                ),
+              ]),
+            ),
+          )),
+          const SizedBox(height: 5),
+          Text(service ? 'Gunakan panduan ini sebagai bahan belajar tim dan tetap ikuti SOP serta arahan penanggung jawab toko.' : 'Materi ini merupakan pengetahuan dasar. Pemeriksaan, diagnosis, dan penentuan resep dilakukan oleh tenaga profesional yang berwenang.', style: const TextStyle(color: Color(0xFFB9B2A5), fontSize: 10.5, height: 1.5)),
+        ]),
+      )),
+    );
+  }
 }
 
 class _DashboardMetric extends StatelessWidget {
