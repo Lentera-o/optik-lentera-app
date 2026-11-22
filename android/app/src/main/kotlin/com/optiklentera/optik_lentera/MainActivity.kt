@@ -1,15 +1,15 @@
 package com.optiklentera.optik_lentera
 
+import android.content.ContentValues
 import android.media.AudioManager
 import android.media.ToneGenerator
-import android.os.Handler
-import android.content.ContentValues
 import android.os.Build
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import java.io.File
 import java.io.FileOutputStream
-import android.os.Looper
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -37,7 +37,6 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
-    }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, pdfChannel)
             .setMethodCallHandler { call, result ->
@@ -75,4 +74,5 @@ class MainActivity : FlutterActivity() {
                     result.error("PDF_SAVE_FAILED", error.message, null)
                 }
             }
+    }
 }
