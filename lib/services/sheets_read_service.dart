@@ -56,7 +56,7 @@ class SheetsReadService {
     String worksheetName, {
     bool cacheBust = false,
   }) async {
-    if (worksheetName != 'DATA_PESANAN' && worksheetName != 'DATA_PEMBAYARAN') {
+    if (worksheetName != 'DATA_PESANAN' && worksheetName != 'DATA_PEMBAYARAN' && worksheetName != 'DATA_PEMERIKSAAN') {
       throw ArgumentError.value(worksheetName, 'worksheetName', 'Tab tidak diizinkan');
     }
     final response = await ApiService.postAuthorizedRead(
