@@ -312,14 +312,14 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final qr = result['qrPayload'].toString();
       if (!mounted) return;
       setState(() { examId=id; qrPayload=qr; });
-      await OptikPdfService.printExamination(
+      final pdfPath = await OptikPdfService.saveExaminationPdf(
         examId:id,qrPayload:qr,examDate:date,name:_value(name),phone:_value(phone),
         address:_value(address),values:rx,
       );
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hasil pemeriksaan $id tersimpan. PDF siap dicetak atau disimpan.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id tersimpan. PDF otomatis disimpan di Download/OPTIK LENTERA.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
@@ -357,7 +357,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       SizedBox(width:double.infinity,child:FilledButton.icon(
         onPressed:saving?null:saveAndPrint,
         icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.picture_as_pdf_outlined),
-        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan & Cetak Resep PDF'),
+        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
       const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. Tidak membuat invoice maupun kuitansi.',style:TextStyle(fontSize:11,color:Colors.black54))),
