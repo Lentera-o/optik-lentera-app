@@ -653,7 +653,14 @@ class _TransactionScreenState extends State<TransactionScreen> {
     if (submitting) return;
     final total = amount(frame) + amount(lens) + amount(otherPrice);
     if (customer.text.trim().isEmpty || total <= 0 || amount(dp) > total) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Periksa nama pelanggan, harga, dan nominal DP.')));
+      final message = customer.text.trim().isEmpty
+          ? 'Nama pelanggan wajib diisi.'
+          : total <= 0
+              ? (_selectedExaminationId != null
+                  ? 'Masukkan harga pemeriksaan di kolom Harga pemeriksaan / biaya lain, atau isi harga frame/lensa terlebih dahulu. Setelah itu baru masukkan DP.'
+                  : 'Masukkan harga frame, lensa, atau biaya lain terlebih dahulu sebelum mengisi DP.')
+              : 'Nominal DP tidak boleh melebihi total pesanan.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
 
@@ -859,7 +866,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       _field(lensDescription, 'Lensa - jenis / ukuran / coating'),
       _field(lens, 'Harga lensa (Rp)', type: TextInputType.number),
       _field(otherDescription, 'Keterangan biaya lain-lain'),
-      _field(otherPrice, 'Harga lain-lain (Rp)', type: TextInputType.number),
+      _field(otherPrice, _selectedExaminationId != null ? 'Harga pemeriksaan / biaya lain (Rp)' : 'Harga lain-lain (Rp)', type: TextInputType.number),
       _field(dp, 'Uang muka / DP (Rp)', type: TextInputType.number),
       _field(invoiceNote, 'Catatan tambahan untuk invoice'),
       DropdownButtonFormField<String>(
