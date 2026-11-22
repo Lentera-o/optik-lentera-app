@@ -266,6 +266,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   final lensType = TextEditingController(), note = TextEditingController();
   bool saving = false;
   String? examId, qrPayload;
+  String? lastSavedExamId;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -332,6 +333,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       setState(() {
         examId = null;
         qrPayload = null;
+        lastSavedExamId = id;
         examDate = DateTime.now();
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan. Form siap untuk pelanggan berikutnya. PDF tersimpan di Download/OPTIK LENTERA.')));
@@ -340,6 +342,19 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
     } finally {
       if (mounted) setState(() => saving=false);
+    }
+  }
+
+  Future<void> shareLastExaminationPdf() async {
+    final id = lastSavedExamId;
+    if (id == null || id.isEmpty) return;
+    try {
+      await OptikPdfService.shareExaminationPdf(id);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('PDF belum bisa dibagikan: ${error.toString().replaceFirst('PlatformException(', '').replaceFirst('Exception: ', '')}'),
+      ));
     }
   }
 
@@ -375,6 +390,14 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
+      if (lastSavedExamId != null) ...[
+        const SizedBox(height: 8),
+        SizedBox(width:double.infinity,child:OutlinedButton.icon(
+          onPressed: shareLastExaminationPdf,
+          icon: const Icon(Icons.share_outlined),
+          label: Text('Kirim PDF pemeriksaan terakhir ($lastSavedExamId)'),
+        )),
+      ],
       const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. Tidak membuat invoice maupun kuitansi.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
