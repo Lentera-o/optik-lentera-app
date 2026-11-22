@@ -319,7 +319,22 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id tersimpan. PDF otomatis disimpan di Download/OPTIK LENTERA.')));
+      // Clear the completed examination only after both the server record and
+      // its PDF have been saved successfully. Failed saves retain the draft.
+      for (final controller in [
+        name, phone, address,
+        odSph, odCyl, odAxis, odAdd, odPd,
+        osSph, osCyl, osAxis, osAdd, osPd,
+        lensType, note,
+      ]) {
+        controller.clear();
+      }
+      setState(() {
+        examId = null;
+        qrPayload = null;
+        examDate = DateTime.now();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan. Form siap untuk pelanggan berikutnya. PDF tersimpan di Download/OPTIK LENTERA.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
