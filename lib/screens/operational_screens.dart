@@ -789,9 +789,13 @@ class _TransactionScreenState extends State<TransactionScreen> {
       else if (_savedExaminations.isEmpty)
         const Text('Belum ada hasil pemeriksaan tersimpan untuk dipilih.', style: TextStyle(fontSize: 11, color: Colors.black54))
       else DropdownButtonFormField<String>(
+        dropdownColor: const Color(0xFFFFFCF7),
+        style: const TextStyle(color: Color(0xFF191919), fontSize: 14, fontWeight: FontWeight.w600),
         value: _selectedExaminationId,
         isExpanded: true,
         decoration: InputDecoration(
+          filled: true,
+          fillColor: const Color(0xFFFFFCF7),
           labelText: 'Pilih hasil pemeriksaan / resep',
           helperText: 'Nama dan resep OD/OS akan terisi otomatis. Biaya dan DP tetap diisi di bawah.',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
