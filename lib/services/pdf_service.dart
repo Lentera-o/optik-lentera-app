@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:flutter/services.dart';
 import '../assets/optik_brand_assets.dart';
 import '../models/optik_models.dart';
 
@@ -143,7 +144,9 @@ class OptikPdfService {
     return pdf.save();
   }
 
-  static Future<void> printExamination({
+  static const MethodChannel _pdfSaveChannel = MethodChannel('optik_lentera/pdf_save');
+
+  static Future<String> saveExaminationPdf({
     required String examId,
     required String qrPayload,
     required DateTime examDate,
@@ -156,7 +159,16 @@ class OptikPdfService {
       examId: examId, qrPayload: qrPayload, examDate: examDate,
       name: name, phone: phone, address: address, values: values,
     );
-    await Printing.layoutPdf(onLayout: (_) async => bytes);
+    final safeId = examId.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    final fileName = 'Hasil_Pemeriksaan_$safeId.pdf';
+    final savedPath = await _pdfSaveChannel.invokeMethod<String>(
+      'savePdf',
+      <String, dynamic>{'fileName': fileName, 'bytes': bytes},
+    );
+    if (savedPath == null || savedPath.isEmpty) {
+      throw Exception('PDF belum berhasil disimpan.');
+    }
+    return savedPath;
   }
 
   static Future<Uint8List> invoiceBytes(OptikOrder o, {required int paid, required int remaining}) async {
