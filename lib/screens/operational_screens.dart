@@ -402,6 +402,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
   String method = 'Tunai';
   int? selectedCustomerIndex;
   List<Map<String, String>> _officialOrderHistory = [];
+  List<Map<String, String>> _savedExaminations = [];
+  bool _examinationLoading = false;
+  String? _examinationError;
+  String? _selectedExaminationId;
   bool _historyLoading = false;
   String? _historyError;
   String? _selectedHistoryInvoice;
@@ -505,6 +509,69 @@ class _TransactionScreenState extends State<TransactionScreen> {
     }
   }
 
+  Future<void> _loadSavedExaminations() async {
+    if (mounted) setState(() => _examinationLoading = true);
+    try {
+      final rows = await SheetsReadService.readTable('DATA_PEMERIKSAAN', forceRefresh: true);
+      if (!mounted) return;
+      setState(() {
+        _savedExaminations = rows.where((row) =>
+          _historyCell(row, ['ID Pemeriksaan', 'Nomor Pemeriksaan', 'No Pemeriksaan']).isNotEmpty &&
+          _historyCell(row, ['Nama', 'Nama Pasien', 'Nama Pelanggan']).isNotEmpty
+        ).toList();
+        _examinationLoading = false;
+        _examinationError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _examinationLoading = false;
+        _examinationError = e.toString();
+      });
+    }
+  }
+
+  void _prefillFromExamination(String? examId) {
+    if (examId == null) return;
+    Map<String, String>? selected;
+    for (final row in _savedExaminations) {
+      if (_historyCell(row, ['ID Pemeriksaan', 'Nomor Pemeriksaan', 'No Pemeriksaan']) == examId) {
+        selected = row;
+        break;
+      }
+    }
+    if (selected == null) return;
+    final row = selected;
+    setState(() {
+      _selectedExaminationId = examId;
+      customer.text = _historyCell(row, ['Nama', 'Nama Pasien', 'Nama Pelanggan']);
+      phone.text = _historyPhone(row);
+      address.text = _historyCell(row, ['Alamat', 'Alamat Pasien', 'Alamat Pelanggan']);
+      odSph.text = _historyCell(row, ['OD SPH']);
+      odCyl.text = _historyCell(row, ['OD CYL']);
+      odAxis.text = _historyCell(row, ['OD AXIS']);
+      odAdd.text = _historyCell(row, ['OD ADD']);
+      odPd.text = _historyCell(row, ['OD PD']);
+      osSph.text = _historyCell(row, ['OS SPH']);
+      osCyl.text = _historyCell(row, ['OS CYL']);
+      osAxis.text = _historyCell(row, ['OS AXIS']);
+      osAdd.text = _historyCell(row, ['OS ADD']);
+      osPd.text = _historyCell(row, ['OS PD']);
+      lensType.text = _historyCell(row, ['Jenis Lensa']);
+      rxNote.text = _historyCell(row, ['Catatan', 'Catatan Pemeriksaan']);
+      otherDescription.text = 'Biaya Pemeriksaan Mata';
+      final reference = 'ID Pemeriksaan: $examId';
+      if (!invoiceNote.text.contains(reference)) {
+        invoiceNote.text = invoiceNote.text.trim().isEmpty
+            ? reference
+            : '${invoiceNote.text.trim()}\n$reference';
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Hasil pemeriksaan $examId dimuat. Masukkan biaya pemeriksaan dan DP sebelum menyimpan.')),
+    );
+  }
+
   void _prefillFromOfficialOrder(String? invoice) {
     if (invoice == null) return;
     Map<String, String>? row;
@@ -573,6 +640,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   void initState() {
     super.initState();
     _loadOfficialOrderHistory();
+    _loadSavedExaminations();
   }
 
   @override
@@ -709,6 +777,32 @@ class _TransactionScreenState extends State<TransactionScreen> {
           return DropdownMenuItem<String>(value: number, child: Text('$number · $person · $date', overflow: TextOverflow.ellipsis));
         }).toList(),
         onChanged: _prefillFromOfficialOrder,
+      ),
+      const SizedBox(height: 12),
+      Row(children: [
+        const Expanded(child: Text('AMBIL HASIL PEMERIKSAAN MATA', style: TextStyle(color: _darkGold, fontWeight: FontWeight.w800, fontSize: 12))),
+        IconButton(tooltip: 'Muat ulang pemeriksaan', onPressed: _examinationLoading ? null : _loadSavedExaminations, icon: const Icon(Icons.refresh)),
+      ]),
+      if (_examinationLoading) const LinearProgressIndicator()
+      else if (_examinationError != null)
+        Text('Hasil pemeriksaan belum dapat dimuat: $_examinationError', style: const TextStyle(fontSize: 11, color: Colors.deepOrange))
+      else if (_savedExaminations.isEmpty)
+        const Text('Belum ada hasil pemeriksaan tersimpan untuk dipilih.', style: TextStyle(fontSize: 11, color: Colors.black54))
+      else DropdownButtonFormField<String>(
+        value: _selectedExaminationId,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'Pilih hasil pemeriksaan / resep',
+          helperText: 'Nama dan resep OD/OS akan terisi otomatis. Biaya dan DP tetap diisi di bawah.',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        items: _savedExaminations.reversed.map((row) {
+          final id = _historyCell(row, ['ID Pemeriksaan', 'Nomor Pemeriksaan', 'No Pemeriksaan']);
+          final person = _historyCell(row, ['Nama', 'Nama Pasien', 'Nama Pelanggan']);
+          final date = _historyCell(row, ['Tanggal Pemeriksaan', 'Tanggal']);
+          return DropdownMenuItem<String>(value: id, child: Text('$id · $person · $date', overflow: TextOverflow.ellipsis));
+        }).toList(),
+        onChanged: _prefillFromExamination,
       ),
       const SizedBox(height: 12),
       if (widget.customers.isNotEmpty) ...[
