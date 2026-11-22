@@ -498,6 +498,7 @@ class _MainScreenState extends State<MainScreen> {
           7 => DocumentNotificationsScreen(onRead: _refreshDocumentNotificationCount),
           8 => const OrderStatusScreen(),
           9 => SettingsScreen(themeMode: widget.themeMode, onThemeModeChanged: widget.onThemeModeChanged),
+          10 => const ExaminationScreen(),
           _ => OtherContent(title: navigation[selectedIndex]),
         },
       ),
@@ -704,8 +705,10 @@ class _DashboardContentState extends State<DashboardContent> {
     void openModule(String title) {
       if (title == 'Data Pelanggan') {
         widget.onOpenModule(2);
-      } else if (title == 'Pemesanan' || title == 'Pemeriksaan Mata') {
+      } else if (title == 'Pemesanan') {
         widget.onOpenModule(1);
+      } else if (title == 'Pemeriksaan Mata') {
+        widget.onOpenModule(10);
       } else if (title == 'Pembayaran') {
         widget.onOpenModule(4);
       } else if (title == 'Invoice & Kuitansi') {
