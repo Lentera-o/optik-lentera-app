@@ -3,7 +3,7 @@ from pathlib import Path
 
 Path("build").mkdir(parents=True, exist_ok=True)
 
-source = "assets/optik_lentera_launcher.jpg"
+source = "assets/optik_lentera_launcher_emblem.png"
 target = "build/optik_lentera_launcher_zoom.png"
 
 # Zoom the existing artwork so its baked-in rounded border does not sit

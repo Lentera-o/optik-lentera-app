@@ -9,7 +9,6 @@ import 'services/sheets_read_service.dart';
 import 'models/optik_models.dart';
 import 'screens/operational_screens.dart';
 import 'screens/reports_screen.dart';
-import 'assets/optik_brand_assets.dart';
 
 
 void main() {
@@ -1489,8 +1488,8 @@ class _OptikLogo extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     width: size,
     height: size,
-    child: Image.memory(
-      base64Decode(optikLogoBase64),
+    child: Image.asset(
+      'assets/optik_lentera_app_logo.png',
       fit: BoxFit.contain,
       errorBuilder: (_, __, ___) => Icon(Icons.visibility_outlined, color: darkGold, size: size * 0.65),
     ),
