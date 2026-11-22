@@ -159,7 +159,7 @@ class OptikPdfService {
     );
   }
 
-  static Future<String> saveExaminationPdf({
+  static Future<Uint8List> saveExaminationPdf({
     required String examId,
     required String qrPayload,
     required DateTime examDate,
@@ -181,7 +181,7 @@ class OptikPdfService {
     if (savedPath == null || savedPath.isEmpty) {
       throw Exception('PDF belum berhasil disimpan.');
     }
-    return savedPath;
+    return bytes;
   }
 
   static Future<Uint8List> invoiceBytes(OptikOrder o, {required int paid, required int remaining}) async {
