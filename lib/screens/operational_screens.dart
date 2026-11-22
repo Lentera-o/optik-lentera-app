@@ -294,7 +294,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final payload = <String,dynamic>{
         'examDate':date.toIso8601String(),'name':_value(name),'phone':_value(phone),'address':_value(address),...rx,
       };
-      final fingerprint = jsonEncode(payload);
       pendingRequestId ??= _newTransactionRequestId();
       final response = await ApiService.saveExamination(requestId:pendingRequestId!,data:payload);
       if (!response.isSuccessful || response.data is! Map || response.data['examId'] == null) {
