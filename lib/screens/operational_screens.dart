@@ -325,8 +325,8 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     try {
       await SharePlus.instance.share(ShareParams(
         files: [XFile.fromData(bytes, name: fileName, mimeType: 'application/pdf')],
-        subject: 'Resep PROGRESS OPTIK LENTERA',
-        text: 'Resep PROGRESS OPTIK LENTERA · ${examId ?? ''}',
+        subject: 'Resep Kacamata OPTIK LENTERA',
+        text: 'Resep Kacamata OPTIK LENTERA · ${examId ?? ''}',
       ));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF belum bisa dibagikan: $e')));
@@ -400,7 +400,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       setState(() {
         this.savedPdfUrl = savedPdfUrl;
         savedPdfBytes = pdfBytes;
-        savedPdfFileName = 'Resep_PROGRESS_$safeExamId.pdf';
+        savedPdfFileName = 'Resep_Kacamata_$safeExamId.pdf';
         examId = null;
         qrPayload = null;
         examDate = DateTime.now();
@@ -419,6 +419,26 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     child: TextField(controller:c,keyboardType:type,decoration:InputDecoration(labelText:label,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))),
   );
 
+  Widget lensTypeField() => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: DropdownButtonFormField<String>(
+      value: lensType.text.isEmpty ? null : lensType.text,
+      decoration: InputDecoration(
+        labelText: 'Jenis lensa',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      hint: const Text('Pilih jenis lensa'),
+      items: const [
+        DropdownMenuItem(value: 'Single Focus', child: Text('Single Focus')),
+        DropdownMenuItem(value: 'Double Focus', child: Text('Double Focus')),
+        DropdownMenuItem(value: 'Progresif', child: Text('Progresif')),
+      ],
+      onChanged: saving ? null : (value) {
+        lensType.text = value ?? '';
+      },
+    ),
+  );
+
   Widget eyeFields(String label,List<TextEditingController> c) => Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
     Text(label,style:const TextStyle(color:_darkGold,fontWeight:FontWeight.w800)),
     const SizedBox(height:8),
@@ -435,7 +455,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         const Row(children: [
           Icon(Icons.picture_as_pdf_outlined, color: _darkGold),
           SizedBox(width: 10),
-          Expanded(child: Text('PDF resep PROGRESS tersimpan', style: TextStyle(fontWeight: FontWeight.w700))),
+          Expanded(child: Text('PDF resep kacamata tersimpan', style: TextStyle(fontWeight: FontWeight.w700))),
         ]),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
@@ -454,15 +474,15 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       eyeFields('OD — MATA KANAN',[odSph,odCyl,odAxis,odAdd,odPd]),
       const SizedBox(height:8),
       eyeFields('OS — MATA KIRI',[osSph,osCyl,osAxis,osAdd,osPd]),
-      field(lensType,'Jenis lensa (opsional)'),field(note,'Catatan pemeriksaan / rekomendasi'),
+      lensTypeField(),field(note,'Catatan pemeriksaan / rekomendasi'),
       if(examId!=null) Padding(padding:const EdgeInsets.only(bottom:10),child:Text('Dokumen tersimpan: $examId',style:const TextStyle(color:_darkGold,fontWeight:FontWeight.w700))),
       SizedBox(width:double.infinity,child:FilledButton.icon(
         onPressed:saving?null:saveAndPrint,
         icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.picture_as_pdf_outlined),
-        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Resep PROGRESS & PDF'),
+        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
-      const Padding(padding:EdgeInsets.only(top:9),child:Text('Resep PROGRESS disimpan terpisah di DATA_PEMERIKSAAN. PDF resep resmi tersimpan di Google Drive. Tidak ada pengiriman WhatsApp otomatis dari halaman pemeriksaan.',style:TextStyle(fontSize:11,color:Colors.black54))),
+      const Padding(padding:EdgeInsets.only(top:9),child:Text('Data pemeriksaan tersimpan terpisah di DATA_PEMERIKSAAN. PDF resep resmi tersimpan di Google Drive. Tidak ada pengiriman WhatsApp otomatis dari halaman pemeriksaan.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
 }
