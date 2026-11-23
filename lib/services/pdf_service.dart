@@ -89,6 +89,10 @@ class OptikPdfService {
 
     pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4.landscape,
+      // Match the warm paper background used by the official invoice and receipt.
+      pageTheme: pw.PageTheme(
+        buildBackground: (_) => pw.Container(color: paper),
+      ),
       margin: const pw.EdgeInsets.fromLTRB(28, 22, 28, 20),
       maxPages: 4,
       build: (_) => [
