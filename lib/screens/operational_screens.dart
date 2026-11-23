@@ -2067,15 +2067,17 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
   String _prescriptionPdfForOrder(Map<String, String>? order) {
     final customer = selectedCustomer;
     if (customer == null || officialExaminations.isEmpty) return '';
-    final targetName = (order == null ? customer.name : _customerNameFromRow(order))
-        .trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ');
+    final orderName = order == null ? '' : _customerNameFromRow(order);
+    final targetName = (orderName.isEmpty ? customer.name : orderName)
+        .trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
     if (targetName.isEmpty) return '';
+    final orderPhone = order == null ? '' : _phoneFromRow(order);
     final targetPhone = _canonicalPhone(
-      order == null ? customer.phone : _phoneFromRow(order),
+      orderPhone.isEmpty ? customer.phone : orderPhone,
     );
     final candidates = officialExaminations.where((row) {
       final examName = _customerNameFromRow(row)
-          .trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ');
+          .trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
       if (examName != targetName) return false;
       final examPhone = _canonicalPhone(_phoneFromRow(row));
       if (targetPhone.isNotEmpty) return examPhone.isNotEmpty && examPhone == targetPhone;
@@ -2083,7 +2085,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
       // unambiguous across all examination rows.
       final identities = officialExaminations
           .where((item) => _customerNameFromRow(item)
-              .trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ') == targetName)
+              .trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ') == targetName)
           .map((item) => _canonicalPhone(_phoneFromRow(item)))
           .where((phone) => phone.isNotEmpty)
           .toSet();
