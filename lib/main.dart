@@ -204,13 +204,15 @@ class _MainScreenState extends State<MainScreen> {
   final List<OptikOrder> orders = [];
   final List<OptikPayment> payments = [];
   bool _loadingLocalData = true;
-  bool _localDataReady = false;
+  bool _localCachePurgeFailed = false;
   int _unreadDocumentCount = 0;
+  final Set<String> _readDocumentNoticeIds = {};
+  final Map<String, String> _documentNoticeStatuses = {};
 
   @override
   void initState() {
     super.initState();
-    _loadLocalData();
+    _purgeLocalTransactionCache();
     _refreshDocumentNotificationCount();
   }
 
@@ -258,8 +260,6 @@ class _MainScreenState extends State<MainScreen> {
         if (mounted) setState(() => _unreadDocumentCount = 0);
         return;
       }
-      final decoded = jsonDecode(prefs.getString('ol_document_notice_read_ids') ?? '[]');
-      final readIds = decoded is List ? decoded.map((item) => item.toString()).toSet() : <String>{};
       final tables = await Future.wait([
         SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
@@ -287,7 +287,7 @@ class _MainScreenState extends State<MainScreen> {
         }
       }
       if (!mounted) return;
-      setState(() => _unreadDocumentCount = ids.where((id) => !readIds.contains(id)).length);
+      setState(() => _unreadDocumentCount = ids.where((id) => !_readDocumentNoticeIds.contains(id)).length);
     } catch (_) {
       // Badge tidak mengganggu dashboard bila Sheets sedang tidak tersedia.
     }
@@ -298,47 +298,56 @@ class _MainScreenState extends State<MainScreen> {
     _refreshDocumentNotificationCount();
   }
 
-  Future<void> _loadLocalData() async {
+  void _handleDocumentReads(Set<String> ids) {
+    setState(() => _readDocumentNoticeIds.addAll(ids));
+    _refreshDocumentNotificationCount();
+  }
+
+  void _handleDocumentStatuses(Map<String, String> statuses) {
+    setState(() => _documentNoticeStatuses.addAll(statuses));
+  }
+
+  /// Remove legacy customer/order/payment snapshots from the phone.
+  /// Official records are read from Apps Script/Sheets; these lists remain
+  /// in-memory only for the active session and are never written to disk.
+  Future<void> _purgeLocalTransactionCache() async {
+    if (mounted) {
+      setState(() {
+        _loadingLocalData = true;
+        _localCachePurgeFailed = false;
+      });
+    }
+    var purgeFailed = false;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final customerData = jsonDecode(prefs.getString('ol_customers') ?? '[]') as List<dynamic>;
-      final orderData = jsonDecode(prefs.getString('ol_orders') ?? '[]') as List<dynamic>;
-      final paymentData = jsonDecode(prefs.getString('ol_payments') ?? '[]') as List<dynamic>;
-      customers.addAll(customerData.map((item) => Customer.fromJson(Map<String, dynamic>.from(item as Map))));
-      orders.addAll(orderData.map((item) => OptikOrder.fromJson(Map<String, dynamic>.from(item as Map))));
-      payments.addAll(paymentData.map((item) => OptikPayment.fromJson(Map<String, dynamic>.from(item as Map))));
+      await prefs.remove('ol_customers');
+      await prefs.remove('ol_orders');
+      await prefs.remove('ol_payments');
+      await prefs.remove('ol_document_notice_read_ids');
+      await prefs.remove('ol_document_notice_status');
     } catch (_) {
-      // Data sesi tetap bisa dipakai bila cache versi lama tidak bisa dibaca.
+      // Fail closed: do not open operational screens while legacy transaction
+      // cache removal has not completed successfully.
+      purgeFailed = true;
     }
     if (!mounted) return;
     setState(() {
-      _localDataReady = true;
       _loadingLocalData = false;
+      _localCachePurgeFailed = purgeFailed;
     });
-  }
-
-  Future<void> _saveLocalData() async {
-    if (!_localDataReady) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ol_customers', jsonEncode(customers.map((item) => item.toJson()).toList()));
-    await prefs.setString('ol_orders', jsonEncode(orders.map((item) => item.toJson()).toList()));
-    await prefs.setString('ol_payments', jsonEncode(payments.map((item) => item.toJson()).toList()));
   }
 
   void _addCustomer(Customer value) {
     setState(() => customers.add(value));
-    _saveLocalData();
   }
 
   void _addOrder(OptikOrder value) {
     setState(() => orders.add(value));
-    _saveLocalData();
     _refreshDocumentNotificationCount();
   }
 
   void _addPayment(OptikPayment value) {
     setState(() => payments.add(value));
-    _saveLocalData();
     _refreshDocumentNotificationCount();
   }
 
@@ -485,7 +494,36 @@ class _MainScreenState extends State<MainScreen> {
       body: SafeArea(
         child: _loadingLocalData
             ? const Center(child: CircularProgressIndicator(color: darkGold))
-            : switch (selectedIndex) {
+            : _localCachePurgeFailed
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.lock_outline, size: 42, color: darkGold),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Data lama belum berhasil dibersihkan dari perangkat.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Aplikasi dikunci sementara agar data transaksi lama tidak terbuka. Tekan Coba Lagi.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: _purgeLocalTransactionCache,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : switch (selectedIndex) {
           0 => DashboardContent(
             onOpenModule: (index) => setState(() => selectedIndex = index),
           ),
@@ -495,7 +533,12 @@ class _MainScreenState extends State<MainScreen> {
           4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
           5 => const InvoiceReceiptScreen(),
           6 => const ReportsScreen(),
-          7 => DocumentNotificationsScreen(onRead: _refreshDocumentNotificationCount),
+          7 => DocumentNotificationsScreen(
+            initialReadIds: _readDocumentNoticeIds,
+            initialStatuses: _documentNoticeStatuses,
+            onRead: _handleDocumentReads,
+            onStatusChanged: _handleDocumentStatuses,
+          ),
           8 => const OrderStatusScreen(),
           9 => SettingsScreen(themeMode: widget.themeMode, onThemeModeChanged: widget.onThemeModeChanged),
           10 => const ExaminationScreen(),

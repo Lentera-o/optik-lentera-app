@@ -313,7 +313,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final qr = result['qrPayload'].toString();
       if (!mounted) return;
       setState(() { examId=id; qrPayload=qr; });
-      final pdfBytes = await OptikPdfService.saveExaminationPdf(
+      final pdfBytes = await OptikPdfService.examinationBytes(
         examId:id,qrPayload:qr,examDate:date,name:_value(name),phone:_value(phone),
         address:_value(address),values:rx,
       );
@@ -327,12 +327,14 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         },
       );
       if (!driveResponse.isSuccessful || driveResponse.data is! Map ||
-          driveResponse.data['fileUrl'] == null) {
+          driveResponse.data['fileUrl'] == null ||
+          driveResponse.data['fileUrl'].toString().trim().isEmpty) {
         throw Exception(
-          'PDF sudah tersimpan di HP, tetapi upload ke Google Drive gagal: '
+          'Data pemeriksaan tersimpan, tetapi PDF belum masuk Google Drive: '
           '${driveResponse.errorMessage ?? 'tautan file tidak diterima server.'}',
         );
       }
+      final savedPdfUrl = driveResponse.data['fileUrl'].toString().trim();
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
@@ -352,25 +354,12 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         lastSavedExamId = id;
         examDate = DateTime.now();
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan. Form siap untuk pelanggan berikutnya. PDF tersimpan di HP dan Google Drive.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan ke sistem dan PDF resmi masuk Google Drive. Form siap untuk pelanggan berikutnya.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
     } finally {
       if (mounted) setState(() => saving=false);
-    }
-  }
-
-  Future<void> shareLastExaminationPdf() async {
-    final id = lastSavedExamId;
-    if (id == null || id.isEmpty) return;
-    try {
-      await OptikPdfService.shareExaminationPdf(id);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('PDF belum bisa dibagikan: ${error.toString().replaceFirst('PlatformException(', '').replaceFirst('Exception: ', '')}'),
-      ));
     }
   }
 
@@ -406,15 +395,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
-      if (lastSavedExamId != null) ...[
-        const SizedBox(height: 8),
-        SizedBox(width:double.infinity,child:OutlinedButton.icon(
-          onPressed: shareLastExaminationPdf,
-          icon: const Icon(Icons.share_outlined),
-          label: Text('Kirim PDF pemeriksaan terakhir ($lastSavedExamId)'),
-        )),
-      ],
-      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. Tidak membuat invoice maupun kuitansi.',style:TextStyle(fontSize:11,color:Colors.black54))),
+      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive. Pengiriman dokumen dilakukan melalui alur WhatsApp, bukan tombol berbagi langsung setelah simpan.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
 }
@@ -770,7 +751,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       }
       // Play after the server confirms the invoice was created. The PDF URL
       // may be populated separately, so do not gate the sound on response fields.
-      await _playPdfReadySound();
+      // Optional sound must not delay a confirmed order or form reset.
+      unawaited(_playPdfReadySound());
       _pendingOrderRequestId = null;
       _pendingOrderPayload = null;
       _pendingOrderDate = null;
@@ -792,7 +774,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
         initialPaymentMethod: method,
         note: invoiceNote.text.trim(),
       ));
-      await _loadOfficialOrderHistory();
+      // Refreshing the full Sheets history can be slow; it must not block
+      // the successful save, form reset, or confirmation shown to staff.
+      unawaited(_loadOfficialOrderHistory());
       if (!mounted) return;
       // A confirmed order starts a clean form for the next customer. Keep
       // the existing server-side request ID protection for in-flight retries.
@@ -2825,8 +2809,17 @@ class _DocumentNotice {
 }
 
 class DocumentNotificationsScreen extends StatefulWidget {
-  final VoidCallback? onRead;
-  const DocumentNotificationsScreen({super.key, this.onRead});
+  final Set<String> initialReadIds;
+  final Map<String, String> initialStatuses;
+  final ValueChanged<Set<String>>? onRead;
+  final ValueChanged<Map<String, String>>? onStatusChanged;
+  const DocumentNotificationsScreen({
+    super.key,
+    this.initialReadIds = const <String>{},
+    this.initialStatuses = const <String, String>{},
+    this.onRead,
+    this.onStatusChanged,
+  });
   @override
   State<DocumentNotificationsScreen> createState() => _DocumentNotificationsScreenState();
 }
@@ -2875,15 +2868,8 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
   Future<void> _load() async {
     if (mounted) setState(() { _loading = true; _error = null; });
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final decoded = jsonDecode(prefs.getString('ol_document_notice_status') ?? '{}');
-      final statuses = decoded is Map
-          ? decoded.map((key, value) => MapEntry(key.toString(), value.toString()))
-          : <String, String>{};
-      final readDecoded = jsonDecode(prefs.getString('ol_document_notice_read_ids') ?? '[]');
-      final readIds = readDecoded is List
-          ? readDecoded.map((item) => item.toString()).toSet()
-          : <String>{};
+      final statuses = Map<String, String>.from(widget.initialStatuses);
+      final readIds = Set<String>.from(widget.initialReadIds);
       final tables = await Future.wait([
         SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
@@ -2924,18 +2910,15 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
 
   Future<void> _setStatus(_DocumentNotice notice, String status) async {
     final next = Map<String, String>.from(_statuses)..[notice.id] = status;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ol_document_notice_status', jsonEncode(next));
     if (mounted) setState(() => _statuses = next);
+    widget.onStatusChanged?.call(next);
   }
 
   Future<void> _markRead(_DocumentNotice notice) async {
     if (_readIds.contains(notice.id)) return;
     final next = Set<String>.from(_readIds)..add(notice.id);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ol_document_notice_read_ids', jsonEncode(next.toList()));
     if (mounted) setState(() => _readIds = next);
-    widget.onRead?.call();
+    widget.onRead?.call(next);
   }
 
   Future<void> _open(_DocumentNotice notice) async {
