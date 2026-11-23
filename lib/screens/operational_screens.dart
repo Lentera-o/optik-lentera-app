@@ -549,6 +549,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   bool _examinationLoading = false;
   String? _examinationError;
   String? _selectedExaminationId;
+  String? _selectedExaminationPdfUrl;
   bool _historyLoading = false;
   String? _historyError;
   String? _selectedHistoryInvoice;
@@ -687,6 +688,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     final row = selected;
     setState(() {
       _selectedExaminationId = examId;
+      _selectedExaminationPdfUrl = _historyCell(row, ['PDF Resep Pemeriksaan', 'Link PDF Resep', 'URL PDF Resep']);
       customer.text = _historyCell(row, ['Nama', 'Nama Pasien', 'Nama Pelanggan']);
       phone.text = _historyPhone(row);
       address.text = _historyCell(row, ['Alamat', 'Alamat Pasien', 'Alamat Pelanggan']);
@@ -900,6 +902,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       setState(() {
         selectedCustomerIndex = null;
         _selectedExaminationId = null;
+        _selectedExaminationPdfUrl = null;
         _selectedHistoryInvoice = null;
         method = 'Tunai';
       });
@@ -978,6 +981,25 @@ class _TransactionScreenState extends State<TransactionScreen> {
         }).toList(),
         onChanged: _prefillFromExamination,
       ),
+      if (_selectedExaminationPdfUrl != null && _selectedExaminationPdfUrl!.trim().isNotEmpty)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () async {
+              final uri = Uri.tryParse(_selectedExaminationPdfUrl!.trim());
+              if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF resep belum dapat dibuka.')));
+              }
+            },
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('Buka PDF Resep Pemeriksaan'),
+          ),
+        )
+      else if (_selectedExaminationId != null)
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
+          child: Text('Tautan PDF resep belum tercatat. Muat ulang data pemeriksaan setelah PDF tersimpan.', style: TextStyle(fontSize: 11, color: Colors.deepOrange)),
+        ),
       const SizedBox(height: 12),
       if (widget.customers.isNotEmpty) ...[
         DropdownButtonFormField<int>(
