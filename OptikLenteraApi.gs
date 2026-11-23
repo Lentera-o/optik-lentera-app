@@ -48,6 +48,20 @@ function doPost(e) {
       }
       return olApiReadTable_(request.data, actor);
     }
+    // Status pengerjaan adalah pembaruan operasional terpisah dari transaksi.
+    // Aksi ini tidak membuat invoice/pembayaran dan tidak memerlukan requestId.
+    if (action === 'updateOrderStatus') {
+      if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
+        throw new Error('Data pembaruan status tidak valid.');
+      }
+      const statusLock = LockService.getScriptLock();
+      statusLock.waitLock(30000);
+      try {
+        return olApiUpdateOrderStatus_(request.data, actor);
+      } finally {
+        statusLock.releaseLock();
+      }
+    }
     const requestId = String(request.requestId || '');
     if (!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)) {
       throw new Error('ID permintaan tidak valid.');
@@ -202,6 +216,49 @@ function olApiCreatePayment_(data, requestId, actor) {
     status: order.status,
     receiptPdf: String(payment.pdf || ''),
     processedBy: actor.email
+  });
+}
+
+/**
+ * Update only the work-progress field on an existing order.
+ * Existing invoice, payment, customer and prescription fields remain untouched.
+ */
+function olApiUpdateOrderStatus_(data, actor) {
+  const invoice = olApiText_(data.invoice, 'Nomor invoice', 80, true);
+  const status = olApiText_(data.status, 'Status pengerjaan', 40, true);
+  const allowed = [
+    'Menunggu diproses',
+    'Sedang dikerjakan',
+    'Siap diambil',
+    'Sudah diserahkan'
+  ];
+  if (allowed.indexOf(status) < 0) {
+    throw new Error('Pilihan status pengerjaan tidak valid.');
+  }
+
+  const spreadsheetId = String(
+    PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID') || ''
+  ).trim();
+  if (!spreadsheetId) throw new Error('ID spreadsheet operasional belum dipasang.');
+
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sh = ss.getSheetByName(OL.SHEET_ORDER);
+  if (!sh) throw new Error('Tab DATA_PESANAN tidak ditemukan.');
+
+  const row = olFindRow_(sh, OL_FIELDS.invoice, invoice);
+  if (!row) throw new Error('Invoice ' + invoice + ' tidak ditemukan di DATA_PESANAN.');
+
+  const statusField = ['Status Pengerjaan'];
+  olEnsureColumn_(sh, statusField);
+  olSetField_(sh, row, statusField, status);
+  SpreadsheetApp.flush();
+
+  return olApiJson_({
+    ok: true,
+    action: 'updateOrderStatus',
+    invoice: invoice,
+    status: status,
+    processedBy: actor && actor.email ? actor.email : 'Aplikasi OPTIK LENTERA'
   });
 }
 
