@@ -303,7 +303,9 @@ function olApiSaveExamination_(data, requestId, actor) {
     sh.setFrozenRows(1);
   }
   // Add only missing columns; never replace or reorder existing data.
-  let currentHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0].map(String);
+  let currentHeaders = sh.getLastColumn() > 0
+    ? sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0].map(String)
+    : [];
   headers.forEach(header => {
     if (currentHeaders.indexOf(header) < 0) {
       sh.getRange(1, sh.getLastColumn() + 1).setValue(header);
