@@ -111,11 +111,7 @@ class OptikPdfService {
           ['OS • Kiri', v('osSph'), v('osCyl'), v('osAxis'), v('osAdd'), v('osPd')],
         ]),
         pw.SizedBox(height: 3),
-        pw.Row(children: [
-          pw.Expanded(child: pair('Jenis lensa', values['lensType'])),
-          pw.SizedBox(width: 18),
-          pw.Expanded(child: pair('Catatan resep', v('note'))),
-        ]),
+        pair('Jenis lensa', values['lensType']),
         section('CATATAN / REKOMENDASI'),
         pw.Container(
           width: double.infinity,
