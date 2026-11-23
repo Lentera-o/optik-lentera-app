@@ -285,25 +285,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     'lensType':_value(lensType),'note':_value(note),
   };
 
-  Future<void> openLastExaminationPdf() async {
-    final url = lastSavedExamPdfUrl;
-    if (url == null || url.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Tautan PDF pemeriksaan belum tersedia.'),
-      ));
-      return;
-    }
-    final opened = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('PDF ada di Google Drive, tetapi tautannya gagal dibuka.'),
-      ));
-    }
-  }
-
   Future<void> saveAndPrint() async {
     if (saving) return;
     if (_value(name).isEmpty) {
@@ -416,15 +397,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
-      if (lastSavedExamId != null && lastSavedExamPdfUrl != null) ...[
-        const SizedBox(height: 8),
-        SizedBox(width:double.infinity,child:OutlinedButton.icon(
-          onPressed: openLastExaminationPdf,
-          icon: const Icon(Icons.picture_as_pdf_outlined),
-          label: Text('Buka / kirim PDF pemeriksaan terakhir ($lastSavedExamId)'),
-        )),
-      ],
-      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive; tombol di atas membuka PDF terakhir untuk ditinjau atau dibagikan. Tidak membuat invoice maupun kuitansi.',style:TextStyle(fontSize:11,color:Colors.black54))),
+      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive. Pengiriman dokumen dilakukan melalui alur WhatsApp, bukan tombol berbagi langsung setelah simpan.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
 }
