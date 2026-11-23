@@ -125,6 +125,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
       return;
     }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Konfirmasi ekspor data'),
+        content: const Text(
+          'CSV ini berisi data pelanggan dan transaksi dari Google Sheets. '
+          'Saat dilanjutkan, file sementara dapat dibuat untuk dibagikan ke aplikasi yang Anda pilih. '
+          'Pastikan penerima dan aplikasi tujuan tepercaya.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Lanjut ekspor'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     try {
       final orderHeaders = <String>{};
       final paymentHeaders = <String>{};
