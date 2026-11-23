@@ -1,27 +1,15 @@
 /*
- * PATCH TERPISAH: Upload PDF hasil pemeriksaan ke folder Drive OPTIK LENTERA.
+ * PATCH TERPISAH: upload PDF pemeriksaan ke folder Drive yang sudah ditentukan.
  *
- * 1) Di doPost(e), ubah batas raw.length dari 50000 menjadi 2000000.
- * 2) Setelah requestId divalidasi, sebelum pemeriksaan action tidak dikenal,
- *    sisipkan blok route berikut:
+ * Folder tujuan: 16cAhjCREFndJypd1GqvS79KklfhRhnn9
  *
- *    if (action === 'uploadExaminationPdf') {
- *      if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
- *        throw new Error('Data PDF pemeriksaan tidak valid.');
- *      }
- *      const uploadLock = LockService.getScriptLock();
- *      uploadLock.waitLock(30000);
- *      try {
- *        return olApiUploadExaminationPdf_(request.data, requestId, actor);
- *      } finally {
- *        uploadLock.releaseLock();
- *      }
- *    }
+ * A) Di doPost(e), naikkan batas raw.length dari 50000 menjadi 2000000.
+ * B) Setelah requestId divalidasi dan sebelum validasi action transaksi,
+ *    tambahkan route uploadExaminationPdf seperti di bawah.
+ * C) Tambahkan fungsi olApiUploadExaminationPdf_ ini sebagai fungsi baru.
  *
- * 3) Tambahkan fungsi di bawah ini sebagai fungsi baru.
- *
- * Tidak mengubah mesin invoice/kuitansi, sheet, trigger, atau folder.
- * Fungsi memakai Script Property OL_FOLDER_ID yang sudah dipakai sistem PDF.
+ * Jangan mengganti doPost seluruhnya. Jangan mengubah fungsi invoice,
+ * kuitansi, spreadsheet, trigger, atau konfigurasi folder yang sudah ada.
  */
 
 function olApiUploadExaminationPdf_(data, requestId, actor) {
@@ -59,28 +47,33 @@ function olApiUploadExaminationPdf_(data, requestId, actor) {
     throw new Error('Berkas yang dikirim bukan PDF yang valid.');
   }
 
-  // Reuse the existing official PDF folder. Never create a new folder here.
-  const folderId = PropertiesService.getScriptProperties().getProperty('OL_FOLDER_ID');
-  if (!folderId) {
-    throw new Error('Folder PDF OPTIK LENTERA belum terhubung (OL_FOLDER_ID).');
-  }
-  const folder = DriveApp.getFolderById(folderId);
-  folder.getName(); // Force an access check before reporting success.
+  // Folder ID berasal dari tautan folder yang diberikan pemilik aplikasi.
+  // Tidak membuat folder baru dan tidak bergantung pada Script Property.
+  const folder = DriveApp.getFolderById('16cAhjCREFndJypd1GqvS79KklfhRhnn9');
+  folder.getName(); // Pastikan akun eksekusi Web App dapat mengakses folder.
 
-  // Idempotent retry: if the same named PDF with the same byte size exists,
-  // return it instead of creating duplicate Drive files.
+  const incomingHash = Utilities.base64Encode(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, bytes)
+  );
   const existingFiles = folder.getFilesByName(fileName);
   const previousFiles = [];
-  while (existingFiles.hasNext()) previousFiles.push(existingFiles.next());
 
-  for (let i = 0; i < previousFiles.length; i++) {
-    if (previousFiles[i].getSize() === bytes.length) {
+  while (existingFiles.hasNext()) {
+    const oldFile = existingFiles.next();
+    previousFiles.push(oldFile);
+    const oldHash = Utilities.base64Encode(
+      Utilities.computeDigest(
+        Utilities.DigestAlgorithm.MD5,
+        oldFile.getBlob().getBytes()
+      )
+    );
+    if (oldHash === incomingHash) {
       return olApiJson_({
         ok: true,
         action: 'uploadExaminationPdf',
         examId: examId,
-        fileId: previousFiles[i].getId(),
-        fileUrl: previousFiles[i].getUrl(),
+        fileId: oldFile.getId(),
+        fileUrl: oldFile.getUrl(),
         processedBy: actor && actor.email ? actor.email : 'Aplikasi'
       });
     }
@@ -93,7 +86,18 @@ function olApiUploadExaminationPdf_(data, requestId, actor) {
     throw new Error('PDF gagal diverifikasi setelah diunggah ke Google Drive.');
   }
 
-  // Only remove stale same-name copies after the replacement is verified.
+  // Verifikasi checksum file hasil upload sebelum menghapus salinan lama.
+  const savedHash = Utilities.base64Encode(
+    Utilities.computeDigest(
+      Utilities.DigestAlgorithm.MD5,
+      file.getBlob().getBytes()
+    )
+  );
+  if (savedHash !== incomingHash) {
+    file.setTrashed(true);
+    throw new Error('Isi PDF di Google Drive tidak cocok dengan file sumber.');
+  }
+
   previousFiles.forEach(function(oldFile) {
     oldFile.setTrashed(true);
   });
@@ -107,3 +111,23 @@ function olApiUploadExaminationPdf_(data, requestId, actor) {
     processedBy: actor && actor.email ? actor.email : 'Aplikasi'
   });
 }
+
+/*
+ * Route yang perlu disisipkan ke doPost(e), setelah requestId lolos validasi:
+ *
+ * if (action === 'uploadExaminationPdf') {
+ *   if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
+ *     throw new Error('Data PDF pemeriksaan tidak valid.');
+ *   }
+ *   const uploadLock = LockService.getScriptLock();
+ *   uploadLock.waitLock(30000);
+ *   try {
+ *     return olApiUploadExaminationPdf_(request.data, requestId, actor);
+ *   } finally {
+ *     uploadLock.releaseLock();
+ *   }
+ * }
+ *
+ * Catatan: jangan menambahkan action ini ke blok whitelist createOrder /
+ * createPayment; route khusus di atas harus dijalankan lebih dahulu.
+ */
