@@ -358,6 +358,21 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         examId:id,receiptNo:receiptNo,qrPayload:qr,receiptDate:date,name:_value(name),
         phone:_value(phone),amount:fee,method:examPaymentMethod,
       );
+      final receiptDriveResponse = await ApiService.uploadExaminationPdf(
+        requestId: pendingRequestId!,
+        data: {
+          'examId': id,
+          'documentType': 'receipt',
+          'receiptNo': receiptNo,
+          'fileName': 'Kuitansi_Pemeriksaan_$safeExamId.pdf',
+          'pdfBase64': base64Encode(receiptBytes),
+        },
+      );
+      if (!receiptDriveResponse.isSuccessful || receiptDriveResponse.data is! Map ||
+          receiptDriveResponse.data['fileUrl'] == null ||
+          receiptDriveResponse.data['fileUrl'].toString().trim().isEmpty) {
+        throw Exception('Resep pemeriksaan sudah tersimpan, tetapi PDF kuitansi belum berhasil disimpan ke Google Drive: ${receiptDriveResponse.errorMessage ?? 'tautan file tidak diterima server.'}');
+      }
       lastSavedPrescriptionPdf = pdfBytes;
       lastSavedPrescriptionName = _value(name);
       lastSavedExamReceiptPdf = receiptBytes;
