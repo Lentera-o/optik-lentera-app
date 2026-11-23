@@ -8,5 +8,5 @@ class AppConfig {
   // App access key is injected by the release workflow; no Google login UI.
   static const String appApiKey = String.fromEnvironment('OL_APP_API_KEY');
 
-  static const Duration apiTimeout = Duration(seconds: 25);
+  static const Duration apiTimeout = Duration(seconds: 45);
 }
