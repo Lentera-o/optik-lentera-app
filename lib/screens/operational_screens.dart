@@ -348,7 +348,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         requestId: pendingRequestId!,
         data: {
           'examId': id,
-          'fileName': 'Resep_PROGRESS_$safeExamId.pdf',
+          'fileName': 'Hasil_Pemeriksaan_$safeExamId.pdf',
           'pdfBase64': base64Encode(pdfBytes),
         },
       );
