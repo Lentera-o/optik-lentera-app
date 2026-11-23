@@ -277,7 +277,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   Uint8List? lastSavedExamReceiptPdf;
   String? lastSavedReceiptNo;
   int? lastSavedExamFee;
-  String? lastSavedExamPaymentMethod;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -378,7 +377,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       lastSavedExamReceiptPdf = receiptBytes;
       lastSavedReceiptNo = receiptNo;
       lastSavedExamFee = fee;
-      lastSavedExamPaymentMethod = examPaymentMethod;
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
