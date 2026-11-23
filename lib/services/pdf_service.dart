@@ -198,7 +198,7 @@ class OptikPdfService {
             pw.SizedBox(height: 8),
             pw.Text(money(amount), style: pw.TextStyle(fontSize: 22, font: pw.Font.helveticaBold(), color: gold)),
             pw.SizedBox(height: 4),
-            pw.Text('Terbilang: ${amount == 0 ? 'nol' : amount.toString()} rupiah', style: const pw.TextStyle(fontSize: 8, color: ink)),
+            pw.Text('Pembayaran pemeriksaan diterima lunas.', style: const pw.TextStyle(fontSize: 8, color: ink)),
           ]),
         ),
         pair('Jenis transaksi', 'Biaya pemeriksaan mata'),
