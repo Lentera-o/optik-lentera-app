@@ -91,7 +91,7 @@ class OptikPdfService {
       maxPages: 2,
       build: (_) => [
         brand(),
-        pw.Center(child: heading('HASIL PEMERIKSAAN REFRAKSI', 'RESEP KACAMATA')),
+        pw.Center(child: heading('RESEP', 'HASIL PEMERIKSAAN REFRAKSI')),
         pw.Row(children: [
           pw.Expanded(child: pair('No. dokumen', examId)),
           pw.SizedBox(width: 14),
