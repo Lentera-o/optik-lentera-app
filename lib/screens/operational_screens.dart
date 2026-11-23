@@ -267,11 +267,18 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   final odSph = TextEditingController(), odCyl = TextEditingController(), odAxis = TextEditingController(), odAdd = TextEditingController(), odPd = TextEditingController();
   final osSph = TextEditingController(), osCyl = TextEditingController(), osAxis = TextEditingController(), osAdd = TextEditingController(), osPd = TextEditingController();
   final lensType = TextEditingController(), note = TextEditingController();
+  final examFee = TextEditingController(); // Petugas mengisi nominal manual; tidak ada harga yang dikunci.
+  String examPaymentMethod = 'Tunai';
+  String examPaymentStatus = 'LUNAS';
   bool saving = false;
   String? examId, qrPayload;
   String? lastSavedExamId;
   Uint8List? lastSavedPrescriptionPdf;
   String? lastSavedPrescriptionName;
+  Uint8List? lastSavedExamReceiptPdf;
+  String? lastSavedReceiptNo;
+  int? lastSavedExamFee;
+  String lastSavedExamPaymentStatus = 'LUNAS';
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -279,7 +286,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
 
   @override
   void dispose() {
-    for (final c in [name,phone,address,odSph,odCyl,odAxis,odAdd,odPd,osSph,osCyl,osAxis,osAdd,osPd,lensType,note]) { c.dispose(); }
+    for (final c in [name,phone,address,odSph,odCyl,odAxis,odAdd,odPd,osSph,osCyl,osAxis,osAdd,osPd,lensType,note,examFee]) { c.dispose(); }
     super.dispose();
   }
 
@@ -295,11 +302,17 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama pelanggan wajib diisi.')));
       return;
     }
+    final fee = int.tryParse(_value(examFee).replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    if (fee <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Biaya pemeriksaan wajib diisi manual dan lebih dari Rp0.')));
+      return;
+    }
     setState(() => saving = true);
     try {
       final date = examDate;
       final payload = <String,dynamic>{
-        'examDate':date.toIso8601String(),'name':_value(name),'phone':_value(phone),'address':_value(address),...rx,
+        'examDate':date.toIso8601String(),'name':_value(name),'phone':_value(phone),'address':_value(address),
+        'examFee':fee,'examPaymentMethod':examPaymentMethod,'examPaymentStatus':examPaymentStatus,...rx,
       };
       // Reuse the same id only when retrying the exact same payload. This
       // prevents duplicate rows after a timeout, while ensuring edited data
@@ -316,6 +329,8 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final result = response.data as Map;
       final id = result['examId'].toString();
       final qr = result['qrPayload'].toString();
+      final receiptNo = (result['receiptNo'] ?? '').toString();
+      if (receiptNo.trim().isEmpty) throw Exception('Nomor kuitansi pemeriksaan belum diterima server.');
       if (!mounted) return;
       setState(() { examId=id; qrPayload=qr; });
       final pdfBytes = await OptikPdfService.examinationBytes(
@@ -339,16 +354,44 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
           '${driveResponse.errorMessage ?? 'tautan file tidak diterima server.'}',
         );
       }
-      final savedPdfUrl = driveResponse.data['fileUrl'].toString().trim();
+      final receiptBytes = await OptikPdfService.examinationReceiptBytes(
+        examId:id,receiptNo:receiptNo,qrPayload:qr,receiptDate:date,name:_value(name),
+        phone:_value(phone),amount:fee,method:examPaymentMethod,paymentStatus:examPaymentStatus,
+      );
+      final isPaid = examPaymentStatus == 'LUNAS';
+      final examDocumentType = isPaid ? 'receipt' : 'feeStatement';
+      final examDocumentName = isPaid
+          ? 'Kuitansi_Pemeriksaan_$safeExamId.pdf'
+          : 'Rincian_Biaya_Pemeriksaan_$safeExamId.pdf';
+      final receiptDriveResponse = await ApiService.uploadExaminationPdf(
+        requestId: pendingRequestId!,
+        data: {
+          'examId': id,
+          'documentType': examDocumentType,
+          if (isPaid) 'receiptNo': receiptNo,
+          'fileName': examDocumentName,
+          'pdfBase64': base64Encode(receiptBytes),
+        },
+      );
+      if (!receiptDriveResponse.isSuccessful || receiptDriveResponse.data is! Map ||
+          receiptDriveResponse.data['fileUrl'] == null ||
+          receiptDriveResponse.data['fileUrl'].toString().trim().isEmpty) {
+        final label = isPaid ? 'kuitansi' : 'rincian biaya';
+        throw Exception('Resep pemeriksaan sudah tersimpan, tetapi PDF $label belum berhasil disimpan ke Google Drive: ${receiptDriveResponse.errorMessage ?? 'tautan file tidak diterima server.'}');
+      }
       lastSavedPrescriptionPdf = pdfBytes;
       lastSavedPrescriptionName = _value(name);
+      lastSavedExamReceiptPdf = receiptBytes;
+      lastSavedReceiptNo = receiptNo;
+      lastSavedExamFee = fee;
+      lastSavedExamPaymentStatus = examPaymentStatus;
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
       // Clear the completed examination only after both the server record and
       // its PDF have been saved successfully. Failed saves retain the draft.
       for (final controller in [
-        name, phone, address,
+        name, phone, address, examFee,
         odSph, odCyl, odAxis, odAdd, odPd,
         osSph, osCyl, osAxis, osAdd, osPd,
         lensType, note,
@@ -370,6 +413,24 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     }
   }
 
+  Future<void> _shareSavedExamReceipt() async {
+    final bytes = lastSavedExamReceiptPdf;
+    final exam = lastSavedExamId;
+    final receipt = lastSavedReceiptNo;
+    if (bytes == null || exam == null || receipt == null) return;
+    final safeId = exam.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    final isPaid = lastSavedExamPaymentStatus == 'LUNAS';
+    final documentLabel = isPaid ? 'Kuitansi' : 'Rincian Biaya';
+    final fileName = isPaid
+        ? 'Kuitansi_Pemeriksaan_$safeId.pdf'
+        : 'Rincian_Biaya_Pemeriksaan_$safeId.pdf';
+    await SharePlus.instance.share(ShareParams(
+      subject: '$documentLabel pemeriksaan OPTIK LENTERA - ${lastSavedPrescriptionName ?? ''}',
+      text: 'Dokumen pemeriksaan OPTIK LENTERA. Nomor: $receipt. Nominal: ${OptikPdfService.money(lastSavedExamFee ?? 0)}. Status: $lastSavedExamPaymentStatus.',
+      files: [XFile.fromData(bytes,mimeType:'application/pdf',name:fileName)],
+    ));
+  }
+
   Future<void> _shareSavedPrescription() async {
     final bytes = lastSavedPrescriptionPdf;
     final exam = lastSavedExamId;
@@ -388,9 +449,9 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     ));
   }
 
-  Widget field(TextEditingController c,String label,{TextInputType? type}) => Padding(
+  Widget field(TextEditingController c,String label,{TextInputType? type,List<TextInputFormatter>? formatters}) => Padding(
     padding: const EdgeInsets.only(bottom:10),
-    child: TextField(controller:c,keyboardType:type,decoration:InputDecoration(labelText:label,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))),
+    child: TextField(controller:c,keyboardType:type,inputFormatters:formatters,decoration:InputDecoration(labelText:label,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))),
   );
 
   Widget eyeFields(String label,List<TextEditingController> c) => Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -408,6 +469,20 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       const Text('DATA PELANGGAN',style:TextStyle(color:_darkGold,fontWeight:FontWeight.w800)),
       const SizedBox(height:10),
       field(name,'Nama pelanggan *'),field(phone,'Nomor HP / WhatsApp',type:TextInputType.phone),field(address,'Alamat'),
+      field(examFee,'Biaya pemeriksaan * (input manual)',type:TextInputType.number,formatters:[FilteringTextInputFormatter.digitsOnly]),
+      DropdownButtonFormField<String>(
+        value:examPaymentMethod,
+        decoration:const InputDecoration(labelText:'Metode pembayaran pemeriksaan *',border:OutlineInputBorder()),
+        items:['Tunai','Transfer','QRIS','Debit/kartu','Lainnya'].map((m)=>DropdownMenuItem(value:m,child:Text(m))).toList(),
+        onChanged:saving?null:(value)=>setState(()=>examPaymentMethod=value??'Tunai'),
+      ),
+      DropdownButtonFormField<String>(
+        value:examPaymentStatus,
+        decoration:const InputDecoration(labelText:'Status pembayaran',border:OutlineInputBorder()),
+        items:['LUNAS','BELUM LUNAS'].map((s)=>DropdownMenuItem(value:s,child:Text(s))).toList(),
+        onChanged:saving?null:(value)=>setState(()=>examPaymentStatus=value??'LUNAS'),
+      ),
+      const Padding(padding:EdgeInsets.only(bottom:8,top:4),child:Text('Nominal diisi sesuai kesepakatan petugas dan pelanggan. Status awal LUNAS dan dapat diubah bila pembayaran belum diterima.',style:TextStyle(fontSize:11,color:Colors.black54))),
       const Divider(),
       eyeFields('OD — MATA KANAN',[odSph,odCyl,odAxis,odAdd,odPd]),
       const SizedBox(height:8),
@@ -416,19 +491,16 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       if(examId!=null) Padding(padding:const EdgeInsets.only(bottom:10),child:Text('Dokumen tersimpan: $examId',style:const TextStyle(color:_darkGold,fontWeight:FontWeight.w700))),
       if (lastSavedExamId != null && lastSavedPrescriptionPdf != null) ...[
         const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _shareSavedPrescription,
-            icon: const Icon(Icons.share_outlined),
-            label: const Text('Kirim Resep via WhatsApp'),
-          ),
-        ),
+        SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_shareSavedPrescription,icon:const Icon(Icons.share_outlined),label:const Text('Kirim Resep via WhatsApp'))),
+        if(lastSavedExamReceiptPdf!=null) SizedBox(width:double.infinity,child:OutlinedButton.icon(
+          onPressed:_shareSavedExamReceipt,icon:const Icon(Icons.receipt_long_outlined),
+          label:Text('Kirim ${lastSavedExamPaymentStatus == 'LUNAS' ? 'Kuitansi' : 'Rincian Biaya'} Pemeriksaan ${lastSavedReceiptNo??''} · ${OptikPdfService.money(lastSavedExamFee??0)}'),
+        )),
       ],
       SizedBox(width:double.infinity,child:FilledButton.icon(
         onPressed:saving?null:saveAndPrint,
         icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.picture_as_pdf_outlined),
-        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
+        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan, Resep & ${examPaymentStatus == 'LUNAS' ? 'Kuitansi' : 'Rincian Biaya'}'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
       const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive. Pengiriman dokumen dilakukan melalui alur WhatsApp, bukan tombol berbagi langsung setelah simpan.',style:TextStyle(fontSize:11,color:Colors.black54))),
@@ -477,6 +549,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   bool _examinationLoading = false;
   String? _examinationError;
   String? _selectedExaminationId;
+  String? _selectedExaminationPdfUrl;
   bool _historyLoading = false;
   String? _historyError;
   String? _selectedHistoryInvoice;
@@ -615,6 +688,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     final row = selected;
     setState(() {
       _selectedExaminationId = examId;
+      _selectedExaminationPdfUrl = _historyCell(row, ['PDF Resep Pemeriksaan', 'Link PDF Resep', 'URL PDF Resep']);
       customer.text = _historyCell(row, ['Nama', 'Nama Pasien', 'Nama Pelanggan']);
       phone.text = _historyPhone(row);
       address.text = _historyCell(row, ['Alamat', 'Alamat Pasien', 'Alamat Pelanggan']);
@@ -828,6 +902,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       setState(() {
         selectedCustomerIndex = null;
         _selectedExaminationId = null;
+        _selectedExaminationPdfUrl = null;
         _selectedHistoryInvoice = null;
         method = 'Tunai';
       });
@@ -906,6 +981,25 @@ class _TransactionScreenState extends State<TransactionScreen> {
         }).toList(),
         onChanged: _prefillFromExamination,
       ),
+      if (_selectedExaminationPdfUrl != null && _selectedExaminationPdfUrl!.trim().isNotEmpty)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () async {
+              final uri = Uri.tryParse(_selectedExaminationPdfUrl!.trim());
+              if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF resep belum dapat dibuka.')));
+              }
+            },
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('Buka PDF Resep Pemeriksaan'),
+          ),
+        )
+      else if (_selectedExaminationId != null)
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
+          child: Text('Tautan PDF resep belum tercatat. Muat ulang data pemeriksaan setelah PDF tersimpan.', style: TextStyle(fontSize: 11, color: Colors.deepOrange)),
+        ),
       const SizedBox(height: 12),
       if (widget.customers.isNotEmpty) ...[
         DropdownButtonFormField<int>(
@@ -1292,8 +1386,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       final receipt = result is Map
           ? (result['receiptNumber'] ?? result['receipt'] ?? '').toString().trim()
           : '';
-      // Play after the server confirms the payment/receipt was recorded.
-      await _playPdfReadySound();
+      // The server response confirms the payment was recorded. Do not let
+      // a slow invoice refresh delay the success message or keep the form
+      // locked; refreshing the invoice history is a separate background task.
+      unawaited(_playPdfReadySound());
       _pendingPaymentRequestId = null;
       _pendingPaymentPayload = null;
       widget.onAdd(OptikPayment(
@@ -1304,7 +1400,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         category: category,
         note: paymentNote.text.trim(),
       ));
-      await _loadOfficialInvoices();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(receipt.isEmpty
@@ -1312,7 +1407,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
             : 'Pembayaran berhasil dicatat. Kuitansi $receipt masuk ke notifikasi dokumen.'),
         duration: const Duration(seconds: 5),
       ));
-      // Clear every payment field only after the server confirms success.
+      // Clear the form only after the server confirms success.
       invoice.clear();
       nominal.clear();
       paymentNote.clear();
@@ -1321,6 +1416,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         method = 'Tunai';
         category = 'DP tambahan';
       });
+      // Sync the official balance in the background; a slow read must not
+      // turn a confirmed payment into a confusing pending screen.
+      unawaited(_loadOfficialInvoices());
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

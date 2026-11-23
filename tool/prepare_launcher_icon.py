@@ -1,19 +1,14 @@
-from PIL import Image
+from PIL import Image, ImageOps
 from pathlib import Path
+import base64
+from io import BytesIO
 
 Path("build").mkdir(parents=True, exist_ok=True)
 
-source = "assets/optik_lentera_app_logo.png"
-target = "build/optik_lentera_launcher_zoom.png"
-
-# Use the main black-and-gold Lentera logo for the launcher icon. The tighter
-# centered crop enlarges the logo while retaining the full wordmark.
-with Image.open(source) as original:
-    image = original.convert("RGB")
-    width, height = image.size
-    crop_w, crop_h = int(width * 0.82), int(height * 0.82)
-    left = (width - crop_w) // 2
-    top = (height - crop_h) // 2
-    image = image.crop((left, top, left + crop_w, top + crop_h))
-    image = image.resize((1024, 1024), Image.Resampling.LANCZOS)
-    image.save(target, "PNG", optimize=True)
+# Owner-supplied OPTIK LENTERA artwork. Full square artwork is retained.
+ORIGINAL_LOGO_JPEG = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCABAAEADASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAgABBAYHBQgD/8QAMxAAAQMDAwEGBQQBBQAAAAAAAQIDBAAFEQYSIQcTIjEzUXIUFUFSkQgjYXGxFiQykqH/xAAZAQEAAgMAAAAAAAAAAAAAAAAAAQIDBAX/xAAmEQACAQMCBQUBAAAAAAAAAAAAAQIDESEEEjFRgaHhEyIjYXHw/9oADAMBAAIRAxEAPwDyU2lPZp7o8B9KLan7R+KTflp9op6Aban7R+KW1P2j8VO+UXbaFfKbjtIyD8I5gj/rXzXb7g2kqcgTEADJKo6wB+RVd8eZNmRdqftH4pbU/aPxU02u5htLhtk8IUAUqMVzBB8CDjwphbLmUlQts4gckiMvH+Kb48xZkPan7R+KFxKezX3R/wAT9KOhd8pftNWIHb8tPtFPQteUj2ijFAbvprqJq299LrfatNX64I1dZ3UQ2oLCFPu3CLjDakowrlA7pPA7icnmrCxo/wDU9d7W6LmYMCNKaU2sXVyG0tSVAgjG0qHBPoa79pntsdKYEnoE9Ej2mK0HdWNNqSnUO1PK1FSgcgDce4Pp3PSse1Vpq3K6xtQNX6tujGm7gBNjXd4OTyGVgKRu3Ekpz3SrnGUkg5rmR0Wkp1djgm5Xaul1Sfcz+pUlC6eFgv8AJ0p+pzT9kC4sqLcrfDYCf9tKiSg02hOBwsZwAP8AyuHqjXOq7N0bY+e3d12/apQox20IQ18LBIAKsIA5Wk4yfv8A4qDcrVpC8dfXm9ARb4NFEJU+1a4klaZRCP3GWkpGdjiu73sDBUeBitH1BbLVB0/qy/dd7Va7axeQ38gtzSwq9MBpJS2loJJS2nkkg8ZJ3cYFVq6CjOvGMaaSWW7LPJX7vyTCtKMW3L6PJn9cULvlL9p/xRnGeM4/mgd8pftNdU1x2/LT7RT0LXlI9oqXa4Ey6XKNbbdGclTJTqWmGWxlTiycBI/k0ArbPnWyc3OtsyTCltHLb8d1Tbif6Ukg1t/SXWN9maHWbFObj6w0fGfft7jraViXAUCXWFJVwoJ5wD4Ybx4Vjdv0/eJ9pmXWJCLsKFn4l3tW09ngbj3VKCjgc8A1YLBpHqDbNTohQdOXFF0cS7GEZSQlTgUylS0ckZ/beQrj6KSRWvqaLqxTjiSd1++VgvTkovPBmtdUOrXU+z6IsQm67kxr/eGRLch26LHYbixlDKdykoK96sp+oxhXpXnq5T51znOTrlNkzZbpy4/IdU44v+1KJJqxX2x6wurj11m21xaY7jdvOH2yW1N7WUthO/cedo4BGTnNfF/QWs2dQRrAvTVw+aS0OLjxkoC1Opb3doUlJIO3YoHnggg81ehGpGHyO7/sdOBEnG/t4FaoXfKX7TRULvlq9prKVE35afaK7Gj705pvVlq1AzHbkuW2W3KSy4opS4UHO0kcgH+K47ZHZp9oosj1oC6DWtua0le9NRNKsxolyfL7bgnLW6wezSjaVqRlxAUneEkjk12Ln1ivVyvenrrNtcF1yw3R6fGBWrK0r27WVK8SlG0hJ8QDjwArM8j1pZHrQFyteuEQdFW/TgsMZa4E/wCOalpfKFLV2qHAlxIT3gNpSO8MBRrvq603z/VDWpU2e2fMmIz0ZkrCi0gOSzIKuzG1O/B7Mq4Kh3jlVZdketLIoCZe5jdxvU64MxG4bcqS4+mO2oqSyFqKtiSeSBnAzUF3yl+00WR60LhHZL9poD//2Q=="
+source_image = Image.open(BytesIO(base64.b64decode(ORIGINAL_LOGO_JPEG))).convert("RGBA")
+artwork = ImageOps.contain(source_image, (1024, 1024), method=Image.Resampling.LANCZOS)
+canvas = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+canvas.alpha_composite(artwork, ((1024 - artwork.width) // 2, (1024 - artwork.height) // 2))
+canvas.save("build/optik_lentera_launcher.png", "PNG", optimize=True)
