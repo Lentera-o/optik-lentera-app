@@ -3,8 +3,6 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:cross_file/cross_file.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -269,9 +267,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   final lensType = TextEditingController(), note = TextEditingController();
   bool saving = false;
   String? examId, qrPayload;
-  String? lastSavedExamId;
-  Uint8List? lastSavedPrescriptionPdf;
-  String? lastSavedPrescriptionName;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -340,8 +335,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         );
       }
       final savedPdfUrl = driveResponse.data['fileUrl'].toString().trim();
-      lastSavedPrescriptionPdf = pdfBytes;
-      lastSavedPrescriptionName = _value(name);
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
@@ -358,7 +351,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       setState(() {
         examId = null;
         qrPayload = null;
-        lastSavedExamId = id;
         examDate = DateTime.now();
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan ke sistem dan PDF resmi masuk Google Drive. Form siap untuk pelanggan berikutnya.')));
@@ -368,24 +360,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     } finally {
       if (mounted) setState(() => saving=false);
     }
-  }
-
-  Future<void> _shareSavedPrescription() async {
-    final bytes = lastSavedPrescriptionPdf;
-    final exam = lastSavedExamId;
-    if (bytes == null || exam == null) return;
-    final safeId = exam.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
-    await SharePlus.instance.share(ShareParams(
-      subject: 'Resep OPTIK LENTERA - ${lastSavedPrescriptionName ?? ''}',
-      text: 'Resep hasil pemeriksaan OPTIK LENTERA. Pilih WhatsApp untuk mengirim dokumen ini.',
-      files: [
-        XFile.fromData(
-          bytes,
-          mimeType: 'application/pdf',
-          name: 'Resep_$safeId.pdf',
-        ),
-      ],
-    ));
   }
 
   Widget field(TextEditingController c,String label,{TextInputType? type}) => Padding(
@@ -414,24 +388,13 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       eyeFields('OS — MATA KIRI',[osSph,osCyl,osAxis,osAdd,osPd]),
       field(lensType,'Jenis lensa (opsional)'),field(note,'Catatan pemeriksaan / rekomendasi'),
       if(examId!=null) Padding(padding:const EdgeInsets.only(bottom:10),child:Text('Dokumen tersimpan: $examId',style:const TextStyle(color:_darkGold,fontWeight:FontWeight.w700))),
-      if (lastSavedExamId != null && lastSavedPrescriptionPdf != null) ...[
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _shareSavedPrescription,
-            icon: const Icon(Icons.share_outlined),
-            label: const Text('Kirim Resep via WhatsApp'),
-          ),
-        ),
-      ],
       SizedBox(width:double.infinity,child:FilledButton.icon(
         onPressed:saving?null:saveAndPrint,
         icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.picture_as_pdf_outlined),
         label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
-      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive. Pengiriman dokumen dilakukan melalui alur WhatsApp, bukan tombol berbagi langsung setelah simpan.',style:TextStyle(fontSize:11,color:Colors.black54))),
+      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive. Tidak ada pengiriman WhatsApp otomatis dari halaman pemeriksaan.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
 }
