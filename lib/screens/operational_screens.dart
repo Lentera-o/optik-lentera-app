@@ -609,6 +609,14 @@ class InvoiceReceiptScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => OptikPdfService.prescription(order),
+                    icon: const Icon(Icons.remove_red_eye_outlined),
+                    label: const Text('Cetak Resep Kacamata PDF'),
+                  ),
+                ),
                 if (receiptPayments.isNotEmpty)
                   ...receiptPayments.asMap().entries.map((entry) {
                     final payment = entry.value;
@@ -621,6 +629,20 @@ class InvoiceReceiptScreen extends StatelessWidget {
                         onPressed: () => OptikPdfService.receipt(order, payment, receiptNumber: receiptNo, paid: paidAtReceipt, remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt),
                         icon: const Icon(Icons.receipt_long_outlined),
                         label: Text('Cetak / Bagikan Kuitansi $receiptNo'),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: OutlinedButton.icon(
+                        onPressed: () => OptikPdfService.shareReceiptAndPrescription(
+                          order,
+                          payment,
+                          receiptNumber: receiptNo,
+                          paid: paidAtReceipt,
+                          remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt,
+                        ),
+                        icon: const Icon(Icons.share_outlined),
+                        label: const Text('Kirim Kuitansi + Resep Bersama'),
                       ),
                     );
                   }),
