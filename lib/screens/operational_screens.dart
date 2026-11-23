@@ -2804,8 +2804,17 @@ class _DocumentNotice {
 }
 
 class DocumentNotificationsScreen extends StatefulWidget {
-  final VoidCallback? onRead;
-  const DocumentNotificationsScreen({super.key, this.onRead});
+  final Set<String> initialReadIds;
+  final Map<String, String> initialStatuses;
+  final ValueChanged<Set<String>>? onRead;
+  final ValueChanged<Map<String, String>>? onStatusChanged;
+  const DocumentNotificationsScreen({
+    super.key,
+    this.initialReadIds = const <String>{},
+    this.initialStatuses = const <String, String>{},
+    this.onRead,
+    this.onStatusChanged,
+  });
   @override
   State<DocumentNotificationsScreen> createState() => _DocumentNotificationsScreenState();
 }
@@ -2854,15 +2863,8 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
   Future<void> _load() async {
     if (mounted) setState(() { _loading = true; _error = null; });
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final decoded = jsonDecode(prefs.getString('ol_document_notice_status') ?? '{}');
-      final statuses = decoded is Map
-          ? decoded.map((key, value) => MapEntry(key.toString(), value.toString()))
-          : <String, String>{};
-      final readDecoded = jsonDecode(prefs.getString('ol_document_notice_read_ids') ?? '[]');
-      final readIds = readDecoded is List
-          ? readDecoded.map((item) => item.toString()).toSet()
-          : <String>{};
+      final statuses = Map<String, String>.from(widget.initialStatuses);
+      final readIds = Set<String>.from(widget.initialReadIds);
       final tables = await Future.wait([
         SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
@@ -2903,18 +2905,15 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
 
   Future<void> _setStatus(_DocumentNotice notice, String status) async {
     final next = Map<String, String>.from(_statuses)..[notice.id] = status;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ol_document_notice_status', jsonEncode(next));
     if (mounted) setState(() => _statuses = next);
+    widget.onStatusChanged?.call(next);
   }
 
   Future<void> _markRead(_DocumentNotice notice) async {
     if (_readIds.contains(notice.id)) return;
     final next = Set<String>.from(_readIds)..add(notice.id);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ol_document_notice_read_ids', jsonEncode(next.toList()));
     if (mounted) setState(() => _readIds = next);
-    widget.onRead?.call();
+    widget.onRead?.call(next);
   }
 
   Future<void> _open(_DocumentNotice notice) async {
