@@ -236,7 +236,8 @@ class OptikPdfService {
     ]),
   );
 
-  /// Separate paid examination receipt. This is not a merchandise invoice.
+  /// Separate paid examination receipt, landscape A4 and visually paired
+  /// with the approved landscape prescription document.
   static Future<Uint8List> examinationReceiptBytes({
     required String examId,
     required String receiptNo,
@@ -249,63 +250,113 @@ class OptikPdfService {
     String paymentStatus = 'LUNAS',
   }) async {
     final pdf = pw.Document();
-    pdf.addPage(pw.MultiPage(
+    final isPaid = paymentStatus == 'LUNAS';
+    pdf.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4.landscape,
-      pageTheme: pw.PageTheme(buildBackground: (_) => pw.Container(color: paper)),
+      pageTheme: pw.PageTheme(buildBackground: (_) => pw.Container(color: PdfColors.white)),
       margin: const pw.EdgeInsets.fromLTRB(28, 20, 28, 18),
-      maxPages: 1,
-      build: (_) => [
-        brand(),
-        pw.Center(child: heading(paymentStatus == 'LUNAS' ? 'KUITANSI' : 'RINCIAN BIAYA', paymentStatus == 'LUNAS' ? 'BUKTI PEMBAYARAN PEMERIKSAAN OPTIK LENTERA' : 'PEMBERITAHUAN BIAYA PEMERIKSAAN OPTIK LENTERA')),
-        pw.Row(children: [
-          pw.Expanded(child: pair(paymentStatus == 'LUNAS' ? 'No. kuitansi' : 'No. referensi biaya', receiptNo)),
-          pw.SizedBox(width: 12),
-          pw.Expanded(child: pair('Tanggal', date(receiptDate))),
-          pw.SizedBox(width: 12),
-          pw.Expanded(child: pair('ID pemeriksaan', examId)),
-        ]),
-        pair('Nama pelanggan', name),
-        pair('No. HP / WA', phone),
-        section('RINCIAN PEMBAYARAN'),
-        pw.Container(
-          width: double.infinity,
-          padding: const pw.EdgeInsets.all(12),
-          decoration: pw.BoxDecoration(
-            color: pink,
-            border: pw.Border.all(color: line, width: .7),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-          ),
-          child: pw.Column(children: [
-            pw.Text(paymentStatus == 'LUNAS' ? 'Telah diterima pembayaran pemeriksaan dari' : 'Rincian biaya pemeriksaan untuk', style: const pw.TextStyle(fontSize: 9, color: ink)),
-            pw.SizedBox(height: 5),
-            pw.Text(name, style: pw.TextStyle(fontSize: 15, font: pw.Font.helveticaBold(), color: gold)),
-            pw.SizedBox(height: 8),
-            pw.Text(money(amount), style: pw.TextStyle(fontSize: 22, font: pw.Font.helveticaBold(), color: gold)),
-            pw.SizedBox(height: 4),
-            pw.Text(paymentStatus == 'LUNAS' ? 'Pembayaran pemeriksaan diterima lunas.' : 'Pembayaran belum diterima / belum lunas.', style: const pw.TextStyle(fontSize: 8, color: ink)),
-          ]),
-        ),
-        pair('Jenis transaksi', 'Biaya pemeriksaan mata'),
-        pair('Metode pembayaran', method),
-        pair('Status pembayaran', paymentStatus),
-        pw.SizedBox(height: 8),
-        pw.Row(children: [
-          pw.SizedBox(width: 54, height: 54, child: qr(qrPayload)),
-          pw.SizedBox(width: 8),
-          pw.Expanded(child: pw.Text(
-            paymentStatus == 'LUNAS' ? 'Kuitansi ini merupakan bukti pembayaran pemeriksaan. Pemeriksaan tersimpan dengan ID $examId. Invoice pembelian kacamata, bila ada, diterbitkan terpisah.' : 'Dokumen ini mencatat biaya pemeriksaan yang belum lunas. Pemeriksaan tersimpan dengan ID $examId. Bukti pembayaran diterbitkan setelah pembayaran diterima.',
+      build: (_) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          brand(),
+          pw.SizedBox(height: 12),
+          pw.Center(child: pw.Text(
+            isPaid ? 'KUITANSI PEMERIKSAAN' : 'RINCIAN BIAYA PEMERIKSAAN',
+            style: pw.TextStyle(fontSize: 19, font: pw.Font.helveticaBold(), color: gold, letterSpacing: 1),
+          )),
+          pw.SizedBox(height: 3),
+          pw.Center(child: pw.Text(
+            isPaid ? 'BUKTI PEMBAYARAN JASA PEMERIKSAAN MATA' : 'PEMBERITAHUAN BIAYA JASA PEMERIKSAAN MATA',
             style: const pw.TextStyle(fontSize: 8, color: ink),
           )),
-        ]),
-        pw.SizedBox(height: 6),
-        pw.Container(height: .7, color: line),
-        pw.SizedBox(height: 4),
-        pw.Center(child: pw.Text(
-          'OPTIK LENTERA · Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang · 0858 9312 8257',
-          textAlign: pw.TextAlign.center,
-          style: const pw.TextStyle(fontSize: 6, color: ink),
-        )),
-      ],
+          pw.SizedBox(height: 12),
+          pw.Row(children: [
+            pw.Expanded(child: _examField(isPaid ? 'NO. KUITANSI' : 'NO. REFERENSI', receiptNo)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _examField('TANGGAL', date(receiptDate))),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _examField('ID PEMERIKSAAN', examId)),
+          ]),
+          section('IDENTITAS PELANGGAN'),
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: line, width: .6), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+            child: pw.Row(children: [
+              pw.Expanded(child: pair('Nama pelanggan', name)),
+              pw.SizedBox(width: 18),
+              pw.Expanded(child: pair('No. HP / WhatsApp', phone)),
+            ]),
+          ),
+          section('RINCIAN PEMBAYARAN'),
+          pw.Table(
+            border: pw.TableBorder.all(color: line, width: .6),
+            columnWidths: const {0: pw.FlexColumnWidth(3), 1: pw.FlexColumnWidth(1), 2: pw.FlexColumnWidth(1.5)},
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: pink),
+                children: ['KETERANGAN','JUMLAH','TOTAL'].map((label) => pw.Padding(
+                  padding: const pw.EdgeInsets.all(7),
+                  child: pw.Text(label, textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 8, font: pw.Font.helveticaBold(), color: gold)),
+                )).toList(),
+              ),
+              pw.TableRow(children: [
+                pw.Padding(padding: const pw.EdgeInsets.all(9), child: pw.Text('Jasa pemeriksaan mata', style: const pw.TextStyle(fontSize: 9, color: ink))),
+                pw.Padding(padding: const pw.EdgeInsets.all(9), child: pw.Text('1', textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 9, color: ink))),
+                pw.Padding(padding: const pw.EdgeInsets.all(9), child: pw.Text(money(amount), textAlign: pw.TextAlign.right, style: pw.TextStyle(fontSize: 9, font: pw.Font.helveticaBold(), color: gold))),
+              ]),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            pw.Expanded(child: pw.Container(
+              padding: const pw.EdgeInsets.all(9),
+              decoration: pw.BoxDecoration(color: paper, border: pw.Border.all(color: pink, width: .8), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+              child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                pw.Text(isPaid ? 'TELAH DITERIMA DARI' : 'TAGIHAN DITUJUKAN KEPADA', style: pw.TextStyle(fontSize: 7, font: pw.Font.helveticaBold(), color: ink)),
+                pw.SizedBox(height: 4),
+                pw.Text(name, style: pw.TextStyle(fontSize: 13, font: pw.Font.helveticaBold(), color: gold)),
+                pw.SizedBox(height: 5),
+                pw.Text(isPaid ? 'Pembayaran jasa pemeriksaan telah diterima.' : 'Biaya pemeriksaan belum dinyatakan lunas.', style: const pw.TextStyle(fontSize: 8, color: ink)),
+              ]),
+            )),
+            pw.SizedBox(width: 10),
+            pw.Container(
+              width: 190,
+              padding: const pw.EdgeInsets.all(9),
+              decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line, width: .7), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+              child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                pw.Text('TOTAL ${isPaid ? 'DIBAYAR' : 'BIAYA'}', style: pw.TextStyle(fontSize: 7, font: pw.Font.helveticaBold(), color: ink)),
+                pw.SizedBox(height: 4),
+                pw.Text(money(amount), style: pw.TextStyle(fontSize: 17, font: pw.Font.helveticaBold(), color: gold)),
+                pw.SizedBox(height: 5),
+                pair('Metode', method),
+                pair('Status', paymentStatus),
+              ]),
+            ),
+          ]),
+          pw.Spacer(),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(7),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: line, width: .6), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+            child: pw.Row(children: [
+              pw.SizedBox(width: 48, height: 48, child: qr(qrPayload)),
+              pw.SizedBox(width: 9),
+              pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                pw.Text('QR VERIFIKASI DOKUMEN', style: pw.TextStyle(fontSize: 7, font: pw.Font.helveticaBold(), color: gold)),
+                pw.SizedBox(height: 3),
+                pw.Text('Dokumen ini terkait dengan pemeriksaan $examId. ${isPaid ? 'Kuitansi ini merupakan bukti pembayaran jasa pemeriksaan, bukan invoice pembelian barang.' : 'Simpan dokumen ini sebagai rincian biaya; kuitansi diterbitkan setelah pembayaran diterima.'}', style: const pw.TextStyle(fontSize: 7, color: ink)),
+              ])),
+            ]),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Container(height: .7, color: line),
+          pw.SizedBox(height: 4),
+          pw.Center(child: pw.Text(
+            'OPTIK LENTERA  ·  Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang  ·  0858 9312 8257',
+            textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 6, color: ink),
+          )),
+        ],
+      ),
     ));
     return await pdf.save();
   }
