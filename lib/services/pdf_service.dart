@@ -13,6 +13,7 @@ class OptikPdfService {
   static const line = PdfColor.fromInt(0xFFDDCBA8);
   static const ink = PdfColor.fromInt(0xFF51484A);
   static pw.MemoryImage get logo => pw.MemoryImage(base64Decode(optikLogoBase64));
+  static pw.MemoryImage get stamp => pw.MemoryImage(base64Decode(optikStampBase64));
   static pw.Widget qr(String value) => pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: value, width: 92, height: 92, drawText: false);
 
   static String money(int n) => 'Rp ' + n.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
@@ -69,7 +70,8 @@ class OptikPdfService {
     ],
   );
 
-  /// Independent examination document. No invoice, payment, signature, or stamp.
+  /// Independent examination document, styled from the existing official receipt.
+  /// It is generated in memory and uploaded to the official Drive flow.
   static Future<Uint8List> examinationBytes({
     required String examId,
     required String qrPayload,
@@ -79,48 +81,46 @@ class OptikPdfService {
     required String address,
     required Map<String, String> values,
   }) async {
-    // Generate every PDF page before the save channel receives the bytes.
-    // MultiPage lays out each section in sequence and creates another page
-    // when long customer details or notes need more room.
     final pdf = pw.Document();
     String v(String key) =>
         (values[key] ?? '').trim().isEmpty ? '-' : values[key]!.trim();
 
     pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4.landscape,
-      // Match the warm paper background used by the official invoice and receipt.
       pageTheme: pw.PageTheme(
         buildBackground: (_) => pw.Container(color: paper),
       ),
-      margin: const pw.EdgeInsets.fromLTRB(28, 22, 28, 20),
-      maxPages: 4,
+      margin: const pw.EdgeInsets.fromLTRB(28, 20, 28, 18),
+      maxPages: 2,
       build: (_) => [
         brand(),
         pw.Center(child: heading('HASIL PEMERIKSAAN REFRAKSI', 'RESEP KACAMATA')),
         pw.Row(children: [
           pw.Expanded(child: pair('No. dokumen', examId)),
-          pw.SizedBox(width: 18),
+          pw.SizedBox(width: 14),
           pw.Expanded(child: pair('Tanggal', date(examDate))),
-        ]),
-        pw.SizedBox(height: 6),
-        section('DATA PELANGGAN'),
-        pw.Row(children: [
+          pw.SizedBox(width: 14),
           pw.Expanded(child: pair('Nama pelanggan', name)),
-          pw.SizedBox(width: 18),
+          pw.SizedBox(width: 14),
           pw.Expanded(child: pair('No. HP / WA', phone)),
         ]),
         pair('Alamat', address),
         section('HASIL PEMERIKSAAN'),
-        dataTable(['MATA','SPH','CYL','AXIS','ADD','PD'], [
-          ['OD - Kanan',v('odSph'),v('odCyl'),v('odAxis'),v('odAdd'),v('odPd')],
-          ['OS - Kiri',v('osSph'),v('osCyl'),v('osAxis'),v('osAdd'),v('osPd')],
+        dataTable(['MATA', 'SPH', 'CYL', 'AXIS', 'ADD', 'PD'], [
+          ['OD • Kanan', v('odSph'), v('odCyl'), v('odAxis'), v('odAdd'), v('odPd')],
+          ['OS • Kiri', v('osSph'), v('osCyl'), v('osAxis'), v('osAdd'), v('osPd')],
         ]),
-        pair('Jenis lensa', values['lensType']),
+        pw.SizedBox(height: 3),
+        pw.Row(children: [
+          pw.Expanded(child: pair('Jenis lensa', values['lensType'])),
+          pw.SizedBox(width: 18),
+          pw.Expanded(child: pair('Catatan resep', v('note'))),
+        ]),
         section('CATATAN / REKOMENDASI'),
         pw.Container(
           width: double.infinity,
-          constraints: const pw.BoxConstraints(minHeight: 38),
           padding: const pw.EdgeInsets.all(8),
+          constraints: const pw.BoxConstraints(minHeight: 30),
           decoration: pw.BoxDecoration(
             color: pink,
             border: pw.Border.all(color: line, width: .6),
@@ -128,25 +128,49 @@ class OptikPdfService {
           ),
           child: pw.Text(v('note'), style: const pw.TextStyle(fontSize: 8, color: ink)),
         ),
-        pw.SizedBox(height: 14),
-        pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-          pw.Expanded(child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Container(height: .7, color: line),
-              pw.SizedBox(height: 5),
-              pw.Text(
-                'OPTIK LENTERA - Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang - 0858 9312 8257',
-                style: const pw.TextStyle(fontSize: 7, color: ink),
+        pw.SizedBox(height: 10),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.end,
+          children: [
+            pw.Expanded(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.',
+                    style: const pw.TextStyle(fontSize: 8, color: ink),
+                  ),
+                  pw.SizedBox(height: 5),
+                  pw.Row(children: [
+                    pw.SizedBox(width: 42, height: 42, child: qr(qrPayload)),
+                    pw.SizedBox(width: 8),
+                    pw.Expanded(child: pw.Text(
+                      'Pindai QR untuk memeriksa nomor dokumen: $examId',
+                      style: const pw.TextStyle(fontSize: 7, color: ink),
+                    )),
+                  ]),
+                ],
               ),
-            ],
-          )),
-          pw.SizedBox(width: 14),
-          pw.Column(children: [
-            pw.SizedBox(width: 66, height: 66, child: qr(qrPayload)),
-            pw.Text('QR DOKUMEN', style: pw.TextStyle(fontSize: 6, font: pw.Font.helveticaBold(), color: gold)),
-          ]),
-        ]),
+            ),
+            pw.SizedBox(width: 20),
+            pw.Column(
+              children: [
+                pw.Text('Hormat kami,', style: const pw.TextStyle(fontSize: 8, color: ink)),
+                pw.SizedBox(height: 3),
+                pw.SizedBox(width: 76, height: 76, child: pw.Image(stamp, fit: pw.BoxFit.contain)),
+                pw.Text('OPTIK LENTERA', style: pw.TextStyle(fontSize: 7, font: pw.Font.helveticaBold(), color: gold)),
+              ],
+            ),
+          ],
+        ),
+        pw.SizedBox(height: 5),
+        pw.Container(height: .7, color: line),
+        pw.SizedBox(height: 4),
+        pw.Center(child: pw.Text(
+          'OPTIK LENTERA · Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang · 0858 9312 8257',
+          textAlign: pw.TextAlign.center,
+          style: const pw.TextStyle(fontSize: 6, color: ink),
+        )),
       ],
     ));
     return await pdf.save();
