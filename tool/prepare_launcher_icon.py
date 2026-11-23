@@ -1,19 +1,22 @@
-from PIL import Image
+from PIL import Image, ImageOps
 from pathlib import Path
 
 Path("build").mkdir(parents=True, exist_ok=True)
 
-source = "assets/optik_lentera_app_logo.png"
-target = "build/optik_lentera_launcher_zoom.png"
+# Use the approved dedicated gold-framed launcher emblem. Keep the whole artwork
+# visible: fit it onto a transparent square instead of cropping the logo.
+source = "assets/optik_lentera_launcher_emblem.png"
+target = "build/optik_lentera_launcher_emblem.png"
 
-# Use the main black-and-gold Lentera logo for the launcher icon. The tighter
-# centered crop enlarges the logo while retaining the full wordmark.
 with Image.open(source) as original:
-    image = original.convert("RGB")
-    width, height = image.size
-    crop_w, crop_h = int(width * 0.82), int(height * 0.82)
-    left = (width - crop_w) // 2
-    top = (height - crop_h) // 2
-    image = image.crop((left, top, left + crop_w, top + crop_h))
-    image = image.resize((1024, 1024), Image.Resampling.LANCZOS)
-    image.save(target, "PNG", optimize=True)
+    artwork = original.convert("RGBA")
+    artwork = ImageOps.contain(
+        artwork,
+        (1024, 1024),
+        method=Image.Resampling.LANCZOS,
+    )
+    canvas = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+    left = (1024 - artwork.width) // 2
+    top = (1024 - artwork.height) // 2
+    canvas.alpha_composite(artwork, (left, top))
+    canvas.save(target, "PNG", optimize=True)
