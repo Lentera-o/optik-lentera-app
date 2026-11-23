@@ -632,7 +632,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       osPd.text = _historyCell(row, ['OS PD']);
       lensType.text = _historyCell(row, ['Jenis Lensa']);
       rxNote.text = _historyCell(row, ['Catatan', 'Catatan Pemeriksaan']);
-      otherDescription.text = 'Biaya Pemeriksaan Mata';
+      // Hasil pemeriksaan hanya mengisi resep dan identitas. Biaya tidak pernah
+      // ditambahkan otomatis ke transaksi; item transaksi harus dipilih manual.
       final reference = 'ID Pemeriksaan: $examId';
       if (!invoiceNote.text.contains(reference)) {
         invoiceNote.text = invoiceNote.text.trim().isEmpty
@@ -641,7 +642,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       }
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Hasil pemeriksaan $examId dimuat. Masukkan biaya pemeriksaan dan DP sebelum menyimpan.')),
+      SnackBar(content: Text('Hasil pemeriksaan $examId dimuat. Tambahkan rincian frame/lensa dan nominal transaksi hanya jika pelanggan melakukan pemesanan.')),
     );
   }
 
@@ -730,7 +731,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
           ? 'Nama pelanggan wajib diisi.'
           : total <= 0
               ? (_selectedExaminationId != null
-                  ? 'Masukkan harga pemeriksaan di kolom Harga pemeriksaan / biaya lain, atau isi harga frame/lensa terlebih dahulu. Setelah itu baru masukkan DP.'
+                  ? 'Isi harga frame, lensa, atau biaya lain untuk pesanan ini terlebih dahulu sebelum mengisi DP.'
                   : 'Masukkan harga frame, lensa, atau biaya lain terlebih dahulu sebelum mengisi DP.')
               : 'Nominal DP tidak boleh melebihi total pesanan.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
@@ -851,7 +852,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(18), children: [
-    const _Intro('Pemesanan & Pemeriksaan', 'Input pesanan dan resep mata OD/OS.', Icons.receipt_long_outlined),
+    const _Intro('Pemesanan & Transaksi', 'Catat pesanan frame/lensa dan rincian transaksi pelanggan.', Icons.receipt_long_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
