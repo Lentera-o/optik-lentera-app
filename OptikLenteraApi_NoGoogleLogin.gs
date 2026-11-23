@@ -346,10 +346,8 @@ function olApiUploadExaminationPdf_(data, requestId, actor) {
   folder.getName();
   const incomingHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,bytes));
   const existingFiles = folder.getFilesByName(fileName);
-  const previousFiles = [];
   while (existingFiles.hasNext()) {
     const oldFile = existingFiles.next();
-    previousFiles.push(oldFile);
     const oldHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,oldFile.getBlob().getBytes()));
     if (oldHash === incomingHash) {
       olApiLinkExamPrescriptionPdf_(examId,oldFile.getUrl());
@@ -362,7 +360,6 @@ function olApiUploadExaminationPdf_(data, requestId, actor) {
   const savedHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,file.getBlob().getBytes()));
   if (savedHash !== incomingHash) { file.setTrashed(true); throw new Error('Isi PDF di Google Drive tidak cocok dengan file sumber.'); }
   olApiLinkExamPrescriptionPdf_(examId,file.getUrl());
-  previousFiles.forEach(oldFile=>oldFile.setTrashed(true));
   return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,fileId:file.getId(),fileUrl:file.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
 }
 
