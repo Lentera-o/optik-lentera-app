@@ -420,9 +420,7 @@ function olApiUploadExaminationPdf_(data, requestId, actor) {
     previousFiles.push(oldFile);
     const oldHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,oldFile.getBlob().getBytes()));
     if (oldHash === incomingHash) {
-      if (documentType === 'receipt' || documentType === 'feeStatement') {
-        olApiLinkExamDocumentPdf_(examId,receiptNo,documentType,oldFile.getUrl());
-      }
+      olApiLinkExamDocumentPdf_(examId,receiptNo,documentType,oldFile.getUrl());
       return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,documentType:documentType,fileId:oldFile.getId(),fileUrl:oldFile.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
     }
   }
@@ -430,9 +428,7 @@ function olApiUploadExaminationPdf_(data, requestId, actor) {
   if (file.getSize() !== bytes.length) { file.setTrashed(true); throw new Error('PDF gagal diverifikasi setelah diunggah ke Google Drive.'); }
   const savedHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,file.getBlob().getBytes()));
   if (savedHash !== incomingHash) { file.setTrashed(true); throw new Error('Isi PDF di Google Drive tidak cocok dengan file sumber.'); }
-  if (documentType === 'receipt' || documentType === 'feeStatement') {
-    olApiLinkExamDocumentPdf_(examId,receiptNo,documentType,file.getUrl());
-  }
+  olApiLinkExamDocumentPdf_(examId,receiptNo,documentType,file.getUrl());
   previousFiles.forEach(oldFile=>oldFile.setTrashed(true));
   return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,documentType:documentType,fileId:file.getId(),fileUrl:file.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
 }
@@ -445,9 +441,11 @@ function olApiLinkExamDocumentPdf_(examId, receiptNo, documentType, fileUrl) {
   const headers = sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(String);
   const idCol = headers.indexOf('ID Pemeriksaan') + 1;
   const receiptCol = headers.indexOf('Nomor Kuitansi Pemeriksaan') + 1;
-  const targetHeader = documentType === 'receipt'
-    ? 'PDF Kuitansi Pemeriksaan'
-    : 'PDF Rincian Biaya Pemeriksaan';
+  const targetHeader = documentType === 'prescription'
+    ? 'PDF Resep Pemeriksaan'
+    : documentType === 'receipt'
+      ? 'PDF Kuitansi Pemeriksaan'
+      : 'PDF Rincian Biaya Pemeriksaan';
   let pdfCol = headers.indexOf(targetHeader) + 1;
   if (idCol < 1) throw new Error('Kolom ID pemeriksaan belum tersedia.');
   if (documentType === 'receipt') {
