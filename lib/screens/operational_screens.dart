@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:async';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 import '../services/api_service.dart';
@@ -267,6 +270,8 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   bool saving = false;
   String? examId, qrPayload;
   String? savedPdfUrl;
+  Uint8List? savedPdfBytes;
+  String? savedPdfFileName;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -307,6 +312,24 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
           const SnackBar(content: Text('PDF tidak dapat dibuka. Coba lagi dari riwayat pemeriksaan.')),
         );
       }
+    }
+  }
+
+  Future<void> shareSavedPdf() async {
+    final bytes = savedPdfBytes;
+    final fileName = savedPdfFileName;
+    if (bytes == null || fileName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File resep belum tersedia untuk dibagikan.')));
+      return;
+    }
+    try {
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile.fromData(bytes, name: fileName, mimeType: 'application/pdf')],
+        subject: 'Resep PROGRESS OPTIK LENTERA',
+        text: 'Resep PROGRESS OPTIK LENTERA · ${examId ?? ''}',
+      ));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF belum bisa dibagikan: $e')));
     }
   }
 
@@ -376,6 +399,8 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       }
       setState(() {
         this.savedPdfUrl = savedPdfUrl;
+        savedPdfBytes = pdfBytes;
+        savedPdfFileName = 'Resep_PROGRESS_$safeExamId.pdf';
         examId = null;
         qrPayload = null;
         examDate = DateTime.now();
@@ -406,11 +431,18 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     const _Intro('Pemeriksaan Mata','Catat hasil pemeriksaan OD/OS dan simpan resep PDF pelanggan.',Icons.visibility_outlined),
     const SizedBox(height:14),
     if (savedPdfUrl != null && savedPdfUrl!.trim().isNotEmpty) ...[
-      _Panel(child: Row(children: [
-        const Icon(Icons.picture_as_pdf_outlined, color: _darkGold),
-        const SizedBox(width: 10),
-        const Expanded(child: Text('PDF resep PROGRESS tersimpan', style: TextStyle(fontWeight: FontWeight.w700))),
-        FilledButton.icon(onPressed: openSavedPdf, icon: const Icon(Icons.open_in_new), label: const Text('Buka PDF'), style: FilledButton.styleFrom(backgroundColor: _darkGold)),
+      _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.picture_as_pdf_outlined, color: _darkGold),
+          SizedBox(width: 10),
+          Expanded(child: Text('PDF resep PROGRESS tersimpan', style: TextStyle(fontWeight: FontWeight.w700))),
+        ]),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          FilledButton.icon(onPressed: openSavedPdf, icon: const Icon(Icons.open_in_new), label: const Text('Buka PDF'), style: FilledButton.styleFrom(backgroundColor: _darkGold)),
+          OutlinedButton.icon(onPressed: shareSavedPdf, icon: const Icon(Icons.share_outlined), label: const Text('Kirim PDF ke WhatsApp')),
+        ]),
+        const Padding(padding: EdgeInsets.only(top: 6), child: Text('Pilih WhatsApp pada menu berbagi; file PDF ikut terlampir.', style: TextStyle(fontSize: 11, color: Colors.black54))),
       ])),
       const SizedBox(height: 12),
     ],
