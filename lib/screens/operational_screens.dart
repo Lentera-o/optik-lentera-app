@@ -402,7 +402,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
 
   @override
   Widget build(BuildContext context) => ListView(padding:const EdgeInsets.all(18),children:[
-    const _Intro('Pemeriksaan Mata','Catat hasil pemeriksaan secara mandiri tanpa membuat invoice atau transaksi pembelian.',Icons.visibility_outlined),
+    const _Intro('Pemeriksaan Mata','Catat hasil pemeriksaan OD/OS dan simpan resep PDF pelanggan.',Icons.visibility_outlined),
     const SizedBox(height:14),
     _Panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       const Text('DATA PELANGGAN',style:TextStyle(color:_darkGold,fontWeight:FontWeight.w800)),
