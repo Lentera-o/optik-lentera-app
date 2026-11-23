@@ -358,20 +358,26 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         examId:id,receiptNo:receiptNo,qrPayload:qr,receiptDate:date,name:_value(name),
         phone:_value(phone),amount:fee,method:examPaymentMethod,paymentStatus:examPaymentStatus,
       );
+      final isPaid = examPaymentStatus == 'LUNAS';
+      final examDocumentType = isPaid ? 'receipt' : 'feeStatement';
+      final examDocumentName = isPaid
+          ? 'Kuitansi_Pemeriksaan_$safeExamId.pdf'
+          : 'Rincian_Biaya_Pemeriksaan_$safeExamId.pdf';
       final receiptDriveResponse = await ApiService.uploadExaminationPdf(
         requestId: pendingRequestId!,
         data: {
           'examId': id,
-          'documentType': 'receipt',
-          'receiptNo': receiptNo,
-          'fileName': 'Kuitansi_Pemeriksaan_$safeExamId.pdf',
+          'documentType': examDocumentType,
+          if (isPaid) 'receiptNo': receiptNo,
+          'fileName': examDocumentName,
           'pdfBase64': base64Encode(receiptBytes),
         },
       );
       if (!receiptDriveResponse.isSuccessful || receiptDriveResponse.data is! Map ||
           receiptDriveResponse.data['fileUrl'] == null ||
           receiptDriveResponse.data['fileUrl'].toString().trim().isEmpty) {
-        throw Exception('Resep pemeriksaan sudah tersimpan, tetapi PDF kuitansi belum berhasil disimpan ke Google Drive: ${receiptDriveResponse.errorMessage ?? 'tautan file tidak diterima server.'}');
+        final label = isPaid ? 'kuitansi' : 'rincian biaya';
+        throw Exception('Resep pemeriksaan sudah tersimpan, tetapi PDF $label belum berhasil disimpan ke Google Drive: ${receiptDriveResponse.errorMessage ?? 'tautan file tidak diterima server.'}');
       }
       lastSavedPrescriptionPdf = pdfBytes;
       lastSavedPrescriptionName = _value(name);
