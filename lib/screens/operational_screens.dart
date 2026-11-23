@@ -780,7 +780,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       }
       // Play after the server confirms the invoice was created. The PDF URL
       // may be populated separately, so do not gate the sound on response fields.
-      await _playPdfReadySound();
+      // Optional sound must not delay a confirmed order or form reset.
+      unawaited(_playPdfReadySound());
       _pendingOrderRequestId = null;
       _pendingOrderPayload = null;
       _pendingOrderDate = null;
@@ -802,7 +803,9 @@ class _TransactionScreenState extends State<TransactionScreen> {
         initialPaymentMethod: method,
         note: invoiceNote.text.trim(),
       ));
-      await _loadOfficialOrderHistory();
+      // Refreshing the full Sheets history can be slow; it must not block
+      // the successful save, form reset, or confirmation shown to staff.
+      unawaited(_loadOfficialOrderHistory());
       if (!mounted) return;
       // A confirmed order starts a clean form for the next customer. Keep
       // the existing server-side request ID protection for in-flight retries.
