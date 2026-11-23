@@ -30,7 +30,7 @@ function doPost(e) {
     const raw = e && e.postData && e.postData.contents
       ? String(e.postData.contents)
       : '';
-    if (!raw || raw.length > 50000) {
+    if (!raw || raw.length > 2000000) {
       return olApiJson_({ ok: false, error: 'Payload kosong atau terlalu besar.' });
     }
 
@@ -51,6 +51,18 @@ function doPost(e) {
     const requestId = String(request.requestId || '');
     if (!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)) {
       throw new Error('ID permintaan tidak valid.');
+    }
+    if (action === 'uploadExaminationPdf') {
+      if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
+        throw new Error('Data PDF pemeriksaan tidak valid.');
+      }
+      const uploadLock = LockService.getScriptLock();
+      uploadLock.waitLock(30000);
+      try {
+        return olApiUploadExaminationPdf_(request.data, requestId, actor);
+      } finally {
+        uploadLock.releaseLock();
+      }
     }
     if (action !== 'createOrder' && action !== 'createPayment' && action !== 'saveExamination') {
       throw new Error('Aksi transaksi tidak dikenal.');
@@ -307,4 +319,73 @@ function olApiSaveExamination_(data, requestId, actor) {
   ];
   sh.appendRow(values);
   return olApiJson_({ok:true,action:'saveExamination',examId:examId,qrPayload:qrPayload,reused:false,processedBy:actor.email});
+}
+
+
+/**
+ * Upload only the prescription PDF for an existing examination.
+ * Does not create examination-fee receipts or fee statements.
+ */
+function olApiUploadExaminationPdf_(data, requestId, actor) {
+  const examId = String(data.examId || '').trim();
+  if (!examId || examId.length > 120) throw new Error('Nomor pemeriksaan tidak valid.');
+  const safeId = examId.replace(/[^A-Za-z0-9_-]/g, '_');
+  const fileName = 'Hasil_Pemeriksaan_' + safeId + '.pdf';
+  if (String(data.fileName || '') !== fileName) throw new Error('Nama file PDF tidak sesuai dengan nomor pemeriksaan.');
+
+  const pdfBase64 = String(data.pdfBase64 || '').trim();
+  if (!pdfBase64 || pdfBase64.length > 1600000) throw new Error('Data PDF kosong atau melebihi batas ukuran.');
+  let bytes;
+  try { bytes = Utilities.base64Decode(pdfBase64); }
+  catch (error) { throw new Error('Data PDF tidak dapat dibaca.'); }
+  if (!bytes || bytes.length < 100 || bytes.length > 1200000) throw new Error('Ukuran PDF tidak valid.');
+  const signature = String.fromCharCode(bytes[0]&255,bytes[1]&255,bytes[2]&255,bytes[3]&255,bytes[4]&255);
+  if (signature !== '%PDF-') throw new Error('Berkas yang dikirim bukan PDF yang valid.');
+
+  const folder = DriveApp.getFolderById('16cAhjCREFndJypd1GqvS79KklfhRhnn9');
+  folder.getName();
+  const incomingHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,bytes));
+  const existingFiles = folder.getFilesByName(fileName);
+  const previousFiles = [];
+  while (existingFiles.hasNext()) {
+    const oldFile = existingFiles.next();
+    previousFiles.push(oldFile);
+    const oldHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,oldFile.getBlob().getBytes()));
+    if (oldHash === incomingHash) {
+      olApiLinkExamPrescriptionPdf_(examId,oldFile.getUrl());
+      return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,fileId:oldFile.getId(),fileUrl:oldFile.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
+    }
+  }
+
+  const file = folder.createFile(Utilities.newBlob(bytes,'application/pdf',fileName));
+  if (file.getSize() !== bytes.length) { file.setTrashed(true); throw new Error('PDF gagal diverifikasi setelah diunggah ke Google Drive.'); }
+  const savedHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,file.getBlob().getBytes()));
+  if (savedHash !== incomingHash) { file.setTrashed(true); throw new Error('Isi PDF di Google Drive tidak cocok dengan file sumber.'); }
+  olApiLinkExamPrescriptionPdf_(examId,file.getUrl());
+  previousFiles.forEach(oldFile=>oldFile.setTrashed(true));
+  return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,fileId:file.getId(),fileUrl:file.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
+}
+
+function olApiLinkExamPrescriptionPdf_(examId,fileUrl) {
+  const spreadsheetId = PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID');
+  if (!spreadsheetId) throw new Error('ID spreadsheet operasional belum dipasang.');
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sh = ss.getSheetByName('DATA_PEMERIKSAAN');
+  if (!sh || sh.getLastRow() < 2) throw new Error('Data pemeriksaan untuk resep tidak ditemukan.');
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(String);
+  const idCol = headers.indexOf('ID Pemeriksaan') + 1;
+  if (idCol < 1) throw new Error('Kolom ID pemeriksaan belum tersedia.');
+  let pdfCol = headers.indexOf('PDF Resep Pemeriksaan') + 1;
+  if (pdfCol < 1) {
+    pdfCol = sh.getLastColumn()+1;
+    sh.getRange(1,pdfCol).setValue('PDF Resep Pemeriksaan');
+  }
+  const ids = sh.getRange(2,idCol,sh.getLastRow()-1,1).getDisplayValues();
+  for (let i=0;i<ids.length;i++) {
+    if (String(ids[i][0]) === examId) {
+      sh.getRange(i+2,pdfCol).setValue(fileUrl);
+      return;
+    }
+  }
+  throw new Error('ID pemeriksaan tidak ditemukan untuk menautkan PDF resep.');
 }
