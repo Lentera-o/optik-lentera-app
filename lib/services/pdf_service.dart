@@ -175,7 +175,7 @@ class OptikPdfService {
         brand(),
         pw.Center(child: heading(paymentStatus == 'LUNAS' ? 'KUITANSI' : 'RINCIAN BIAYA', paymentStatus == 'LUNAS' ? 'BUKTI PEMBAYARAN PEMERIKSAAN OPTIK LENTERA' : 'PEMBERITAHUAN BIAYA PEMERIKSAAN OPTIK LENTERA')),
         pw.Row(children: [
-          pw.Expanded(child: pair('No. kuitansi', receiptNo)),
+          pw.Expanded(child: pair(paymentStatus == 'LUNAS' ? 'No. kuitansi' : 'No. referensi biaya', receiptNo)),
           pw.SizedBox(width: 12),
           pw.Expanded(child: pair('Tanggal', date(receiptDate))),
           pw.SizedBox(width: 12),
