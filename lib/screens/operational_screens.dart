@@ -267,7 +267,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   bool saving = false;
   String? examId, qrPayload;
   String? lastSavedExamId;
-  String? lastSavedExamPdfUrl;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -353,7 +352,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         examId = null;
         qrPayload = null;
         lastSavedExamId = id;
-        lastSavedExamPdfUrl = savedPdfUrl;
         examDate = DateTime.now();
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan ke sistem dan PDF resmi masuk Google Drive. Form siap untuk pelanggan berikutnya.')));
