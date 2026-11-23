@@ -339,7 +339,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final qr = result['qrPayload'].toString();
       if (!mounted) return;
       setState(() { examId=id; qrPayload=qr; });
-      final pdfBytes = await OptikPdfService.examinationBytes(
+      final pdfBytes = await OptikPdfService.progressPrescriptionBytes(
         examId:id,qrPayload:qr,examDate:date,name:_value(name),phone:_value(phone),
         address:_value(address),values:rx,
       );
@@ -348,7 +348,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         requestId: pendingRequestId!,
         data: {
           'examId': id,
-          'fileName': 'Hasil_Pemeriksaan_$safeExamId.pdf',
+          'fileName': 'Resep_PROGRESS_$safeExamId.pdf',
           'pdfBase64': base64Encode(pdfBytes),
         },
       );
@@ -380,7 +380,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         qrPayload = null;
         examDate = DateTime.now();
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan. Link PDF tetap tersedia di layar.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Resep PROGRESS $id berhasil disimpan. Link PDF tetap tersedia di layar.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
@@ -409,7 +409,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       _Panel(child: Row(children: [
         const Icon(Icons.picture_as_pdf_outlined, color: _darkGold),
         const SizedBox(width: 10),
-        const Expanded(child: Text('PDF resep pemeriksaan tersimpan', style: TextStyle(fontWeight: FontWeight.w700))),
+        const Expanded(child: Text('PDF resep PROGRESS tersimpan', style: TextStyle(fontWeight: FontWeight.w700))),
         FilledButton.icon(onPressed: openSavedPdf, icon: const Icon(Icons.open_in_new), label: const Text('Buka PDF'), style: FilledButton.styleFrom(backgroundColor: _darkGold)),
       ])),
       const SizedBox(height: 12),
@@ -427,10 +427,10 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       SizedBox(width:double.infinity,child:FilledButton.icon(
         onPressed:saving?null:saveAndPrint,
         icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.picture_as_pdf_outlined),
-        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
+        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Resep PROGRESS & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
-      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive. Tidak ada pengiriman WhatsApp otomatis dari halaman pemeriksaan.',style:TextStyle(fontSize:11,color:Colors.black54))),
+      const Padding(padding:EdgeInsets.only(top:9),child:Text('Resep PROGRESS disimpan terpisah di DATA_PEMERIKSAAN. PDF resep resmi tersimpan di Google Drive. Tidak ada pengiriman WhatsApp otomatis dari halaman pemeriksaan.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
 }
