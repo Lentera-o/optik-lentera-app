@@ -152,4 +152,89 @@ class OptikPdfService {
     return await pdf.save();
   }
 
+
+  /// Finished PROGRESS spectacle prescription, generated from the current
+  /// examination values. This is the customer-facing prescription PDF, not
+  /// the raw refraction examination report.
+  static Future<Uint8List> progressPrescriptionBytes({
+    required String examId,
+    required String qrPayload,
+    required DateTime examDate,
+    required String name,
+    required String phone,
+    required String address,
+    required Map<String, String> values,
+  }) async {
+    final pdf = pw.Document();
+    String v(String key) =>
+        (values[key] ?? '').trim().isEmpty ? '-' : values[key]!.trim();
+
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      pageTheme: pw.PageTheme(buildBackground: (_) => pw.Container(color: paper)),
+      margin: const pw.EdgeInsets.fromLTRB(28, 20, 28, 18),
+      maxPages: 2,
+      build: (_) => [
+        brand(),
+        pw.Center(child: heading('RESEP KACAMATA', 'RESEP LENSA PROGRESS')),
+        pw.Row(children: [
+          pw.Expanded(child: pair('No. resep', examId)),
+          pw.SizedBox(width: 14),
+          pw.Expanded(child: pair('Tanggal', date(examDate))),
+          pw.SizedBox(width: 14),
+          pw.Expanded(child: pair('Nama pelanggan', name)),
+          pw.SizedBox(width: 14),
+          pw.Expanded(child: pair('No. HP / WA', phone)),
+        ]),
+        pair('Alamat', address),
+        section('RESEP LENSA — PROGRESS'),
+        dataTable(['MATA', 'SPH', 'CYL', 'AXIS', 'ADD', 'PD'], [
+          ['OD • Kanan', v('odSph'), v('odCyl'), v('odAxis'), v('odAdd'), v('odPd')],
+          ['OS • Kiri', v('osSph'), v('osCyl'), v('osAxis'), v('osAdd'), v('osPd')],
+        ]),
+        pw.SizedBox(height: 4),
+        pair('Jenis lensa', 'PROGRESS'),
+        section('CATATAN RESEP'),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(8),
+          constraints: const pw.BoxConstraints(minHeight: 30),
+          decoration: pw.BoxDecoration(
+            color: pink,
+            border: pw.Border.all(color: line, width: .6),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+          ),
+          child: pw.Text(v('note'), style: const pw.TextStyle(fontSize: 8, color: ink)),
+        ),
+        pw.SizedBox(height: 10),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(
+            color: pink,
+            border: pw.Border.all(color: line, width: .6),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+          ),
+          child: pw.Row(children: [
+            pw.SizedBox(width: 42, height: 42, child: qr(qrPayload)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: pw.Text(
+              'Resep lensa PROGRESS OPTIK LENTERA. Pindai QR untuk memeriksa nomor resep: $examId',
+              style: const pw.TextStyle(fontSize: 7, color: ink),
+            )),
+          ]),
+        ),
+        pw.SizedBox(height: 5),
+        pw.Container(height: .7, color: line),
+        pw.SizedBox(height: 4),
+        pw.Center(child: pw.Text(
+          'OPTIK LENTERA · Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang · 0858 9312 8257',
+          textAlign: pw.TextAlign.center,
+          style: const pw.TextStyle(fontSize: 6, color: ink),
+        )),
+      ],
+    ));
+    return await pdf.save();
+  }
+
 }
