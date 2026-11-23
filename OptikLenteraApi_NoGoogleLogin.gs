@@ -179,11 +179,16 @@ function olApiCreatePayment_(data, requestId, actor) {
     'Catatan': olApiText_(data.note, 'Catatan pembayaran', 1000, false)
   };
 
-  olProcessPayment_(answers, eventKey);
-
+  // Idempotency guard: if this request ID already has a payment row,
+  // return its original receipt instead of processing the payment again.
   const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
   const paySheet = ss.getSheetByName(OL.SHEET_PAY);
-  const payRow = olFindRow_(paySheet, OL_PAY_FIELDS.eventKey, eventKey);
+  if (!paySheet) throw new Error('DATA_PEMBAYARAN tidak ditemukan.');
+  let payRow = olFindRow_(paySheet, OL_PAY_FIELDS.eventKey, eventKey);
+  if (!payRow) {
+    olProcessPayment_(answers, eventKey);
+    payRow = olFindRow_(paySheet, OL_PAY_FIELDS.eventKey, eventKey);
+  }
   if (!payRow) throw new Error('Pembayaran belum dapat diverifikasi di DATA_PEMBAYARAN.');
   const payment = olReadPaymentForRetry_(paySheet, payRow);
   const orderSheet = ss.getSheetByName(OL.SHEET_ORDER);
