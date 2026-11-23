@@ -163,6 +163,7 @@ class OptikPdfService {
     required String phone,
     required int amount,
     required String method,
+    String paymentStatus = 'LUNAS',
   }) async {
     final pdf = pw.Document();
     pdf.addPage(pw.MultiPage(
@@ -192,24 +193,24 @@ class OptikPdfService {
             borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
           ),
           child: pw.Column(children: [
-            pw.Text('Telah diterima pembayaran pemeriksaan dari', style: const pw.TextStyle(fontSize: 9, color: ink)),
+            pw.Text(paymentStatus == 'LUNAS' ? 'Telah diterima pembayaran pemeriksaan dari' : 'Rincian biaya pemeriksaan untuk', style: const pw.TextStyle(fontSize: 9, color: ink)),
             pw.SizedBox(height: 5),
             pw.Text(name, style: pw.TextStyle(fontSize: 15, font: pw.Font.helveticaBold(), color: gold)),
             pw.SizedBox(height: 8),
             pw.Text(money(amount), style: pw.TextStyle(fontSize: 22, font: pw.Font.helveticaBold(), color: gold)),
             pw.SizedBox(height: 4),
-            pw.Text('Pembayaran pemeriksaan diterima lunas.', style: const pw.TextStyle(fontSize: 8, color: ink)),
+            pw.Text(paymentStatus == 'LUNAS' ? 'Pembayaran pemeriksaan diterima lunas.' : 'Pembayaran belum diterima / belum lunas.', style: const pw.TextStyle(fontSize: 8, color: ink)),
           ]),
         ),
         pair('Jenis transaksi', 'Biaya pemeriksaan mata'),
         pair('Metode pembayaran', method),
-        pair('Status pembayaran', 'LUNAS'),
+        pair('Status pembayaran', paymentStatus),
         pw.SizedBox(height: 8),
         pw.Row(children: [
           pw.SizedBox(width: 54, height: 54, child: qr(qrPayload)),
           pw.SizedBox(width: 8),
           pw.Expanded(child: pw.Text(
-            'Kuitansi ini merupakan bukti pembayaran pemeriksaan. Pemeriksaan tersimpan dengan ID $examId. Invoice pembelian kacamata, bila ada, diterbitkan terpisah.',
+            paymentStatus == 'LUNAS' ? 'Kuitansi ini merupakan bukti pembayaran pemeriksaan. Pemeriksaan tersimpan dengan ID $examId. Invoice pembelian kacamata, bila ada, diterbitkan terpisah.' : 'Dokumen ini mencatat biaya pemeriksaan yang belum lunas. Pemeriksaan tersimpan dengan ID $examId. Bukti pembayaran diterbitkan setelah pembayaran diterima.',
             style: const pw.TextStyle(fontSize: 8, color: ink),
           )),
         ]),
