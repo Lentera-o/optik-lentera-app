@@ -339,7 +339,7 @@ function olApiSaveExamination_(data, requestId, actor) {
     'ID Pemeriksaan','Event Key','Tanggal Pemeriksaan','Nama Pelanggan','Nomor HP/WA','Alamat',
     'OD SPH','OD CYL','OD AXIS','OD ADD','OD PD',
     'OS SPH','OS CYL','OS AXIS','OS ADD','OS PD',
-    'Jenis Lensa','Catatan Pemeriksaan','QR Payload','Dibuat Oleh'
+    'Jenis Lensa','Catatan Pemeriksaan','Token Verifikasi','QR Payload','Dibuat Oleh'
   ];
 
   let sh = ss.getSheetByName(sheetName);
@@ -391,7 +391,8 @@ function olApiSaveExamination_(data, requestId, actor) {
   if (isNaN(new Date(date).getTime())) throw new Error('Tanggal pemeriksaan tidak valid.');
   const name = olApiText_(data.name, 'Nama pelanggan', 120, true);
   const examId = 'RE-' + Utilities.formatDate(new Date(date), Session.getScriptTimeZone(), 'yyyyMMdd') + '-' + Utilities.getUuid().slice(0, 8).toUpperCase();
-  const qrPayload = 'OPTIK-LENTERA|REFRAKSI|' + examId;
+  const verificationToken = Utilities.getUuid().replace(/-/g, '');
+  const qrPayload = 'https://script.google.com/macros/s/AKfycbxmsqzBvZyF36NernbNuG9nV3EC3BbuoBENuu868_ORjwzONT_W_AzNF-os99Q9Org/exec?t=' + encodeURIComponent(verificationToken);
 
   const values = {
     'ID Pemeriksaan': examId,
@@ -412,6 +413,7 @@ function olApiSaveExamination_(data, requestId, actor) {
     'OS PD': olApiText_(data.osPd, 'OS PD', 30, false),
     'Jenis Lensa': olApiText_(data.lensType, 'Jenis lensa', 160, false),
     'Catatan Pemeriksaan': olApiText_(data.note, 'Catatan pemeriksaan', 1000, false),
+    'Token Verifikasi': verificationToken,
     'QR Payload': qrPayload,
     'Dibuat Oleh': String(actor.email || 'APK')
   };
