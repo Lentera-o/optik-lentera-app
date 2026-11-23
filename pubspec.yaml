@@ -33,6 +33,8 @@ dependencies:
   material_ui: ^1.1.0
   pdf: ^3.11.3
   printing: ^5.14.2
+  share_plus: ^12.0.1
+  cross_file: ^0.3.4+2
   shared_preferences: ^2.5.3
   url_launcher: ^6.3.2
   google_fonts: ^6.2.1
