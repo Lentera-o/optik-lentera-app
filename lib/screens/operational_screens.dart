@@ -623,27 +623,31 @@ class InvoiceReceiptScreen extends StatelessWidget {
                     final receiptNo = _receiptNumber(payment.paymentDate, entry.key + 1);
                     final paidAtReceipt = receiptPayments.take(entry.key + 1).fold<int>(0, (sum, item) => sum + item.amount);
                     final balanceAtReceipt = order.total - paidAtReceipt;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: OutlinedButton.icon(
-                        onPressed: () => OptikPdfService.receipt(order, payment, receiptNumber: receiptNo, paid: paidAtReceipt, remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt),
-                        icon: const Icon(Icons.receipt_long_outlined),
-                        label: Text('Cetak / Bagikan Kuitansi $receiptNo'),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: OutlinedButton.icon(
-                        onPressed: () => OptikPdfService.shareReceiptAndPrescription(
-                          order,
-                          payment,
-                          receiptNumber: receiptNo,
-                          paid: paidAtReceipt,
-                          remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt,
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: OutlinedButton.icon(
+                            onPressed: () => OptikPdfService.receipt(order, payment, receiptNumber: receiptNo, paid: paidAtReceipt, remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt),
+                            icon: const Icon(Icons.receipt_long_outlined),
+                            label: Text('Cetak / Bagikan Kuitansi $receiptNo'),
+                          ),
                         ),
-                        icon: const Icon(Icons.share_outlined),
-                        label: const Text('Kirim Kuitansi + Resep Bersama'),
-                      ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: OutlinedButton.icon(
+                            onPressed: () => OptikPdfService.shareReceiptAndPrescription(
+                              order,
+                              payment,
+                              receiptNumber: receiptNo,
+                              paid: paidAtReceipt,
+                              remaining: balanceAtReceipt < 0 ? 0 : balanceAtReceipt,
+                            ),
+                            icon: const Icon(Icons.share_outlined),
+                            label: const Text('Kirim Kuitansi + Resep Bersama'),
+                          ),
+                        ),
+                      ],
                     );
                   }),
                 const SizedBox(height: 8),
