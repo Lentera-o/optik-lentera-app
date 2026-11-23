@@ -3,10 +3,10 @@ from pathlib import Path
 
 Path("build").mkdir(parents=True, exist_ok=True)
 
-# Use the approved dedicated gold-framed launcher emblem. Keep the whole artwork
-# visible: fit it onto a transparent square instead of cropping the logo.
-source = "assets/optik_lentera_launcher_emblem.png"
-target = "build/optik_lentera_launcher_emblem.png"
+# Use the original OPTIK LENTERA logo as the app icon.
+# Keep the full logo visible and do not crop or zoom into the artwork.
+source = "assets/optik_lentera_app_logo.png"
+target = "build/optik_lentera_launcher.png"
 
 with Image.open(source) as original:
     artwork = original.convert("RGBA")
