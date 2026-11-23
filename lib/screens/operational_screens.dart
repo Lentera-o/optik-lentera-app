@@ -269,6 +269,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   final lensType = TextEditingController(), note = TextEditingController();
   final examFee = TextEditingController(); // Petugas mengisi nominal manual; tidak ada harga yang dikunci.
   String examPaymentMethod = 'Tunai';
+  String examPaymentStatus = 'LUNAS';
   bool saving = false;
   String? examId, qrPayload;
   String? lastSavedExamId;
@@ -277,6 +278,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   Uint8List? lastSavedExamReceiptPdf;
   String? lastSavedReceiptNo;
   int? lastSavedExamFee;
+  String lastSavedExamPaymentStatus = 'LUNAS';
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -310,7 +312,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final date = examDate;
       final payload = <String,dynamic>{
         'examDate':date.toIso8601String(),'name':_value(name),'phone':_value(phone),'address':_value(address),
-        'examFee':fee,'examPaymentMethod':examPaymentMethod,...rx,
+        'examFee':fee,'examPaymentMethod':examPaymentMethod,'examPaymentStatus':examPaymentStatus,...rx,
       };
       // Reuse the same id only when retrying the exact same payload. This
       // prevents duplicate rows after a timeout, while ensuring edited data
@@ -354,7 +356,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       }
       final receiptBytes = await OptikPdfService.examinationReceiptBytes(
         examId:id,receiptNo:receiptNo,qrPayload:qr,receiptDate:date,name:_value(name),
-        phone:_value(phone),amount:fee,method:examPaymentMethod,
+        phone:_value(phone),amount:fee,method:examPaymentMethod,paymentStatus:examPaymentStatus,
       );
       final receiptDriveResponse = await ApiService.uploadExaminationPdf(
         requestId: pendingRequestId!,
@@ -376,6 +378,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       lastSavedExamReceiptPdf = receiptBytes;
       lastSavedReceiptNo = receiptNo;
       lastSavedExamFee = fee;
+      lastSavedExamPaymentStatus = examPaymentStatus;
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
@@ -412,7 +415,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     final safeId = exam.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
     await SharePlus.instance.share(ShareParams(
       subject: 'Kuitansi pemeriksaan OPTIK LENTERA - ${lastSavedPrescriptionName ?? ''}',
-      text: 'Kuitansi pemeriksaan OPTIK LENTERA. Nomor kuitansi: $receipt. Nominal: ${OptikPdfService.money(lastSavedExamFee ?? 0)}. Status: LUNAS.',
+      text: 'Dokumen pemeriksaan OPTIK LENTERA. Nomor: $receipt. Nominal: ${OptikPdfService.money(lastSavedExamFee ?? 0)}. Status: $lastSavedExamPaymentStatus.',
       files: [XFile.fromData(bytes,mimeType:'application/pdf',name:'Kuitansi_Pemeriksaan_$safeId.pdf')],
     ));
   }
@@ -462,7 +465,13 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         items:['Tunai','Transfer','QRIS','Debit/kartu','Lainnya'].map((m)=>DropdownMenuItem(value:m,child:Text(m))).toList(),
         onChanged:saving?null:(value)=>setState(()=>examPaymentMethod=value??'Tunai'),
       ),
-      const Padding(padding:EdgeInsets.only(bottom:8,top:4),child:Text('Nominal diisi sesuai kesepakatan petugas dan pelanggan, misalnya Rp25.000 atau Rp50.000. Tidak ada harga otomatis.',style:TextStyle(fontSize:11,color:Colors.black54))),
+      DropdownButtonFormField<String>(
+        value:examPaymentStatus,
+        decoration:const InputDecoration(labelText:'Status pembayaran',border:OutlineInputBorder()),
+        items:['LUNAS','BELUM LUNAS'].map((s)=>DropdownMenuItem(value:s,child:Text(s))).toList(),
+        onChanged:saving?null:(value)=>setState(()=>examPaymentStatus=value??'LUNAS'),
+      ),
+      const Padding(padding:EdgeInsets.only(bottom:8,top:4),child:Text('Nominal diisi sesuai kesepakatan petugas dan pelanggan. Status awal LUNAS dan dapat diubah bila pembayaran belum diterima.',style:TextStyle(fontSize:11,color:Colors.black54))),
       const Divider(),
       eyeFields('OD — MATA KANAN',[odSph,odCyl,odAxis,odAdd,odPd]),
       const SizedBox(height:8),
