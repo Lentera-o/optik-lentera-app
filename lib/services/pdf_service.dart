@@ -173,7 +173,7 @@ class OptikPdfService {
       maxPages: 1,
       build: (_) => [
         brand(),
-        pw.Center(child: heading('KUITANSI', 'BUKTI PEMBAYARAN PEMERIKSAAN OPTIK LENTERA')),
+        pw.Center(child: heading(paymentStatus == 'LUNAS' ? 'KUITANSI' : 'RINCIAN BIAYA', paymentStatus == 'LUNAS' ? 'BUKTI PEMBAYARAN PEMERIKSAAN OPTIK LENTERA' : 'PEMBERITAHUAN BIAYA PEMERIKSAAN OPTIK LENTERA')),
         pw.Row(children: [
           pw.Expanded(child: pair('No. kuitansi', receiptNo)),
           pw.SizedBox(width: 12),
