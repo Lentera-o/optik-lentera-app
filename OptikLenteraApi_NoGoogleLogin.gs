@@ -291,7 +291,7 @@ function olApiSaveExamination_(data, requestId, actor) {
     'OS SPH','OS CYL','OS AXIS','OS ADD','OS PD',
     'Jenis Lensa','Catatan Pemeriksaan','QR Payload','Dibuat Oleh',
     'Biaya Pemeriksaan','Metode Pembayaran Pemeriksaan','Nomor Kuitansi Pemeriksaan',
-    'Status Pembayaran Pemeriksaan','Token Verifikasi Kuitansi','Event Key Pembayaran Pemeriksaan'
+    'Status Pembayaran Pemeriksaan','Token Verifikasi Kuitansi','Event Key Pembayaran Pemeriksaan','PDF Kuitansi Pemeriksaan'
   ];
   let sh = ss.getSheetByName(sheetName);
   if (!sh) {
@@ -349,7 +349,7 @@ function olApiSaveExamination_(data, requestId, actor) {
     olApiText_(data.osAdd,'OS ADD',30,false),olApiText_(data.osPd,'OS PD',30,false),
     olApiText_(data.lensType,'Jenis lensa',160,false),
     olApiText_(data.note,'Catatan pemeriksaan',1000,false),qrPayload,String(actor.email || 'APK'),
-    fee,method,receiptNo,'LUNAS',token,paymentEventKey
+    fee,method,receiptNo,'LUNAS',token,paymentEventKey,''
   ];
   const rowValues = new Array(sh.getLastColumn()).fill('');
   headers.forEach((header, index) => { rowValues[col(header)-1] = values[index]; });
@@ -365,120 +365,72 @@ function olApiSaveExamination_(data, requestId, actor) {
 
 function olApiUploadExaminationPdf_(data, requestId, actor) {
   const examId = String(data.examId || '').trim();
-  if (!examId || examId.length > 120) {
-    throw new Error('Nomor pemeriksaan tidak valid.');
-  }
-
+  if (!examId || examId.length > 120) throw new Error('Nomor pemeriksaan tidak valid.');
   const safeId = examId.replace(/[^A-Za-z0-9_-]/g, '_');
-  const fileName = 'Hasil_Pemeriksaan_' + safeId + '.pdf';
-  if (String(data.fileName || '') !== fileName) {
-    throw new Error('Nama file PDF tidak sesuai dengan nomor pemeriksaan.');
-  }
+  const documentType = String(data.documentType || 'prescription');
+  if (!['prescription','receipt'].includes(documentType)) throw new Error('Jenis dokumen pemeriksaan tidak valid.');
+  const fileName = documentType === 'receipt'
+    ? 'Kuitansi_Pemeriksaan_' + safeId + '.pdf'
+    : 'Hasil_Pemeriksaan_' + safeId + '.pdf';
+  if (String(data.fileName || '') !== fileName) throw new Error('Nama file PDF tidak sesuai dengan jenis dokumen dan nomor pemeriksaan.');
+  const receiptNo = String(data.receiptNo || '').trim();
+  if (documentType === 'receipt' && !receiptNo) throw new Error('Nomor kuitansi pemeriksaan wajib diisi.');
 
   const pdfBase64 = String(data.pdfBase64 || '').trim();
-  if (!pdfBase64 || pdfBase64.length > 1600000) {
-    throw new Error('Data PDF kosong atau melebihi batas ukuran.');
-  }
-
+  if (!pdfBase64 || pdfBase64.length > 1600000) throw new Error('Data PDF kosong atau melebihi batas ukuran.');
   let bytes;
-  try {
-    bytes = Utilities.base64Decode(pdfBase64);
-  } catch (error) {
-    throw new Error('Data PDF tidak dapat dibaca.');
-  }
-  if (!bytes || bytes.length < 100 || bytes.length > 1200000) {
-    throw new Error('Ukuran PDF tidak valid.');
-  }
+  try { bytes = Utilities.base64Decode(pdfBase64); }
+  catch (error) { throw new Error('Data PDF tidak dapat dibaca.'); }
+  if (!bytes || bytes.length < 100 || bytes.length > 1200000) throw new Error('Ukuran PDF tidak valid.');
+  const signature = String.fromCharCode(bytes[0]&255,bytes[1]&255,bytes[2]&255,bytes[3]&255,bytes[4]&255);
+  if (signature !== '%PDF-') throw new Error('Berkas yang dikirim bukan PDF yang valid.');
 
-  const signature = String.fromCharCode(
-    bytes[0] & 255, bytes[1] & 255, bytes[2] & 255,
-    bytes[3] & 255, bytes[4] & 255
-  );
-  if (signature !== '%PDF-') {
-    throw new Error('Berkas yang dikirim bukan PDF yang valid.');
-  }
-
-  // Folder ID berasal dari tautan folder yang diberikan pemilik aplikasi.
-  // Tidak membuat folder baru dan tidak bergantung pada Script Property.
   const folder = DriveApp.getFolderById('16cAhjCREFndJypd1GqvS79KklfhRhnn9');
-  folder.getName(); // Pastikan akun eksekusi Web App dapat mengakses folder.
-
-  const incomingHash = Utilities.base64Encode(
-    Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, bytes)
-  );
+  folder.getName();
+  const incomingHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,bytes));
   const existingFiles = folder.getFilesByName(fileName);
   const previousFiles = [];
-
   while (existingFiles.hasNext()) {
     const oldFile = existingFiles.next();
     previousFiles.push(oldFile);
-    const oldHash = Utilities.base64Encode(
-      Utilities.computeDigest(
-        Utilities.DigestAlgorithm.MD5,
-        oldFile.getBlob().getBytes()
-      )
-    );
+    const oldHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,oldFile.getBlob().getBytes()));
     if (oldHash === incomingHash) {
-      return olApiJson_({
-        ok: true,
-        action: 'uploadExaminationPdf',
-        examId: examId,
-        fileId: oldFile.getId(),
-        fileUrl: oldFile.getUrl(),
-        processedBy: actor && actor.email ? actor.email : 'Aplikasi'
-      });
+      if (documentType === 'receipt') olApiLinkExamReceiptPdf_(examId,receiptNo,oldFile.getUrl());
+      return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,documentType:documentType,fileId:oldFile.getId(),fileUrl:oldFile.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
     }
   }
-
-  const blob = Utilities.newBlob(bytes, 'application/pdf', fileName);
-  const file = folder.createFile(blob);
-  if (file.getSize() !== bytes.length) {
-    file.setTrashed(true);
-    throw new Error('PDF gagal diverifikasi setelah diunggah ke Google Drive.');
-  }
-
-  // Verifikasi checksum file hasil upload sebelum menghapus salinan lama.
-  const savedHash = Utilities.base64Encode(
-    Utilities.computeDigest(
-      Utilities.DigestAlgorithm.MD5,
-      file.getBlob().getBytes()
-    )
-  );
-  if (savedHash !== incomingHash) {
-    file.setTrashed(true);
-    throw new Error('Isi PDF di Google Drive tidak cocok dengan file sumber.');
-  }
-
-  previousFiles.forEach(function(oldFile) {
-    oldFile.setTrashed(true);
-  });
-
-  return olApiJson_({
-    ok: true,
-    action: 'uploadExaminationPdf',
-    examId: examId,
-    fileId: file.getId(),
-    fileUrl: file.getUrl(),
-    processedBy: actor && actor.email ? actor.email : 'Aplikasi'
-  });
+  const file = folder.createFile(Utilities.newBlob(bytes,'application/pdf',fileName));
+  if (file.getSize() !== bytes.length) { file.setTrashed(true); throw new Error('PDF gagal diverifikasi setelah diunggah ke Google Drive.'); }
+  const savedHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,file.getBlob().getBytes()));
+  if (savedHash !== incomingHash) { file.setTrashed(true); throw new Error('Isi PDF di Google Drive tidak cocok dengan file sumber.'); }
+  if (documentType === 'receipt') olApiLinkExamReceiptPdf_(examId,receiptNo,file.getUrl());
+  previousFiles.forEach(oldFile=>oldFile.setTrashed(true));
+  return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,documentType:documentType,fileId:file.getId(),fileUrl:file.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
 }
 
-/*
- * Route yang perlu disisipkan ke doPost(e), setelah requestId lolos validasi:
- *
- * if (action === 'uploadExaminationPdf') {
- *   if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
- *     throw new Error('Data PDF pemeriksaan tidak valid.');
- *   }
- *   const uploadLock = LockService.getScriptLock();
- *   uploadLock.waitLock(30000);
- *   try {
- *     return olApiUploadExaminationPdf_(request.data, requestId, actor);
- *   } finally {
- *     uploadLock.releaseLock();
- *   }
- * }
- *
- * Catatan: jangan menambahkan action ini ke blok whitelist createOrder /
- * createPayment; route khusus di atas harus dijalankan lebih dahulu.
- */
+function olApiLinkExamReceiptPdf_(examId, receiptNo, fileUrl) {
+  const spreadsheetId = PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID');
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sh = ss.getSheetByName('DATA_PEMERIKSAAN');
+  if (!sh || sh.getLastRow() < 2) throw new Error('Data pemeriksaan untuk kuitansi tidak ditemukan.');
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(String);
+  const idCol = headers.indexOf('ID Pemeriksaan') + 1;
+  const receiptCol = headers.indexOf('Nomor Kuitansi Pemeriksaan') + 1;
+  let pdfCol = headers.indexOf('PDF Kuitansi Pemeriksaan') + 1;
+  if (idCol < 1 || receiptCol < 1) throw new Error('Kolom pemeriksaan/kuitansi belum tersedia.');
+  if (pdfCol < 1) {
+    pdfCol = sh.getLastColumn()+1;
+    sh.getRange(1,pdfCol).setValue('PDF Kuitansi Pemeriksaan');
+  }
+  const ids = sh.getRange(2,idCol,sh.getLastRow()-1,1).getDisplayValues();
+  for (let i=0;i<ids.length;i++) {
+    if (String(ids[i][0]) !== examId) continue;
+    const row = i+2;
+    if (String(sh.getRange(row,receiptCol).getDisplayValue()) !== receiptNo) {
+      throw new Error('Nomor kuitansi tidak cocok dengan pemeriksaan.');
+    }
+    sh.getRange(row,pdfCol).setValue(fileUrl);
+    return;
+  }
+  throw new Error('ID pemeriksaan tidak ditemukan untuk menautkan kuitansi.');
+}
