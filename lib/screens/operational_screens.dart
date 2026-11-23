@@ -1549,6 +1549,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
   final message = TextEditingController();
   List<Map<String, String>> officialOrders = [];
   List<Map<String, String>> officialPayments = [];
+  List<Map<String, String>> officialExaminations = [];
   // Keep customer objects stable between rebuilds: DropdownButton matches values by ==.
   List<Customer> officialCustomers = [];
   late final List<Customer> _orderCustomers;
@@ -1750,6 +1751,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
         : selectedCustomer!.name + '|' + selectedCustomer!.phone + '|' + selectedCustomer!.address;
     final previousOrder = rowSignature(selectedOfficialOrder);
     final previousPayments = rowsSignature(selectedOfficialPayments);
+    final previousExaminations = rowsSignature(officialExaminations);
     final previousCustomerKey =
         selectedCustomer == null ? null : _customerKey(selectedCustomer!);
 
@@ -1764,8 +1766,10 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
     // payment tab must never discard freshly fetched order rows (and vice versa).
     List<Map<String, String>>? fetchedOrders;
     List<Map<String, String>>? fetchedPayments;
+    List<Map<String, String>>? fetchedExaminations;
     Object? orderError;
     Object? paymentError;
+    Object? examinationError;
 
     Future<void> loadOrders() async {
       try {
@@ -1789,8 +1793,19 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
       }
     }
 
-    // Fetch both tabs concurrently, but catch each failure independently.
-    await Future.wait([loadOrders(), loadPayments()]);
+    Future<void> loadExaminations() async {
+      try {
+        fetchedExaminations = await SheetsReadService.readTable(
+          'DATA_PEMERIKSAAN',
+          forceRefresh: true,
+        );
+      } catch (error) {
+        examinationError = error;
+      }
+    }
+
+    // Fetch each official tab independently so one unavailable tab cannot block the others.
+    await Future.wait([loadOrders(), loadPayments(), loadExaminations()]);
 
     if (!mounted) return;
 
@@ -1850,11 +1865,17 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
           row.values.any((value) => value.trim().isNotEmpty)
         ).toList();
       }
+      if (fetchedExaminations != null) {
+        officialExaminations = fetchedExaminations!.where((row) =>
+          row.values.any((value) => value.trim().isNotEmpty)
+        ).toList();
+      }
 
       loadingOfficialData = false;
       final errors = <String>[];
       if (orderError != null) errors.add('DATA_PESANAN: ' + orderError.toString());
       if (paymentError != null) errors.add('DATA_PEMBAYARAN: ' + paymentError.toString());
+      if (examinationError != null) errors.add('DATA_PEMERIKSAAN: ' + examinationError.toString());
       syncError = errors.isEmpty ? null : errors.join(' • ');
 
       if (fetchedOrders != null && selectedCustomer != null) {
@@ -1872,7 +1893,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
         _lastNewestInvoice = newestInvoice;
       }
 
-      if (fetchedOrders != null || fetchedPayments != null) {
+      if (fetchedOrders != null || fetchedPayments != null || fetchedExaminations != null) {
         _lastSyncedAt = DateTime.now();
       }
 
@@ -1882,7 +1903,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
       final messageSourceChanged = previousInvoice != selectedInvoice ||
           previousCustomer != currentCustomer ||
           previousOrder != rowSignature(selectedOfficialOrder) ||
-          previousPayments != rowsSignature(selectedOfficialPayments);
+          previousPayments != rowsSignature(selectedOfficialPayments) ||
+          previousExaminations != rowsSignature(officialExaminations);
       // Keep a staff-edited draft unless its selected official source changed.
       if (messageSourceChanged) _buildMessage();
     });
@@ -2042,6 +2064,46 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
     });
   }
 
+  String _prescriptionPdfForOrder(Map<String, String>? order) {
+    final customer = selectedCustomer;
+    if (customer == null || officialExaminations.isEmpty) return '';
+    final targetName = (order == null ? customer.name : _customerNameFromRow(order))
+        .trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ');
+    if (targetName.isEmpty) return '';
+    final targetPhone = _canonicalPhone(
+      order == null ? customer.phone : _phoneFromRow(order),
+    );
+    final candidates = officialExaminations.where((row) {
+      final examName = _customerNameFromRow(row)
+          .trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ');
+      if (examName != targetName) return false;
+      final examPhone = _canonicalPhone(_phoneFromRow(row));
+      if (targetPhone.isNotEmpty) return examPhone.isNotEmpty && examPhone == targetPhone;
+      // Without a phone on the selected order, only use a name when it is
+      // unambiguous across all examination rows.
+      final identities = officialExaminations
+          .where((item) => _customerNameFromRow(item)
+              .trim().toLowerCase().replaceAll(RegExp(r'\\s+'), ' ') == targetName)
+          .map((item) => _canonicalPhone(_phoneFromRow(item)))
+          .where((phone) => phone.isNotEmpty)
+          .toSet();
+      return examPhone.isEmpty && identities.isEmpty;
+    }).toList();
+    candidates.sort((a, b) => _dateValue(_cell(b, [
+      'Tanggal Pemeriksaan', 'Tanggal', 'Timestamp', 'Cap waktu',
+    ])).compareTo(_dateValue(_cell(a, [
+      'Tanggal Pemeriksaan', 'Tanggal', 'Timestamp', 'Cap waktu',
+    ]))));
+    for (final row in candidates) {
+      final url = _documentUrl(row, [
+        'PDF Resep Pemeriksaan', 'Link PDF Resep', 'URL PDF Resep',
+        'PDF Resep', 'Link PDF Pemeriksaan', 'URL PDF Pemeriksaan',
+      ]);
+      if (url.isNotEmpty) return url;
+    }
+    return '';
+  }
+
   void _buildMessage() {
     final customer = selectedCustomer;
     final order = selectedOfficialOrder;
@@ -2064,8 +2126,11 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
     final receiptPdf = latestPayment == null ? '' : _documentUrl(latestPayment, [
       'PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF', 'Kuitansi PDF',
     ]);
-    final documentLinks = (invoicePdf.isEmpty ? '' : '\nPDF Invoice: ' + invoicePdf) +
-        (receiptPdf.isEmpty ? '' : '\nPDF Kuitansi: ' + receiptPdf);
+    final prescriptionPdf = _prescriptionPdfForOrder(order);
+    final documentLinks =
+        (prescriptionPdf.isEmpty ? '' : '\\nPDF Resep Pemeriksaan: ' + prescriptionPdf) +
+        (invoicePdf.isEmpty ? '' : '\\nPDF Invoice: ' + invoicePdf) +
+        (receiptPdf.isEmpty ? '' : '\\nPDF Kuitansi: ' + receiptPdf)
     final orderDetails = _orderDetailText(order);
     if (template == 'Pesanan siap diambil') {
       message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + orderDetails + documentLinks + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
