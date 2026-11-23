@@ -205,6 +205,8 @@ class _MainScreenState extends State<MainScreen> {
   final List<OptikPayment> payments = [];
   bool _loadingLocalData = true;
   int _unreadDocumentCount = 0;
+  final Set<String> _readDocumentNoticeIds = {};
+  final Map<String, String> _documentNoticeStatuses = {};
 
   @override
   void initState() {
@@ -257,8 +259,6 @@ class _MainScreenState extends State<MainScreen> {
         if (mounted) setState(() => _unreadDocumentCount = 0);
         return;
       }
-      final decoded = jsonDecode(prefs.getString('ol_document_notice_read_ids') ?? '[]');
-      final readIds = decoded is List ? decoded.map((item) => item.toString()).toSet() : <String>{};
       final tables = await Future.wait([
         SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
@@ -286,7 +286,7 @@ class _MainScreenState extends State<MainScreen> {
         }
       }
       if (!mounted) return;
-      setState(() => _unreadDocumentCount = ids.where((id) => !readIds.contains(id)).length);
+      setState(() => _unreadDocumentCount = ids.where((id) => !_readDocumentNoticeIds.contains(id)).length);
     } catch (_) {
       // Badge tidak mengganggu dashboard bila Sheets sedang tidak tersedia.
     }
@@ -295,6 +295,15 @@ class _MainScreenState extends State<MainScreen> {
   void _openDocumentNotifications() {
     setState(() => selectedIndex = 7);
     _refreshDocumentNotificationCount();
+  }
+
+  void _handleDocumentReads(Set<String> ids) {
+    setState(() => _readDocumentNoticeIds.addAll(ids));
+    _refreshDocumentNotificationCount();
+  }
+
+  void _handleDocumentStatuses(Map<String, String> statuses) {
+    setState(() => _documentNoticeStatuses.addAll(statuses));
   }
 
   /// Remove legacy customer/order/payment snapshots from the phone.
@@ -306,6 +315,8 @@ class _MainScreenState extends State<MainScreen> {
       await prefs.remove('ol_customers');
       await prefs.remove('ol_orders');
       await prefs.remove('ol_payments');
+      await prefs.remove('ol_document_notice_read_ids');
+      await prefs.remove('ol_document_notice_status');
     } catch (_) {
       // Keep the app usable, but do not hydrate transaction data from disk.
     }
@@ -480,7 +491,12 @@ class _MainScreenState extends State<MainScreen> {
           4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
           5 => const InvoiceReceiptScreen(),
           6 => const ReportsScreen(),
-          7 => DocumentNotificationsScreen(onRead: _refreshDocumentNotificationCount),
+          7 => DocumentNotificationsScreen(
+            initialReadIds: _readDocumentNoticeIds,
+            initialStatuses: _documentNoticeStatuses,
+            onRead: _handleDocumentReads,
+            onStatusChanged: _handleDocumentStatuses,
+          ),
           8 => const OrderStatusScreen(),
           9 => SettingsScreen(themeMode: widget.themeMode, onThemeModeChanged: widget.onThemeModeChanged),
           10 => const ExaminationScreen(),
