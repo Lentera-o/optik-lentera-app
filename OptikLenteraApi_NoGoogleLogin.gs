@@ -322,13 +322,26 @@ function olApiSaveExamination_(data, requestId, actor) {
     for (let i = 0; i < existing.length; i++) {
       if (String(existing[i][0]) === eventKey) {
         const row = i + 2;
+        const receiptCell = sh.getRange(row, col('Nomor Kuitansi Pemeriksaan'));
+        let receiptNo = String(receiptCell.getDisplayValue() || '').trim();
+        // Repair an earlier successful save whose response/row lacked a receipt
+        // number. Keep the same Event Key and examination row; never duplicate it.
+        if (!receiptNo) {
+          const savedDate = sh.getRange(row, col('Tanggal Pemeriksaan')).getValue();
+          const receiptDate = savedDate instanceof Date && !isNaN(savedDate.getTime())
+            ? savedDate : new Date();
+          receiptNo = 'KP-' + Utilities.formatDate(
+            receiptDate, Session.getScriptTimeZone(), 'yyyyMMdd'
+          ) + '-' + Utilities.getUuid().slice(0,8).toUpperCase();
+          receiptCell.setValue(receiptNo);
+        }
         return olApiJson_({
           ok: true, action: 'saveExamination', requestId: requestId,
           examId: String(sh.getRange(row, col('ID Pemeriksaan')).getDisplayValue()),
           qrPayload: String(sh.getRange(row, col('QR Payload')).getDisplayValue()),
           examFee: Number(sh.getRange(row, col('Biaya Pemeriksaan')).getValue()) || fee,
           examPaymentMethod: String(sh.getRange(row, col('Metode Pembayaran Pemeriksaan')).getDisplayValue() || method),
-          receiptNo: String(sh.getRange(row, col('Nomor Kuitansi Pemeriksaan')).getDisplayValue()),
+          receiptNo: receiptNo,
           paymentStatus: String(sh.getRange(row, col('Status Pembayaran Pemeriksaan')).getDisplayValue() || 'LUNAS'),
           verificationToken: String(sh.getRange(row, col('Token Verifikasi Kuitansi')).getDisplayValue()),
           reused: true, processedBy: actor.email
