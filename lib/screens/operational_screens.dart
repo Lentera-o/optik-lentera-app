@@ -267,6 +267,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   bool saving = false;
   String? examId, qrPayload;
   String? lastSavedExamId;
+  String? lastSavedExamPdfUrl;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -283,6 +284,25 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     'osSph':_value(osSph),'osCyl':_value(osCyl),'osAxis':_value(osAxis),'osAdd':_value(osAdd),'osPd':_value(osPd),
     'lensType':_value(lensType),'note':_value(note),
   };
+
+  Future<void> openLastExaminationPdf() async {
+    final url = lastSavedExamPdfUrl;
+    if (url == null || url.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Tautan PDF pemeriksaan belum tersedia.'),
+      ));
+      return;
+    }
+    final opened = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('PDF ada di Google Drive, tetapi tautannya gagal dibuka.'),
+      ));
+    }
+  }
 
   Future<void> saveAndPrint() async {
     if (saving) return;
@@ -327,12 +347,14 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         },
       );
       if (!driveResponse.isSuccessful || driveResponse.data is! Map ||
-          driveResponse.data['fileUrl'] == null) {
+          driveResponse.data['fileUrl'] == null ||
+          driveResponse.data['fileUrl'].toString().trim().isEmpty) {
         throw Exception(
           'Data pemeriksaan tersimpan, tetapi PDF belum masuk Google Drive: '
           '${driveResponse.errorMessage ?? 'tautan file tidak diterima server.'}',
         );
       }
+      final savedPdfUrl = driveResponse.data['fileUrl'].toString().trim();
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
@@ -350,6 +372,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         examId = null;
         qrPayload = null;
         lastSavedExamId = id;
+        lastSavedExamPdfUrl = savedPdfUrl;
         examDate = DateTime.now();
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan ke sistem dan PDF resmi masuk Google Drive. Form siap untuk pelanggan berikutnya.')));
@@ -393,7 +416,15 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
-      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. Tidak membuat invoice maupun kuitansi.',style:TextStyle(fontSize:11,color:Colors.black54))),
+      if (lastSavedExamId != null && lastSavedExamPdfUrl != null) ...[
+        const SizedBox(height: 8),
+        SizedBox(width:double.infinity,child:OutlinedButton.icon(
+          onPressed: openLastExaminationPdf,
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+          label: Text('Buka / kirim PDF pemeriksaan terakhir ($lastSavedExamId)'),
+        )),
+      ],
+      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive; tombol di atas membuka PDF terakhir untuk ditinjau atau dibagikan. Tidak membuat invoice maupun kuitansi.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
 }
