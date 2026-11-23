@@ -260,39 +260,71 @@ function olApiJson_(value) {
  * invoice, payment, or receipt. Creates only the dedicated examination tab.
  */
 function olApiSaveExamination_(data, requestId, actor) {
-  const lock = LockService.getScriptLock();
-  // doPost already holds the script lock; do not acquire it again here.
+  // doPost already holds the script lock. Examination + fee payment are saved
+  // as one idempotent transaction, without touching order/payment sheets.
   const eventKey = 'APP_EXAM_' + requestId;
-  const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
+  const paymentEventKey = 'APP_EXAM_PAYMENT_' + requestId;
+  const fee = olApiMoney_(data.examFee, 'Biaya pemeriksaan');
+  if (fee <= 0) throw new Error('Biaya pemeriksaan harus diisi lebih dari 0.');
+  const method = olApiMethod_(data.examPaymentMethod, true);
+
+  const spreadsheetId = PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID');
+  if (!spreadsheetId) throw new Error('Spreadsheet belum terhubung.');
+  const ss = SpreadsheetApp.openById(spreadsheetId);
   const sheetName = 'DATA_PEMERIKSAAN';
   const headers = [
     'ID Pemeriksaan','Event Key','Tanggal Pemeriksaan','Nama Pelanggan','Nomor HP/WA','Alamat',
     'OD SPH','OD CYL','OD AXIS','OD ADD','OD PD',
     'OS SPH','OS CYL','OS AXIS','OS ADD','OS PD',
-    'Jenis Lensa','Catatan Pemeriksaan','QR Payload','Dibuat Oleh'
+    'Jenis Lensa','Catatan Pemeriksaan','QR Payload','Dibuat Oleh',
+    'Biaya Pemeriksaan','Metode Pembayaran Pemeriksaan','Nomor Kuitansi Pemeriksaan',
+    'Status Pembayaran Pemeriksaan','Token Verifikasi Kuitansi','Event Key Pembayaran Pemeriksaan'
   ];
   let sh = ss.getSheetByName(sheetName);
   if (!sh) {
     sh = ss.insertSheet(sheetName);
     sh.getRange(1, 1, 1, headers.length).setValues([headers]);
     sh.setFrozenRows(1);
+  } else if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sh.setFrozenRows(1);
   }
-  const lastCol = sh.getLastColumn();
-  const currentHeaders = lastCol ? sh.getRange(1,1,1,lastCol).getDisplayValues()[0] : [];
-  const eventCol = currentHeaders.indexOf('Event Key') + 1;
-  if (eventCol > 0 && sh.getLastRow() > 1) {
-    const existing = sh.getRange(2,eventCol,sh.getLastRow()-1,1).getDisplayValues();
-    for (let i=0;i<existing.length;i++) {
+  // Add only missing columns; never replace or reorder existing data.
+  let currentHeaders = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0].map(String);
+  headers.forEach(header => {
+    if (currentHeaders.indexOf(header) < 0) {
+      sh.getRange(1, sh.getLastColumn() + 1).setValue(header);
+      currentHeaders.push(header);
+    }
+  });
+  const col = header => currentHeaders.indexOf(header) + 1;
+  const lastRow = sh.getLastRow();
+  if (lastRow > 1) {
+    const eventCol = col('Event Key');
+    const existing = sh.getRange(2, eventCol, lastRow - 1, 1).getDisplayValues();
+    for (let i = 0; i < existing.length; i++) {
       if (String(existing[i][0]) === eventKey) {
         const row = i + 2;
-        return olApiJson_({ok:true,action:'saveExamination',examId:String(sh.getRange(row,1).getDisplayValue()),qrPayload:String(sh.getRange(row,19).getDisplayValue()),reused:true,processedBy:actor.email});
+        return olApiJson_({
+          ok: true, action: 'saveExamination', requestId: requestId,
+          examId: String(sh.getRange(row, col('ID Pemeriksaan')).getDisplayValue()),
+          qrPayload: String(sh.getRange(row, col('QR Payload')).getDisplayValue()),
+          examFee: Number(sh.getRange(row, col('Biaya Pemeriksaan')).getValue()) || fee,
+          examPaymentMethod: String(sh.getRange(row, col('Metode Pembayaran Pemeriksaan')).getDisplayValue() || method),
+          receiptNo: String(sh.getRange(row, col('Nomor Kuitansi Pemeriksaan')).getDisplayValue()),
+          paymentStatus: String(sh.getRange(row, col('Status Pembayaran Pemeriksaan')).getDisplayValue() || 'LUNAS'),
+          verificationToken: String(sh.getRange(row, col('Token Verifikasi Kuitansi')).getDisplayValue()),
+          reused: true, processedBy: actor.email
+        });
       }
     }
   }
-  const date = olApiText_(data.examDate,'Tanggal pemeriksaan',40,true);
+  const date = olApiText_(data.examDate, 'Tanggal pemeriksaan', 40, true);
   if (isNaN(new Date(date).getTime())) throw new Error('Tanggal pemeriksaan tidak valid.');
-  const name = olApiText_(data.name,'Nama pelanggan',120,true);
+  const name = olApiText_(data.name, 'Nama pelanggan', 120, true);
   const examId = 'RE-' + Utilities.formatDate(new Date(date), Session.getScriptTimeZone(), 'yyyyMMdd') + '-' + Utilities.getUuid().slice(0,8).toUpperCase();
+  const receiptNo = 'KP-' + Utilities.formatDate(new Date(date), Session.getScriptTimeZone(), 'yyyyMMdd') + '-' + Utilities.getUuid().slice(0,8).toUpperCase();
+  const token = olNewVerificationToken_();
   const qrPayload = 'OPTIK-LENTERA|REFRAKSI|' + examId;
   const values = [
     examId,eventKey,date,name,olApiText_(data.phone,'Nomor HP/WA',40,false),
@@ -303,8 +335,17 @@ function olApiSaveExamination_(data, requestId, actor) {
     olApiText_(data.osCyl,'OS CYL',30,false),olApiText_(data.osAxis,'OS AXIS',30,false),
     olApiText_(data.osAdd,'OS ADD',30,false),olApiText_(data.osPd,'OS PD',30,false),
     olApiText_(data.lensType,'Jenis lensa',160,false),
-    olApiText_(data.note,'Catatan pemeriksaan',1000,false),qrPayload,String(actor.email || 'APK')
+    olApiText_(data.note,'Catatan pemeriksaan',1000,false),qrPayload,String(actor.email || 'APK'),
+    fee,method,receiptNo,'LUNAS',token,paymentEventKey
   ];
-  sh.appendRow(values);
-  return olApiJson_({ok:true,action:'saveExamination',examId:examId,qrPayload:qrPayload,reused:false,processedBy:actor.email});
+  const rowValues = new Array(sh.getLastColumn()).fill('');
+  headers.forEach((header, index) => { rowValues[col(header)-1] = values[index]; });
+  const nextRow = sh.getLastRow() + 1;
+  sh.getRange(nextRow, 1, 1, rowValues.length).setValues([rowValues]);
+  return olApiJson_({
+    ok:true,action:'saveExamination',requestId:requestId,examId:examId,
+    qrPayload:qrPayload,examFee:fee,examPaymentMethod:method,
+    receiptNo:receiptNo,paymentStatus:'LUNAS',verificationToken:token,
+    reused:false,processedBy:actor.email
+  });
 }
