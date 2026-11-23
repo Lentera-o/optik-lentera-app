@@ -72,6 +72,18 @@ class OptikPdfService {
   );
 
   static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
+    final bytes = await invoiceBytes(o, paid: paid, remaining: remaining);
+    await Printing.layoutPdf(
+      name: 'Invoice_' + o.invoiceNumber + '.pdf',
+      onLayout: (_) async => bytes,
+    );
+  }
+
+  static Future<Uint8List> invoiceBytes(
+    OptikOrder o, {
+    required int paid,
+    required int remaining,
+  }) async {
     final pdf = pw.Document();
     pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4, margin: const pw.EdgeInsets.all(28), build: (_) => pw.Container(
       color: paper,
@@ -110,7 +122,7 @@ class OptikPdfService {
         pw.Spacer(), pw.Text('Pindai QR untuk membaca nomor invoice: ' + o.invoiceNumber, style: const pw.TextStyle(fontSize: 8, color: ink)),
       ]),
     )));
-    await Printing.layoutPdf(name: 'Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => pdf.save());
+    return pdf.save();
   }
 
 
@@ -210,24 +222,62 @@ class OptikPdfService {
     );
   }
 
-  static Future<void> shareReceiptAndPrescription(
+  static bool hasPrescription(OptikOrder o) {
+    final p = o.prescription;
+    return [
+      p.doctor, p.odSph, p.odCyl, p.odAxis, p.odAdd, p.odPd,
+      p.osSph, p.osCyl, p.osAxis, p.osAdd, p.osPd,
+      p.lensType, p.note,
+    ].any((value) => value.trim().isNotEmpty);
+  }
+
+  static Future<void> shareTransactionDocuments(
     OptikOrder o,
     OptikPayment p, {
     required String receiptNumber,
     required int paid,
     required int remaining,
   }) async {
-    final receiptPdf = await receiptBytes(
-      o, p, receiptNumber: receiptNumber, paid: paid, remaining: remaining,
+    final invoicePdf = await invoiceBytes(
+      o, paid: paid, remaining: remaining,
     );
-    final prescriptionPdf = await prescriptionBytes(o);
+    final receiptPdf = await receiptBytes(
+      o,
+      p,
+      receiptNumber: receiptNumber,
+      paid: paid,
+      remaining: remaining,
+    );
+
+    final files = <XFile>[
+      XFile.fromData(
+        invoicePdf,
+        mimeType: 'application/pdf',
+        name: 'Invoice_' + o.invoiceNumber + '.pdf',
+      ),
+      XFile.fromData(
+        receiptPdf,
+        mimeType: 'application/pdf',
+        name: 'Kuitansi_' + receiptNumber + '.pdf',
+      ),
+    ];
+
+    final includePrescription = hasPrescription(o);
+    if (includePrescription) {
+      final prescriptionPdf = await prescriptionBytes(o);
+      files.add(XFile.fromData(
+        prescriptionPdf,
+        mimeType: 'application/pdf',
+        name: 'Resep_' + o.invoiceNumber + '.pdf',
+      ));
+    }
+
     await SharePlus.instance.share(ShareParams(
-      subject: 'Kuitansi dan Resep OPTIK LENTERA - ' + o.customer.name,
-      text: 'Kuitansi pembayaran dan resep kacamata OPTIK LENTERA.',
-      files: [
-        XFile.fromData(receiptPdf, mimeType: 'application/pdf', name: 'Kuitansi_' + receiptNumber + '.pdf'),
-        XFile.fromData(prescriptionPdf, mimeType: 'application/pdf', name: 'Resep_' + o.invoiceNumber + '.pdf'),
-      ],
+      subject: 'Dokumen OPTIK LENTERA - ' + o.customer.name,
+      text: includePrescription
+          ? 'Invoice, kuitansi pembayaran, dan resep kacamata OPTIK LENTERA.'
+          : 'Invoice dan kuitansi OPTIK LENTERA. Resep tidak dilampirkan karena data pemeriksaan belum tersedia.',
+      files: files,
     ));
   }
 }
