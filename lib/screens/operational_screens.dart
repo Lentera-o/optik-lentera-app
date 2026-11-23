@@ -2132,7 +2132,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
     final documentLinks =
         (prescriptionPdf.isEmpty ? '' : '\\nPDF Resep Pemeriksaan: ' + prescriptionPdf) +
         (invoicePdf.isEmpty ? '' : '\\nPDF Invoice: ' + invoicePdf) +
-        (receiptPdf.isEmpty ? '' : '\\nPDF Kuitansi: ' + receiptPdf)
+        (receiptPdf.isEmpty ? '' : '\\nPDF Kuitansi: ' + receiptPdf);
     final orderDetails = _orderDetailText(order);
     if (template == 'Pesanan siap diambil') {
       message.text = 'Halo ' + customer.name + ' 👋\nKami dari OPTIK LENTERA ingin menginformasikan bahwa pesanan kacamata Anda sudah siap diambil.\nNomor invoice: ' + invoice + orderDetails + documentLinks + '\nSilakan datang pada jam operasional kami. Terima kasih 🙏';
