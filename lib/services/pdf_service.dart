@@ -82,74 +82,62 @@ class OptikPdfService {
     String v(String key) =>
         (values[key] ?? '').trim().isEmpty ? '-' : values[key]!.trim();
 
-    pdf.addPage(pw.MultiPage(
-      pageFormat: PdfPageFormat.a4.landscape,
-      pageTheme: pw.PageTheme(
-        buildBackground: (_) => pw.Container(color: paper),
-      ),
-      margin: const pw.EdgeInsets.fromLTRB(28, 20, 28, 18),
-      maxPages: 2,
-      build: (_) => [
-        brand(),
-        pw.Center(child: heading('RESEP', 'HASIL PEMERIKSAAN REFRAKSI')),
-        pw.Row(children: [
-          pw.Expanded(child: pair('No. dokumen', examId)),
-          pw.SizedBox(width: 14),
-          pw.Expanded(child: pair('Tanggal', date(examDate))),
-          pw.SizedBox(width: 14),
-          pw.Expanded(child: pair('Nama pelanggan', name)),
-          pw.SizedBox(width: 14),
-          pw.Expanded(child: pair('No. HP / WA', phone)),
-        ]),
-        pair('Alamat', address),
-        section('HASIL PEMERIKSAAN'),
-        dataTable(['MATA', 'SPH', 'CYL', 'AXIS', 'ADD', 'PD'], [
-          ['OD • Kanan', v('odSph'), v('odCyl'), v('odAxis'), v('odAdd'), v('odPd')],
-          ['OS • Kiri', v('osSph'), v('osCyl'), v('osAxis'), v('osAdd'), v('osPd')],
-        ]),
-        pw.SizedBox(height: 3),
-        pair('Jenis lensa', values['lensType']),
-        section('CATATAN / REKOMENDASI'),
-        pw.Container(
-          width: double.infinity,
-          padding: const pw.EdgeInsets.all(8),
-          constraints: const pw.BoxConstraints(minHeight: 30),
-          decoration: pw.BoxDecoration(
-            color: pink,
-            border: pw.Border.all(color: line, width: .6),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
-          ),
-          child: pw.Text(v('note'), style: const pw.TextStyle(fontSize: 8, color: ink)),
-        ),
-        pw.SizedBox(height: 10),
-        pw.Container(
-          width: double.infinity,
-          padding: const pw.EdgeInsets.all(8),
-          decoration: pw.BoxDecoration(
-            color: pink,
-            border: pw.Border.all(color: line, width: .6),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
-          ),
-          child: pw.Row(children: [
-            pw.SizedBox(width: 42, height: 42, child: qr(qrPayload)),
-            pw.SizedBox(width: 8),
-            pw.Expanded(child: pw.Text(
-              'Dokumen pemeriksaan resmi OPTIK LENTERA. Pindai QR untuk memeriksa nomor dokumen: $examId',
+    // Reuse the existing prescription section layout from the invoice PDF.
+    // Only the document reference and data source differ for standalone exams.
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (_) => pw.Container(
+        color: paper,
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            brand(),
+            pw.Center(child: heading('RESEP', 'HASIL PEMERIKSAAN REFRAKSI')),
+            pair('Nomor referensi', examId),
+            pair('Tanggal pemeriksaan', date(examDate)),
+            pair('Nama pelanggan', name),
+            pair('No. HP', phone),
+            pair('Alamat', address),
+            section('01 — HASIL PEMERIKSAAN MATA'),
+            dataTable(['MATA', 'SPH', 'CYL', 'AXIS', 'ADD', 'PD'], [
+              ['OD • Kanan', v('odSph'), v('odCyl'), v('odAxis'), v('odAdd'), v('odPd')],
+              ['OS • Kiri', v('osSph'), v('osCyl'), v('osAxis'), v('osAdd'), v('osPd')],
+            ]),
+            pair('Jenis lensa', values['lensType']),
+            section('02 — CATATAN PEMERIKSAAN'),
+            pw.Container(
+              width: double.infinity,
+              constraints: const pw.BoxConstraints(minHeight: 54),
+              padding: const pw.EdgeInsets.all(9),
+              decoration: pw.BoxDecoration(
+                color: const PdfColor.fromInt(0xFFFFFCF7),
+                border: pw.Border.all(color: line, width: .6),
+              ),
+              child: pw.Text(
+                v('note'),
+                style: const pw.TextStyle(fontSize: 9, color: ink),
+              ),
+            ),
+            pw.Spacer(),
+            pw.Center(child: pw.Text(
+              'OPTIK LENTERA • 0858 9312 8257',
               style: const pw.TextStyle(fontSize: 7, color: ink),
             )),
-          ]),
+            pw.SizedBox(height: 7),
+            pw.Center(child: pw.SizedBox(
+              width: 76, height: 76, child: qr(qrPayload),
+            )),
+            pw.SizedBox(height: 4),
+            pw.Center(child: pw.Text(
+              'QR referensi: ' + examId,
+              style: const pw.TextStyle(fontSize: 7, color: ink),
+            )),
+          ],
         ),
-        pw.SizedBox(height: 5),
-        pw.Container(height: .7, color: line),
-        pw.SizedBox(height: 4),
-        pw.Center(child: pw.Text(
-          'OPTIK LENTERA · Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang · 0858 9312 8257',
-          textAlign: pw.TextAlign.center,
-          style: const pw.TextStyle(fontSize: 6, color: ink),
-        )),
-      ],
+      ),
     ));
-    return await pdf.save();
+    return pdf.save();
   }
 
 }
