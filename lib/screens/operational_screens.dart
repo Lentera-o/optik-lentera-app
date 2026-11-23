@@ -500,7 +500,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       SizedBox(width:double.infinity,child:FilledButton.icon(
         onPressed:saving?null:saveAndPrint,
         icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.picture_as_pdf_outlined),
-        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan, Resep & Kuitansi'),
+        label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan, Resep & ${examPaymentStatus == 'LUNAS' ? 'Kuitansi' : 'Rincian Biaya'}'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
       const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive. Pengiriman dokumen dilakukan melalui alur WhatsApp, bukan tombol berbagi langsung setelah simpan.',style:TextStyle(fontSize:11,color:Colors.black54))),
