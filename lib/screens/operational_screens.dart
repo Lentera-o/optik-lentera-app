@@ -1364,8 +1364,10 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       final receipt = result is Map
           ? (result['receiptNumber'] ?? result['receipt'] ?? '').toString().trim()
           : '';
-      // Play after the server confirms the payment/receipt was recorded.
-      await _playPdfReadySound();
+      // The server response confirms the payment was recorded. Do not let
+      // a slow invoice refresh delay the success message or keep the form
+      // locked; refreshing the invoice history is a separate background task.
+      unawaited(_playPdfReadySound());
       _pendingPaymentRequestId = null;
       _pendingPaymentPayload = null;
       widget.onAdd(OptikPayment(
@@ -1376,7 +1378,6 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         category: category,
         note: paymentNote.text.trim(),
       ));
-      await _loadOfficialInvoices();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(receipt.isEmpty
@@ -1384,7 +1385,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
             : 'Pembayaran berhasil dicatat. Kuitansi $receipt masuk ke notifikasi dokumen.'),
         duration: const Duration(seconds: 5),
       ));
-      // Clear every payment field only after the server confirms success.
+      // Clear the form only after the server confirms success.
       invoice.clear();
       nominal.clear();
       paymentNote.clear();
@@ -1393,6 +1394,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         method = 'Tunai';
         category = 'DP tambahan';
       });
+      // Sync the official balance in the background; a slow read must not
+      // turn a confirmed payment into a confusing pending screen.
+      unawaited(_loadOfficialInvoices());
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
