@@ -473,7 +473,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       if (lastSavedExamId != null && lastSavedPrescriptionPdf != null) ...[
         const SizedBox(height: 8),
         SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_shareSavedPrescription,icon:const Icon(Icons.share_outlined),label:const Text('Kirim Resep via WhatsApp')),
-        ),
         if(lastSavedExamReceiptPdf!=null) SizedBox(width:double.infinity,child:OutlinedButton.icon(
           onPressed:_shareSavedExamReceipt,icon:const Icon(Icons.receipt_long_outlined),
           label:Text('Kirim Kuitansi Pemeriksaan ${lastSavedReceiptNo??''} · ${OptikPdfService.money(lastSavedExamFee??0)}'),
