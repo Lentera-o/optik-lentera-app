@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:cross_file/cross_file.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -110,7 +113,67 @@ class OptikPdfService {
     await Printing.layoutPdf(name: 'Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => pdf.save());
   }
 
-  static Future<void> receipt(OptikOrder o, OptikPayment p, {required String receiptNumber, required int paid, required int remaining}) async {
+
+  static Future<Uint8List> prescriptionBytes(OptikOrder o) async {
+    final pdf = pw.Document();
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (_) => pw.Container(
+        color: paper,
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            brand(),
+            pw.Center(child: heading('RESEP KACAMATA', 'HASIL PEMERIKSAAN REFRAKSI')),
+            pair('Nomor referensi', o.invoiceNumber),
+            pair('Tanggal pemeriksaan', date(o.orderDate)),
+            pair('Nama pelanggan', o.customer.name),
+            pair('No. HP', o.customer.phone),
+            pair('Alamat', o.customer.address),
+            section('01 — HASIL PEMERIKSAAN MATA'),
+            dataTable(['MATA', 'SPH', 'CYL', 'AXIS', 'ADD', 'PD'], [
+              ['OD • Kanan', o.prescription.odSph, o.prescription.odCyl, o.prescription.odAxis, o.prescription.odAdd, o.prescription.odPd],
+              ['OS • Kiri', o.prescription.osSph, o.prescription.osCyl, o.prescription.osAxis, o.prescription.osAdd, o.prescription.osPd],
+            ]),
+            pair('Jenis lensa', o.prescription.lensType),
+            pair('Dokter / optometris', o.prescription.doctor),
+            section('02 — CATATAN PEMERIKSAAN'),
+            pw.Container(
+              width: double.infinity,
+              constraints: const pw.BoxConstraints(minHeight: 54),
+              padding: const pw.EdgeInsets.all(9),
+              decoration: pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFFFFFCF7),
+                border: pw.Border.all(color: line, width: .6),
+              ),
+              child: pw.Text(
+                o.prescription.note.isEmpty ? '-' : o.prescription.note,
+                style: const pw.TextStyle(fontSize: 9, color: ink),
+              ),
+            ),
+            pw.Spacer(),
+            pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
+            pw.SizedBox(height: 7),
+            pw.Center(child: pw.SizedBox(width: 76, height: 76, child: qr(o.invoiceNumber))),
+            pw.SizedBox(height: 4),
+            pw.Center(child: pw.Text('QR referensi: ' + o.invoiceNumber, style: const pw.TextStyle(fontSize: 7, color: ink))),
+          ],
+        ),
+      ),
+    ));
+    return pdf.save();
+  }
+
+  static Future<void> prescription(OptikOrder o) async {
+    final bytes = await prescriptionBytes(o);
+    await Printing.layoutPdf(
+      name: 'Resep_' + o.invoiceNumber + '.pdf',
+      onLayout: (_) async => bytes,
+    );
+  }
+
+  static Future<Uint8List> receiptBytes(OptikOrder o, OptikPayment p, {required String receiptNumber, required int paid, required int remaining}) async {
     final pdf = pw.Document();
     pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4.landscape, margin: const pw.EdgeInsets.all(26), build: (_) => pw.Container(
       color: paper,
@@ -136,6 +199,35 @@ class OptikPdfService {
         pw.SizedBox(height: 5), pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
       ]),
     )));
-    await Printing.layoutPdf(name: 'Kuitansi_' + receiptNumber + '.pdf', onLayout: (_) async => pdf.save());
+    return pdf.save();
+  }
+
+  static Future<void> receipt(OptikOrder o, OptikPayment p, {required String receiptNumber, required int paid, required int remaining}) async {
+    final bytes = await receiptBytes(o, p, receiptNumber: receiptNumber, paid: paid, remaining: remaining);
+    await Printing.layoutPdf(
+      name: 'Kuitansi_' + receiptNumber + '.pdf',
+      onLayout: (_) async => bytes,
+    );
+  }
+
+  static Future<void> shareReceiptAndPrescription(
+    OptikOrder o,
+    OptikPayment p, {
+    required String receiptNumber,
+    required int paid,
+    required int remaining,
+  }) async {
+    final receiptPdf = await receiptBytes(
+      o, p, receiptNumber: receiptNumber, paid: paid, remaining: remaining,
+    );
+    final prescriptionPdf = await prescriptionBytes(o);
+    await SharePlus.instance.share(ShareParams(
+      subject: 'Kuitansi dan Resep OPTIK LENTERA - ' + o.customer.name,
+      text: 'Kuitansi pembayaran dan resep kacamata OPTIK LENTERA.',
+      files: [
+        XFile.fromData(receiptPdf, mimeType: 'application/pdf', name: 'Kuitansi_' + receiptNumber + '.pdf'),
+        XFile.fromData(prescriptionPdf, mimeType: 'application/pdf', name: 'Resep_' + o.invoiceNumber + '.pdf'),
+      ],
+    ));
   }
 }
