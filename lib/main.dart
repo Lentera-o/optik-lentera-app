@@ -204,6 +204,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<OptikOrder> orders = [];
   final List<OptikPayment> payments = [];
   bool _loadingLocalData = true;
+  bool _localCachePurgeFailed = false;
   int _unreadDocumentCount = 0;
   final Set<String> _readDocumentNoticeIds = {};
   final Map<String, String> _documentNoticeStatuses = {};
@@ -310,6 +311,13 @@ class _MainScreenState extends State<MainScreen> {
   /// Official records are read from Apps Script/Sheets; these lists remain
   /// in-memory only for the active session and are never written to disk.
   Future<void> _purgeLocalTransactionCache() async {
+    if (mounted) {
+      setState(() {
+        _loadingLocalData = true;
+        _localCachePurgeFailed = false;
+      });
+    }
+    var purgeFailed = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('ol_customers');
@@ -318,10 +326,15 @@ class _MainScreenState extends State<MainScreen> {
       await prefs.remove('ol_document_notice_read_ids');
       await prefs.remove('ol_document_notice_status');
     } catch (_) {
-      // Keep the app usable, but do not hydrate transaction data from disk.
+      // Fail closed: do not open operational screens while legacy transaction
+      // cache removal has not completed successfully.
+      purgeFailed = true;
     }
     if (!mounted) return;
-    setState(() => _loadingLocalData = false);
+    setState(() {
+      _loadingLocalData = false;
+      _localCachePurgeFailed = purgeFailed;
+    });
   }
 
   void _addCustomer(Customer value) {
@@ -481,7 +494,36 @@ class _MainScreenState extends State<MainScreen> {
       body: SafeArea(
         child: _loadingLocalData
             ? const Center(child: CircularProgressIndicator(color: darkGold))
-            : switch (selectedIndex) {
+            : _localCachePurgeFailed
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.lock_outline, size: 42, color: darkGold),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Data lama belum berhasil dibersihkan dari perangkat.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Aplikasi dikunci sementara agar data transaksi lama tidak terbuka. Tekan Coba Lagi.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: _purgeLocalTransactionCache,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : switch (selectedIndex) {
           0 => DashboardContent(
             onOpenModule: (index) => setState(() => selectedIndex = index),
           ),
