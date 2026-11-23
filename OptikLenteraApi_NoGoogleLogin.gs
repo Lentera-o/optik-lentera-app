@@ -280,6 +280,8 @@ function olApiSaveExamination_(data, requestId, actor) {
   const fee = olApiMoney_(data.examFee, 'Biaya pemeriksaan');
   if (fee <= 0) throw new Error('Biaya pemeriksaan harus diisi lebih dari 0.');
   const method = olApiMethod_(data.examPaymentMethod, true);
+  const paymentStatus = String(data.examPaymentStatus || 'LUNAS').trim().toUpperCase();
+  if (['LUNAS', 'BELUM LUNAS'].indexOf(paymentStatus) < 0) throw new Error('Status pembayaran pemeriksaan tidak valid.');
 
   const spreadsheetId = PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID');
   if (!spreadsheetId) throw new Error('Spreadsheet belum terhubung.');
@@ -351,7 +353,7 @@ function olApiSaveExamination_(data, requestId, actor) {
     olApiText_(data.osAdd,'OS ADD',30,false),olApiText_(data.osPd,'OS PD',30,false),
     olApiText_(data.lensType,'Jenis lensa',160,false),
     olApiText_(data.note,'Catatan pemeriksaan',1000,false),qrPayload,String(actor.email || 'APK'),
-    fee,method,receiptNo,'LUNAS',token,paymentEventKey,''
+    fee,method,receiptNo,paymentStatus,token,paymentEventKey,''
   ];
   const rowValues = new Array(sh.getLastColumn()).fill('');
   headers.forEach((header, index) => { rowValues[col(header)-1] = values[index]; });
@@ -360,7 +362,7 @@ function olApiSaveExamination_(data, requestId, actor) {
   return olApiJson_({
     ok:true,action:'saveExamination',requestId:requestId,examId:examId,
     qrPayload:qrPayload,examFee:fee,examPaymentMethod:method,
-    receiptNo:receiptNo,paymentStatus:'LUNAS',verificationToken:token,
+    receiptNo:receiptNo,paymentStatus:paymentStatus,verificationToken:token,
     reused:false,processedBy:actor.email
   });
 }
