@@ -419,10 +419,15 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     final receipt = lastSavedReceiptNo;
     if (bytes == null || exam == null || receipt == null) return;
     final safeId = exam.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    final isPaid = lastSavedExamPaymentStatus == 'LUNAS';
+    final documentLabel = isPaid ? 'Kuitansi' : 'Rincian Biaya';
+    final fileName = isPaid
+        ? 'Kuitansi_Pemeriksaan_$safeId.pdf'
+        : 'Rincian_Biaya_Pemeriksaan_$safeId.pdf';
     await SharePlus.instance.share(ShareParams(
-      subject: 'Kuitansi pemeriksaan OPTIK LENTERA - ${lastSavedPrescriptionName ?? ''}',
+      subject: '$documentLabel pemeriksaan OPTIK LENTERA - ${lastSavedPrescriptionName ?? ''}',
       text: 'Dokumen pemeriksaan OPTIK LENTERA. Nomor: $receipt. Nominal: ${OptikPdfService.money(lastSavedExamFee ?? 0)}. Status: $lastSavedExamPaymentStatus.',
-      files: [XFile.fromData(bytes,mimeType:'application/pdf',name:'Kuitansi_Pemeriksaan_$safeId.pdf')],
+      files: [XFile.fromData(bytes,mimeType:'application/pdf',name:fileName)],
     ));
   }
 
@@ -489,7 +494,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         SizedBox(width:double.infinity,child:OutlinedButton.icon(onPressed:_shareSavedPrescription,icon:const Icon(Icons.share_outlined),label:const Text('Kirim Resep via WhatsApp'))),
         if(lastSavedExamReceiptPdf!=null) SizedBox(width:double.infinity,child:OutlinedButton.icon(
           onPressed:_shareSavedExamReceipt,icon:const Icon(Icons.receipt_long_outlined),
-          label:Text('Kirim Kuitansi Pemeriksaan ${lastSavedReceiptNo??''} · ${OptikPdfService.money(lastSavedExamFee??0)}'),
+          label:Text('Kirim ${lastSavedExamPaymentStatus == 'LUNAS' ? 'Kuitansi' : 'Rincian Biaya'} Pemeriksaan ${lastSavedReceiptNo??''} · ${OptikPdfService.money(lastSavedExamFee??0)}'),
         )),
       ],
       SizedBox(width:double.infinity,child:FilledButton.icon(
