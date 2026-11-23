@@ -153,8 +153,7 @@ class OptikPdfService {
   }
 
 
-  /// Customer-facing PROGRESS prescription, designed as a clear single-page
-  /// portrait document with readable patient and OD/OS values.
+  /// Customer-facing eyeglass prescription, matching the OPTIK LENTERA invoice identity.
   static Future<Uint8List> progressPrescriptionBytes({
     required String examId,
     required String qrPayload,
@@ -167,8 +166,18 @@ class OptikPdfService {
     final pdf = pw.Document();
     String v(String key) {
       final value = (values[key] ?? '').trim();
-      return value.isEmpty ? '—' : value;
+      return value.isEmpty ? '' : value;
     }
+    pw.Widget rxPair(String label, String? value) => pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 3),
+      child: pw.Row(children: [
+        pw.SizedBox(width: 112, child: pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: ink))),
+        pw.Text(': ', style: const pw.TextStyle(fontSize: 9, color: ink)),
+        pw.Expanded(child: pw.Text((value ?? '').trim(), textAlign: pw.TextAlign.right,
+          style: const pw.TextStyle(fontSize: 9, color: ink))),
+      ]),
+    );
+
     final table = pw.Table(
       border: pw.TableBorder.all(color: line, width: .8),
       columnWidths: const {
@@ -189,8 +198,8 @@ class OptikPdfService {
             ).toList(),
         ),
         ...[
-          ['OD  ·  KANAN',v('odSph'),v('odCyl'),v('odAxis'),v('odAdd'),v('odPd')],
-          ['OS  ·  KIRI',v('osSph'),v('osCyl'),v('osAxis'),v('osAdd'),v('osPd')],
+          ['OD - KANAN',v('odSph'),v('odCyl'),v('odAxis'),v('odAdd'),v('odPd')],
+          ['OS - KIRI',v('osSph'),v('osCyl'),v('osAxis'),v('osAdd'),v('osPd')],
         ].map((row) => pw.TableRow(children: row.map((value) =>
           pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 5),
             child: pw.Text(value, textAlign: pw.TextAlign.center,
@@ -211,20 +220,17 @@ class OptikPdfService {
             pw.SizedBox(height: 18),
             pw.Center(child: pw.Text('RESEP KACAMATA',
               style: pw.TextStyle(fontSize: 22, font: pw.Font.helveticaBold(), color: gold, letterSpacing: 1.2))),
-            pw.SizedBox(height: 4),
-            pw.Center(child: pw.Text('LENSA PROGRESS',
-              style: pw.TextStyle(fontSize: 12, font: pw.Font.helveticaBold(), color: ink))),
             pw.SizedBox(height: 16),
             pw.Container(
               padding: const pw.EdgeInsets.all(12),
               decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line, width: .7),
                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6))),
               child: pw.Column(children: [
-                pair('No. resep', examId),
-                pair('Tanggal', date(examDate)),
-                pair('Nama', name),
-                pair('No. HP / WhatsApp', phone),
-                pair('Alamat', address),
+                rxPair('No. resep', examId),
+                rxPair('Tanggal', date(examDate)),
+                rxPair('Nama', name),
+                rxPair('No. HP / WhatsApp', phone),
+                rxPair('Alamat', address),
               ]),
             ),
             pw.SizedBox(height: 18),
@@ -232,7 +238,6 @@ class OptikPdfService {
             pw.SizedBox(height: 7),
             table,
             pw.SizedBox(height: 12),
-            pair('Jenis lensa', 'PROGRESS'),
             pw.SizedBox(height: 12),
             pw.Text('CATATAN / REKOMENDASI', style: pw.TextStyle(fontSize: 10, font: pw.Font.helveticaBold(), color: gold)),
             pw.SizedBox(height: 6),
@@ -250,7 +255,7 @@ class OptikPdfService {
               child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
                 pw.SizedBox(width: 54, height: 54, child: qr(qrPayload)),
                 pw.SizedBox(width: 10),
-                pw.Expanded(child: pw.Text('Resep lensa PROGRESS OPTIK LENTERA.\nNomor resep: $examId',
+                pw.Expanded(child: pw.Text('RESEP KACAMATA OPTIK LENTERA.\nNomor resep: $examId',
                   style: const pw.TextStyle(fontSize: 8, color: ink))),
               ]),
             ),
