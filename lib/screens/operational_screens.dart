@@ -352,7 +352,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
           '${driveResponse.errorMessage ?? 'tautan file tidak diterima server.'}',
         );
       }
-      final savedPdfUrl = driveResponse.data['fileUrl'].toString().trim();
       final receiptBytes = await OptikPdfService.examinationReceiptBytes(
         examId:id,receiptNo:receiptNo,qrPayload:qr,receiptDate:date,name:_value(name),
         phone:_value(phone),amount:fee,method:examPaymentMethod,
