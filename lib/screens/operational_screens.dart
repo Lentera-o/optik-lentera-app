@@ -266,6 +266,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   final lensType = TextEditingController(), note = TextEditingController();
   bool saving = false;
   String? examId, qrPayload;
+  String? savedPdfUrl;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -282,6 +283,32 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     'osSph':_value(osSph),'osCyl':_value(osCyl),'osAxis':_value(osAxis),'osAdd':_value(osAdd),'osPd':_value(osPd),
     'lensType':_value(lensType),'note':_value(note),
   };
+
+  Future<void> openSavedPdf() async {
+    final url = savedPdfUrl;
+    if (url == null || url.trim().isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tautan PDF tidak valid.')),
+      );
+      return;
+    }
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF tidak dapat dibuka. Coba lagi dari riwayat pemeriksaan.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF tidak dapat dibuka. Coba lagi dari riwayat pemeriksaan.')),
+        );
+      }
+    }
+  }
 
   Future<void> saveAndPrint() async {
     if (saving) return;
@@ -348,11 +375,12 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         controller.clear();
       }
       setState(() {
+        this.savedPdfUrl = savedPdfUrl;
         examId = null;
         qrPayload = null;
         examDate = DateTime.now();
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan ke sistem dan PDF resmi masuk Google Drive. Form siap untuk pelanggan berikutnya.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan. Link PDF tetap tersedia di layar.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
@@ -377,6 +405,15 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   Widget build(BuildContext context) => ListView(padding:const EdgeInsets.all(18),children:[
     const _Intro('Pemeriksaan Mata','Catat hasil pemeriksaan OD/OS dan simpan resep PDF pelanggan.',Icons.visibility_outlined),
     const SizedBox(height:14),
+    if (savedPdfUrl != null && savedPdfUrl!.trim().isNotEmpty) ...[
+      _Panel(child: Row(children: [
+        const Icon(Icons.picture_as_pdf_outlined, color: _darkGold),
+        const SizedBox(width: 10),
+        const Expanded(child: Text('PDF resep pemeriksaan tersimpan', style: TextStyle(fontWeight: FontWeight.w700))),
+        FilledButton.icon(onPressed: openSavedPdf, icon: const Icon(Icons.open_in_new), label: const Text('Buka PDF'), style: FilledButton.styleFrom(backgroundColor: _darkGold)),
+      ])),
+      const SizedBox(height: 12),
+    ],
     _Panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       const Text('DATA PELANGGAN',style:TextStyle(color:_darkGold,fontWeight:FontWeight.w800)),
       const SizedBox(height:10),
