@@ -8,5 +8,7 @@ class AppConfig {
   // App access key is injected by the release workflow; no Google login UI.
   static const String appApiKey = String.fromEnvironment('OL_APP_API_KEY');
 
-  static const Duration apiTimeout = Duration(seconds: 25);
+  // Order creation can generate and store invoice/receipt PDFs on Apps Script
+  // before returning its JSON response. Allow enough time for that server work.
+  static const Duration apiTimeout = Duration(seconds: 90);
 }
