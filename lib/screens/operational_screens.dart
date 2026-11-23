@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:cross_file/cross_file.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/pdf_service.dart';
 import '../models/optik_models.dart';
 import '../services/api_service.dart';
@@ -269,9 +269,9 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
   final lensType = TextEditingController(), note = TextEditingController();
   bool saving = false;
   String? examId, qrPayload;
-  String? lastSavedExamId;
-  Uint8List? lastSavedPrescriptionPdf;
-  String? lastSavedPrescriptionName;
+  String? savedPdfUrl;
+  Uint8List? savedPdfBytes;
+  String? savedPdfFileName;
   DateTime examDate = DateTime.now();
   String? pendingRequestId;
   String? _pendingPayloadFingerprint;
@@ -288,6 +288,50 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     'osSph':_value(osSph),'osCyl':_value(osCyl),'osAxis':_value(osAxis),'osAdd':_value(osAdd),'osPd':_value(osPd),
     'lensType':_value(lensType),'note':_value(note),
   };
+
+  Future<void> openSavedPdf() async {
+    final url = savedPdfUrl;
+    if (url == null || url.trim().isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tautan PDF tidak valid.')),
+      );
+      return;
+    }
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF tidak dapat dibuka. Coba lagi dari riwayat pemeriksaan.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PDF tidak dapat dibuka. Coba lagi dari riwayat pemeriksaan.')),
+        );
+      }
+    }
+  }
+
+  Future<void> shareSavedPdf() async {
+    final bytes = savedPdfBytes;
+    final fileName = savedPdfFileName;
+    if (bytes == null || fileName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File resep belum tersedia untuk dibagikan.')));
+      return;
+    }
+    try {
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile.fromData(bytes, name: fileName, mimeType: 'application/pdf')],
+        subject: 'Resep Kacamata OPTIK LENTERA',
+        text: 'Resep Kacamata OPTIK LENTERA · ${examId ?? ''}',
+      ));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF belum bisa dibagikan: $e')));
+    }
+  }
 
   Future<void> saveAndPrint() async {
     if (saving) return;
@@ -318,7 +362,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final qr = result['qrPayload'].toString();
       if (!mounted) return;
       setState(() { examId=id; qrPayload=qr; });
-      final pdfBytes = await OptikPdfService.examinationBytes(
+      final pdfBytes = await OptikPdfService.progressPrescriptionBytes(
         examId:id,qrPayload:qr,examDate:date,name:_value(name),phone:_value(phone),
         address:_value(address),values:rx,
       );
@@ -340,8 +384,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         );
       }
       final savedPdfUrl = driveResponse.data['fileUrl'].toString().trim();
-      lastSavedPrescriptionPdf = pdfBytes;
-      lastSavedPrescriptionName = _value(name);
       pendingRequestId = null;
       _pendingPayloadFingerprint = null;
       if (!mounted) return;
@@ -356,12 +398,14 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         controller.clear();
       }
       setState(() {
+        this.savedPdfUrl = savedPdfUrl;
+        savedPdfBytes = pdfBytes;
+        savedPdfFileName = 'Resep_Kacamata_$safeExamId.pdf';
         examId = null;
         qrPayload = null;
-        lastSavedExamId = id;
         examDate = DateTime.now();
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan ke sistem dan PDF resmi masuk Google Drive. Form siap untuk pelanggan berikutnya.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Resep PROGRESS $id berhasil disimpan. Link PDF tetap tersedia di layar.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
@@ -370,27 +414,29 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
     }
   }
 
-  Future<void> _shareSavedPrescription() async {
-    final bytes = lastSavedPrescriptionPdf;
-    final exam = lastSavedExamId;
-    if (bytes == null || exam == null) return;
-    final safeId = exam.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
-    await SharePlus.instance.share(ShareParams(
-      subject: 'Resep OPTIK LENTERA - ${lastSavedPrescriptionName ?? ''}',
-      text: 'Resep hasil pemeriksaan OPTIK LENTERA. Pilih WhatsApp untuk mengirim dokumen ini.',
-      files: [
-        XFile.fromData(
-          bytes,
-          mimeType: 'application/pdf',
-          name: 'Resep_$safeId.pdf',
-        ),
-      ],
-    ));
-  }
-
   Widget field(TextEditingController c,String label,{TextInputType? type}) => Padding(
     padding: const EdgeInsets.only(bottom:10),
     child: TextField(controller:c,keyboardType:type,decoration:InputDecoration(labelText:label,border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))),
+  );
+
+  Widget lensTypeField() => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: DropdownButtonFormField<String>(
+      value: lensType.text.isEmpty ? null : lensType.text,
+      decoration: InputDecoration(
+        labelText: 'Jenis lensa',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      hint: const Text('Pilih jenis lensa'),
+      items: const [
+        DropdownMenuItem(value: 'Single Focus', child: Text('Single Focus')),
+        DropdownMenuItem(value: 'Double Focus', child: Text('Double Focus')),
+        DropdownMenuItem(value: 'Progresif', child: Text('Progresif')),
+      ],
+      onChanged: saving ? null : (value) {
+        lensType.text = value ?? '';
+      },
+    ),
   );
 
   Widget eyeFields(String label,List<TextEditingController> c) => Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -402,8 +448,24 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
 
   @override
   Widget build(BuildContext context) => ListView(padding:const EdgeInsets.all(18),children:[
-    const _Intro('Pemeriksaan Mata','Catat hasil pemeriksaan secara mandiri tanpa membuat invoice atau transaksi pembelian.',Icons.visibility_outlined),
+    const _Intro('Pemeriksaan Mata','Catat hasil pemeriksaan OD/OS dan simpan resep PDF pelanggan.',Icons.visibility_outlined),
     const SizedBox(height:14),
+    if (savedPdfUrl != null && savedPdfUrl!.trim().isNotEmpty) ...[
+      _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.picture_as_pdf_outlined, color: _darkGold),
+          SizedBox(width: 10),
+          Expanded(child: Text('PDF resep kacamata tersimpan', style: TextStyle(fontWeight: FontWeight.w700))),
+        ]),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          FilledButton.icon(onPressed: openSavedPdf, icon: const Icon(Icons.open_in_new), label: const Text('Buka PDF'), style: FilledButton.styleFrom(backgroundColor: _darkGold)),
+          OutlinedButton.icon(onPressed: shareSavedPdf, icon: const Icon(Icons.share_outlined), label: const Text('Kirim PDF ke WhatsApp')),
+        ]),
+        const Padding(padding: EdgeInsets.only(top: 6), child: Text('Pilih WhatsApp pada menu berbagi; file PDF ikut terlampir.', style: TextStyle(fontSize: 11, color: Colors.black54))),
+      ])),
+      const SizedBox(height: 12),
+    ],
     _Panel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       const Text('DATA PELANGGAN',style:TextStyle(color:_darkGold,fontWeight:FontWeight.w800)),
       const SizedBox(height:10),
@@ -412,26 +474,15 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       eyeFields('OD — MATA KANAN',[odSph,odCyl,odAxis,odAdd,odPd]),
       const SizedBox(height:8),
       eyeFields('OS — MATA KIRI',[osSph,osCyl,osAxis,osAdd,osPd]),
-      field(lensType,'Jenis lensa (opsional)'),field(note,'Catatan pemeriksaan / rekomendasi'),
+      lensTypeField(),field(note,'Catatan pemeriksaan / rekomendasi'),
       if(examId!=null) Padding(padding:const EdgeInsets.only(bottom:10),child:Text('Dokumen tersimpan: $examId',style:const TextStyle(color:_darkGold,fontWeight:FontWeight.w700))),
-      if (lastSavedExamId != null && lastSavedPrescriptionPdf != null) ...[
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _shareSavedPrescription,
-            icon: const Icon(Icons.share_outlined),
-            label: const Text('Kirim Resep via WhatsApp'),
-          ),
-        ),
-      ],
       SizedBox(width:double.infinity,child:FilledButton.icon(
         onPressed:saving?null:saveAndPrint,
         icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)):const Icon(Icons.picture_as_pdf_outlined),
         label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
-      const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. PDF resmi tersimpan di Google Drive. Pengiriman dokumen dilakukan melalui alur WhatsApp, bukan tombol berbagi langsung setelah simpan.',style:TextStyle(fontSize:11,color:Colors.black54))),
+      const Padding(padding:EdgeInsets.only(top:9),child:Text('Data pemeriksaan tersimpan terpisah di DATA_PEMERIKSAAN. PDF resep resmi tersimpan di Google Drive. Tidak ada pengiriman WhatsApp otomatis dari halaman pemeriksaan.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
 }
@@ -477,6 +528,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
   bool _examinationLoading = false;
   String? _examinationError;
   String? _selectedExaminationId;
+  String? _selectedExaminationPdfUrl;
   bool _historyLoading = false;
   String? _historyError;
   String? _selectedHistoryInvoice;
@@ -615,6 +667,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
     final row = selected;
     setState(() {
       _selectedExaminationId = examId;
+      _selectedExaminationPdfUrl = _historyCell(row, ['PDF Resep Pemeriksaan', 'Link PDF Resep', 'URL PDF Resep']);
       customer.text = _historyCell(row, ['Nama', 'Nama Pasien', 'Nama Pelanggan']);
       phone.text = _historyPhone(row);
       address.text = _historyCell(row, ['Alamat', 'Alamat Pasien', 'Alamat Pelanggan']);
@@ -630,7 +683,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
       osPd.text = _historyCell(row, ['OS PD']);
       lensType.text = _historyCell(row, ['Jenis Lensa']);
       rxNote.text = _historyCell(row, ['Catatan', 'Catatan Pemeriksaan']);
-      otherDescription.text = 'Biaya Pemeriksaan Mata';
+      // Hasil pemeriksaan hanya mengisi resep dan identitas. Biaya tidak pernah
+      // ditambahkan otomatis ke transaksi; item transaksi harus dipilih manual.
       final reference = 'ID Pemeriksaan: $examId';
       if (!invoiceNote.text.contains(reference)) {
         invoiceNote.text = invoiceNote.text.trim().isEmpty
@@ -639,7 +693,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       }
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Hasil pemeriksaan $examId dimuat. Masukkan biaya pemeriksaan dan DP sebelum menyimpan.')),
+      SnackBar(content: Text('Hasil pemeriksaan $examId dimuat. Tambahkan rincian frame/lensa dan nominal transaksi hanya jika pelanggan melakukan pemesanan.')),
     );
   }
 
@@ -728,7 +782,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
           ? 'Nama pelanggan wajib diisi.'
           : total <= 0
               ? (_selectedExaminationId != null
-                  ? 'Masukkan harga pemeriksaan di kolom Harga pemeriksaan / biaya lain, atau isi harga frame/lensa terlebih dahulu. Setelah itu baru masukkan DP.'
+                  ? 'Isi harga frame, lensa, atau biaya lain untuk pesanan ini terlebih dahulu sebelum mengisi DP.'
                   : 'Masukkan harga frame, lensa, atau biaya lain terlebih dahulu sebelum mengisi DP.')
               : 'Nominal DP tidak boleh melebihi total pesanan.';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
@@ -828,6 +882,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
       setState(() {
         selectedCustomerIndex = null;
         _selectedExaminationId = null;
+        _selectedExaminationPdfUrl = null;
         _selectedHistoryInvoice = null;
         method = 'Tunai';
       });
@@ -848,7 +903,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(18), children: [
-    const _Intro('Pemesanan & Pemeriksaan', 'Input pesanan dan resep mata OD/OS.', Icons.receipt_long_outlined),
+    const _Intro('Pemesanan & Transaksi', 'Catat pesanan frame/lensa dan rincian transaksi pelanggan.', Icons.receipt_long_outlined),
     const SizedBox(height: 16),
     _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
@@ -906,6 +961,25 @@ class _TransactionScreenState extends State<TransactionScreen> {
         }).toList(),
         onChanged: _prefillFromExamination,
       ),
+      if (_selectedExaminationPdfUrl != null && _selectedExaminationPdfUrl!.trim().isNotEmpty)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () async {
+              final uri = Uri.tryParse(_selectedExaminationPdfUrl!.trim());
+              if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF resep belum dapat dibuka.')));
+              }
+            },
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('Buka PDF Resep Pemeriksaan'),
+          ),
+        )
+      else if (_selectedExaminationId != null)
+        const Padding(
+          padding: EdgeInsets.only(top: 6),
+          child: Text('Tautan PDF resep belum tercatat. Muat ulang data pemeriksaan setelah PDF tersimpan.', style: TextStyle(fontSize: 11, color: Colors.deepOrange)),
+        ),
       const SizedBox(height: 12),
       if (widget.customers.isNotEmpty) ...[
         DropdownButtonFormField<int>(
@@ -1495,6 +1569,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
   final message = TextEditingController();
   List<Map<String, String>> officialOrders = [];
   List<Map<String, String>> officialPayments = [];
+  List<Map<String, String>> officialExaminations = [];
   // Keep customer objects stable between rebuilds: DropdownButton matches values by ==.
   List<Customer> officialCustomers = [];
   late final List<Customer> _orderCustomers;
@@ -1696,6 +1771,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
         : selectedCustomer!.name + '|' + selectedCustomer!.phone + '|' + selectedCustomer!.address;
     final previousOrder = rowSignature(selectedOfficialOrder);
     final previousPayments = rowsSignature(selectedOfficialPayments);
+    final previousExaminations = rowsSignature(officialExaminations);
     final previousCustomerKey =
         selectedCustomer == null ? null : _customerKey(selectedCustomer!);
 
@@ -1710,8 +1786,10 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
     // payment tab must never discard freshly fetched order rows (and vice versa).
     List<Map<String, String>>? fetchedOrders;
     List<Map<String, String>>? fetchedPayments;
+    List<Map<String, String>>? fetchedExaminations;
     Object? orderError;
     Object? paymentError;
+    Object? examinationError;
 
     Future<void> loadOrders() async {
       try {
@@ -1735,8 +1813,19 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
       }
     }
 
-    // Fetch both tabs concurrently, but catch each failure independently.
-    await Future.wait([loadOrders(), loadPayments()]);
+    Future<void> loadExaminations() async {
+      try {
+        fetchedExaminations = await SheetsReadService.readTable(
+          'DATA_PEMERIKSAAN',
+          forceRefresh: true,
+        );
+      } catch (error) {
+        examinationError = error;
+      }
+    }
+
+    // Fetch each official tab independently so one unavailable tab cannot block the others.
+    await Future.wait([loadOrders(), loadPayments(), loadExaminations()]);
 
     if (!mounted) return;
 
@@ -1796,11 +1885,17 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
           row.values.any((value) => value.trim().isNotEmpty)
         ).toList();
       }
+      if (fetchedExaminations != null) {
+        officialExaminations = fetchedExaminations!.where((row) =>
+          row.values.any((value) => value.trim().isNotEmpty)
+        ).toList();
+      }
 
       loadingOfficialData = false;
       final errors = <String>[];
       if (orderError != null) errors.add('DATA_PESANAN: ' + orderError.toString());
       if (paymentError != null) errors.add('DATA_PEMBAYARAN: ' + paymentError.toString());
+      if (examinationError != null) errors.add('DATA_PEMERIKSAAN: ' + examinationError.toString());
       syncError = errors.isEmpty ? null : errors.join(' • ');
 
       if (fetchedOrders != null && selectedCustomer != null) {
@@ -1818,7 +1913,7 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
         _lastNewestInvoice = newestInvoice;
       }
 
-      if (fetchedOrders != null || fetchedPayments != null) {
+      if (fetchedOrders != null || fetchedPayments != null || fetchedExaminations != null) {
         _lastSyncedAt = DateTime.now();
       }
 
@@ -1828,7 +1923,8 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
       final messageSourceChanged = previousInvoice != selectedInvoice ||
           previousCustomer != currentCustomer ||
           previousOrder != rowSignature(selectedOfficialOrder) ||
-          previousPayments != rowsSignature(selectedOfficialPayments);
+          previousPayments != rowsSignature(selectedOfficialPayments) ||
+          previousExaminations != rowsSignature(officialExaminations);
       // Keep a staff-edited draft unless its selected official source changed.
       if (messageSourceChanged) _buildMessage();
     });
@@ -1988,6 +2084,48 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
     });
   }
 
+  String _prescriptionPdfForOrder(Map<String, String>? order) {
+    final customer = selectedCustomer;
+    if (customer == null || officialExaminations.isEmpty) return '';
+    final orderName = order == null ? '' : _customerNameFromRow(order);
+    final targetName = (orderName.isEmpty ? customer.name : orderName)
+        .trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    if (targetName.isEmpty) return '';
+    final orderPhone = order == null ? '' : _phoneFromRow(order);
+    final targetPhone = _canonicalPhone(
+      orderPhone.isEmpty ? customer.phone : orderPhone,
+    );
+    final candidates = officialExaminations.where((row) {
+      final examName = _customerNameFromRow(row)
+          .trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+      if (examName != targetName) return false;
+      final examPhone = _canonicalPhone(_phoneFromRow(row));
+      if (targetPhone.isNotEmpty) return examPhone.isNotEmpty && examPhone == targetPhone;
+      // Without a phone on the selected order, only use a name when it is
+      // unambiguous across all examination rows.
+      final identities = officialExaminations
+          .where((item) => _customerNameFromRow(item)
+              .trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ') == targetName)
+          .map((item) => _canonicalPhone(_phoneFromRow(item)))
+          .where((phone) => phone.isNotEmpty)
+          .toSet();
+      return examPhone.isEmpty && identities.isEmpty;
+    }).toList();
+    candidates.sort((a, b) => _dateValue(_cell(b, [
+      'Tanggal Pemeriksaan', 'Tanggal', 'Timestamp', 'Cap waktu',
+    ])).compareTo(_dateValue(_cell(a, [
+      'Tanggal Pemeriksaan', 'Tanggal', 'Timestamp', 'Cap waktu',
+    ]))));
+    for (final row in candidates) {
+      final url = _documentUrl(row, [
+        'PDF Resep Pemeriksaan', 'Link PDF Resep', 'URL PDF Resep',
+        'PDF Resep', 'Link PDF Pemeriksaan', 'URL PDF Pemeriksaan',
+      ]);
+      if (url.isNotEmpty) return url;
+    }
+    return '';
+  }
+
   void _buildMessage() {
     final customer = selectedCustomer;
     final order = selectedOfficialOrder;
@@ -2010,7 +2148,10 @@ class _WhatsAppCenterScreenState extends State<WhatsAppCenterScreen> with Widget
     final receiptPdf = latestPayment == null ? '' : _documentUrl(latestPayment, [
       'PDF Kuitansi', 'Link PDF Kuitansi', 'Link Kuitansi', 'Link Kuitansi PDF', 'Kuitansi PDF',
     ]);
-    final documentLinks = (invoicePdf.isEmpty ? '' : '\nPDF Invoice: ' + invoicePdf) +
+    final prescriptionPdf = _prescriptionPdfForOrder(order);
+    final documentLinks =
+        (prescriptionPdf.isEmpty ? '' : '\nPDF Resep Pemeriksaan: ' + prescriptionPdf) +
+        (invoicePdf.isEmpty ? '' : '\nPDF Invoice: ' + invoicePdf) +
         (receiptPdf.isEmpty ? '' : '\nPDF Kuitansi: ' + receiptPdf);
     final orderDetails = _orderDetailText(order);
     if (template == 'Pesanan siap diambil') {

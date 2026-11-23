@@ -1,5 +1,5 @@
 /**
- * OPTIK LENTERA — Secure Flutter transaction API
+ * OPTIK LENTERA — App-key Flutter transaction API (no Google sign-in)
  *
  * Add this file to the EXISTING Apps Script project that already contains
  * OPTIK_LENTERA_FINAL_AMAN.gs. It reuses the existing invoice, receipt,
@@ -7,22 +7,22 @@
  *
  * Required Script Properties:
  *   OL_SPREADSHEET_ID           = ID spreadsheet operasional OPTIK LENTERA
- *   OL_APP_API_KEY              = random access key (minimum 32 characters)
+ *   OL_APP_API_KEY              = same long random key configured as GitHub Actions secret
  *
  * Deploy the existing Web App as "Execute as me". The endpoint may be
- * reachable publicly, but every action requires OL_APP_API_KEY. This removes
- * Google Sign-In. A key embedded in an APK can be extracted, so this is a basic
- * access gate, not strong staff authentication. Restrict APK distribution.
+ * reachable publicly; every action requires the OL_APP_API_KEY configured
+ * in Script Properties and injected into the APK at build time.
  *
  * Request JSON:
  * {
- *   "action": "readTable" | "createOrder" | "createPayment",
+ *   "action": "readTable" | "createOrder" | "createPayment" |
+ *             "saveExamination" | "uploadExaminationPdf",
  *   "requestId": "<unique UUID generated once per user submission>",
- *   "apiKey": "<app access key>",
+ *   "apiKey": "<application API key>",
  *   "data": { ... }
  * }
  *
- * Do not treat an APK-embedded key as a secret against a determined attacker.
+ * Do not use this model for highly sensitive public-facing deployments.
  */
 
 function doPost(e) {
@@ -30,7 +30,7 @@ function doPost(e) {
     const raw = e && e.postData && e.postData.contents
       ? String(e.postData.contents)
       : '';
-    if (!raw || raw.length > 50000) {
+    if (!raw || raw.length > 2000000) {
       return olApiJson_({ ok: false, error: 'Payload kosong atau terlalu besar.' });
     }
 
@@ -39,7 +39,7 @@ function doPost(e) {
       throw new Error('Format permintaan tidak valid.');
     }
 
-    // Verify app access key before reading or changing operational data.
+    // Verify the app key before any read or write operation.
     const actor = olApiVerifyAppKey_(request.apiKey);
     const action = String(request.action || '');
     if (action === 'readTable') {
@@ -48,9 +48,11 @@ function doPost(e) {
       }
       return olApiReadTable_(request.data, actor);
     }
+    // Status pengerjaan adalah pembaruan operasional terpisah dari transaksi.
+    // Aksi ini tidak membuat invoice/pembayaran dan tidak memerlukan requestId.
     if (action === 'updateOrderStatus') {
       if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
-        throw new Error('Parameter status pesanan tidak valid.');
+        throw new Error('Data pembaruan status tidak valid.');
       }
       const statusLock = LockService.getScriptLock();
       statusLock.waitLock(30000);
@@ -64,7 +66,19 @@ function doPost(e) {
     if (!/^[A-Za-z0-9_-]{16,80}$/.test(requestId)) {
       throw new Error('ID permintaan tidak valid.');
     }
-    if (action !== 'createOrder' && action !== 'createPayment') {
+    if (action === 'uploadExaminationPdf') {
+      if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
+        throw new Error('Data PDF pemeriksaan tidak valid.');
+      }
+      const uploadLock = LockService.getScriptLock();
+      uploadLock.waitLock(30000);
+      try {
+        return olApiUploadExaminationPdf_(request.data, requestId, actor);
+      } finally {
+        uploadLock.releaseLock();
+      }
+    }
+    if (action !== 'createOrder' && action !== 'createPayment' && action !== 'saveExamination') {
       throw new Error('Aksi transaksi tidak dikenal.');
     }
     if (!request.data || typeof request.data !== 'object' || Array.isArray(request.data)) {
@@ -74,10 +88,9 @@ function doPost(e) {
     const lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
-      if (action === 'createOrder') {
-        return olApiCreateOrder_(request.data, requestId, actor);
-      }
-      return olApiCreatePayment_(request.data, requestId, actor);
+      if (action === 'createOrder') return olApiCreateOrder_(request.data, requestId, actor);
+      if (action === 'createPayment') return olApiCreatePayment_(request.data, requestId, actor);
+      return olApiSaveExamination_(request.data, requestId, actor);
     } finally {
       lock.releaseLock();
     }
@@ -91,14 +104,14 @@ function doPost(e) {
 }
 
 function olApiVerifyAppKey_(providedKey) {
-  const expected = String(PropertiesService.getScriptProperties().getProperty('OL_APP_API_KEY') || '');
-  const supplied = String(providedKey || '');
-  if (expected.length < 32) throw new Error('Kunci akses aplikasi belum dikonfigurasi administrator.');
-  if (supplied.length !== expected.length || supplied.length > 256) throw new Error('Akses aplikasi tidak valid.');
+  const expected = String(PropertiesService.getScriptProperties().getProperty('OL_APP_API_KEY') || '').trim();
+  const supplied = String(providedKey || '').trim();
+  if (expected.length < 32) throw new Error('Kunci aplikasi belum dipasang di Script Properties.');
+  if (supplied.length !== expected.length) throw new Error('Kunci koneksi aplikasi tidak valid.');
   let mismatch = 0;
   for (let i = 0; i < expected.length; i++) mismatch |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
-  if (mismatch !== 0) throw new Error('Akses aplikasi tidak valid.');
-  return { email: 'Aplikasi OPTIK LENTERA', name: 'Aplikasi' };
+  if (mismatch !== 0) throw new Error('Kunci koneksi aplikasi tidak valid.');
+  return { email: 'Aplikasi OPTIK LENTERA', name: 'APK' };
 }
 
 function olApiCreateOrder_(data, requestId, actor) {
@@ -135,8 +148,8 @@ function olApiCreateOrder_(data, requestId, actor) {
     'Catatan invoice': olApiText_(data.note, 'Catatan invoice', 1000, false)
   };
 
-  // Preserve the result from the existing production order processor: it
-  // carries the QR verification URL generated with the invoice token.
+  // Keep the production processor result so the invoice verification URL
+  // generated with the invoice token is returned to the Flutter app.
   const processedOrder = olProcessOrder_(answers, eventKey) || {};
 
   const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
@@ -206,6 +219,49 @@ function olApiCreatePayment_(data, requestId, actor) {
   });
 }
 
+/**
+ * Update only the work-progress field on an existing order.
+ * Existing invoice, payment, customer and prescription fields remain untouched.
+ */
+function olApiUpdateOrderStatus_(data, actor) {
+  const invoice = olApiText_(data.invoice, 'Nomor invoice', 80, true);
+  const status = olApiText_(data.status, 'Status pengerjaan', 40, true);
+  const allowed = [
+    'Menunggu diproses',
+    'Sedang dikerjakan',
+    'Siap diambil',
+    'Sudah diserahkan'
+  ];
+  if (allowed.indexOf(status) < 0) {
+    throw new Error('Pilihan status pengerjaan tidak valid.');
+  }
+
+  const spreadsheetId = String(
+    PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID') || ''
+  ).trim();
+  if (!spreadsheetId) throw new Error('ID spreadsheet operasional belum dipasang.');
+
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sh = ss.getSheetByName(OL.SHEET_ORDER);
+  if (!sh) throw new Error('Tab DATA_PESANAN tidak ditemukan.');
+
+  const row = olFindRow_(sh, OL_FIELDS.invoice, invoice);
+  if (!row) throw new Error('Invoice ' + invoice + ' tidak ditemukan di DATA_PESANAN.');
+
+  const statusField = ['Status Pengerjaan'];
+  olEnsureColumn_(sh, statusField);
+  olSetField_(sh, row, statusField, status);
+  SpreadsheetApp.flush();
+
+  return olApiJson_({
+    ok: true,
+    action: 'updateOrderStatus',
+    invoice: invoice,
+    status: status,
+    processedBy: actor && actor.email ? actor.email : 'Aplikasi OPTIK LENTERA'
+  });
+}
+
 function olApiMoney_(value, label) {
   if (value === null || value === undefined || String(value).trim() === '') return 0;
   const amount = typeof value === 'number' ? value : Number(String(value).trim());
@@ -234,7 +290,7 @@ function olApiMethod_(value, required) {
 /** Read only the two operational tables after app-key verification. */
 function olApiReadTable_(data, actor) {
   const sheetName = String(data.sheetName || '').trim();
-  const allowed = [OL.SHEET_ORDER, OL.SHEET_PAY];
+  const allowed = [OL.SHEET_ORDER, OL.SHEET_PAY, 'DATA_PEMERIKSAAN'];
   if (allowed.indexOf(sheetName) < 0) throw new Error('Tab yang diminta tidak diizinkan.');
 
   const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
@@ -248,34 +304,14 @@ function olApiReadTable_(data, actor) {
   if (lastRow > 5001 || lastCol > 100) {
     throw new Error('Ukuran tabel melebihi batas aman pembacaan API.');
   }
-  const range = sh.getRange(1, 1, lastRow, lastCol);
-  const values = range.getDisplayValues();
-  const rich = range.getRichTextValues();
-  const formulas = range.getFormulas();
+  const values = sh.getRange(1, 1, lastRow, lastCol).getDisplayValues();
   const headers = values[0].map((value, index) => {
     const header = String(value || '').trim();
     return header || ('Kolom ' + (index + 1));
   });
-  const rows = values.slice(1).filter(row => row.some(value => String(value || '').trim() !== '')).map((row, rowIndex) => {
+  const rows = values.slice(1).filter(row => row.some(value => String(value || '').trim() !== '')).map(row => {
     const record = {};
-    headers.forEach((header, colIndex) => {
-      let value = String(row[colIndex] || '').trim();
-      // A Sheets cell may display friendly text while its actual PDF URL is
-      // stored as a rich-text link or as =HYPERLINK(url, label). Return the
-      // real URL to the APK instead of the visible label.
-      if (/pdf|invoice|kuitansi|kwitansi/i.test(header)) {
-        const richUrl = rich[rowIndex + 1][colIndex] &&
-          rich[rowIndex + 1][colIndex].getLinkUrl();
-        if (richUrl) {
-          value = richUrl;
-        } else {
-          const formula = String(formulas[rowIndex + 1][colIndex] || '');
-          const match = formula.match(/^=HYPERLINK\(\s*"((?:[^"]|"")+)"/i);
-          if (match) value = match[1].replace(/""/g, '"');
-        }
-      }
-      record[header] = value;
-    });
+    headers.forEach((header, index) => { record[header] = String(row[index] || ''); });
     return record;
   });
   return olApiJson_({ ok: true, action: 'readTable', sheetName: sheetName, rows: rows, processedBy: actor.email });
@@ -288,36 +324,176 @@ function olApiJson_(value) {
 }
 
 
-/** Update only the appended fulfillment-status column; existing order fields remain untouched. */
-function olApiUpdateOrderStatus_(data, actor) {
-  const invoice = olApiText_(data.invoice, 'Nomor invoice', 80, true);
-  const allowedStatuses = ['Menunggu diproses', 'Sedang dikerjakan', 'Siap diambil', 'Sudah diserahkan'];
-  const status = String(data.status || '').trim();
-  if (allowedStatuses.indexOf(status) < 0) throw new Error('Status pengerjaan tidak valid.');
+/**
+ * Save an independent refractive examination without creating an order,
+ * invoice, payment, or receipt. Creates only the dedicated examination tab.
+ */
+function olApiSaveExamination_(data, requestId, actor) {
+  const eventKey = 'APP_EXAM_' + requestId;
+  const spreadsheetId = String(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID') || '').trim();
+  if (!spreadsheetId) throw new Error('ID spreadsheet operasional belum dipasang.');
 
-  const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID'));
-  const sh = ss.getSheetByName(OL.SHEET_ORDER);
-  if (!sh) throw new Error('Tab data pesanan tidak ditemukan.');
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheetName = 'DATA_PEMERIKSAAN';
+  const requiredHeaders = [
+    'ID Pemeriksaan','Event Key','Tanggal Pemeriksaan','Nama Pelanggan','Nomor HP/WA','Alamat',
+    'OD SPH','OD CYL','OD AXIS','OD ADD','OD PD',
+    'OS SPH','OS CYL','OS AXIS','OS ADD','OS PD',
+    'Jenis Lensa','Catatan Pemeriksaan','Token Verifikasi','QR Payload','Dibuat Oleh'
+  ];
 
-  const row = olFindRow_(sh, OL_FIELDS.invoice, invoice);
-  if (!row) throw new Error('Nomor invoice tidak ditemukan di DATA_PESANAN.');
+  let sh = ss.getSheetByName(sheetName);
+  if (!sh) sh = ss.insertSheet(sheetName);
 
-  const lastCol = sh.getLastColumn();
-  if (lastCol > 100) throw new Error('Kolom DATA_PESANAN melebihi batas aman.');
-  const headers = sh.getRange(1, 1, 1, Math.max(lastCol, 1)).getDisplayValues()[0];
-  let statusCol = headers.findIndex(value =>
-    String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '') === 'statuspengerjaan'
-  ) + 1;
-  if (statusCol === 0) {
-    statusCol = lastCol + 1;
-    sh.getRange(1, statusCol).setValue('Status Pengerjaan');
+  // Preserve the existing examination tab and all its data. Add only missing
+  // API columns at the end; never replace or reorder existing columns.
+  let lastCol = sh.getLastColumn();
+  if (lastCol === 0) {
+    sh.getRange(1, 1, 1, requiredHeaders.length).setValues([requiredHeaders]);
+    sh.setFrozenRows(1);
+    lastCol = requiredHeaders.length;
+  } else {
+    let headers = sh.getRange(1, 1, 1, lastCol).getDisplayValues()[0].map(v => String(v || '').trim());
+    requiredHeaders.forEach(function(header) {
+      if (headers.indexOf(header) < 0) {
+        lastCol += 1;
+        sh.getRange(1, lastCol).setValue(header);
+        headers.push(header);
+      }
+    });
   }
-  sh.getRange(row, statusCol).setValue(status);
+
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0].map(v => String(v || '').trim());
+  const col = {};
+  headers.forEach(function(header, index) {
+    if (header && col[header] === undefined) col[header] = index + 1;
+  });
+
+  const eventCol = col['Event Key'];
+  if (sh.getLastRow() > 1) {
+    const existing = sh.getRange(2, eventCol, sh.getLastRow() - 1, 1).getDisplayValues();
+    for (let i = 0; i < existing.length; i++) {
+      if (String(existing[i][0]) === eventKey) {
+        const row = i + 2;
+        return olApiJson_({
+          ok: true,
+          action: 'saveExamination',
+          examId: String(sh.getRange(row, col['ID Pemeriksaan']).getDisplayValue()),
+          qrPayload: String(sh.getRange(row, col['QR Payload']).getDisplayValue()),
+          reused: true,
+          processedBy: actor.email
+        });
+      }
+    }
+  }
+
+  const date = olApiText_(data.examDate, 'Tanggal pemeriksaan', 40, true);
+  if (isNaN(new Date(date).getTime())) throw new Error('Tanggal pemeriksaan tidak valid.');
+  const name = olApiText_(data.name, 'Nama pelanggan', 120, true);
+  const examId = 'RE-' + Utilities.formatDate(new Date(date), Session.getScriptTimeZone(), 'yyyyMMdd') + '-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+  const verificationToken = Utilities.getUuid().replace(/-/g, '');
+  const qrPayload = 'https://script.google.com/macros/s/AKfycbxmsqzBvZyF36NernbNuG9nV3EC3BbuoBENuu868_ORjwzONT_W_AzNF-os99Q9Org/exec?t=' + encodeURIComponent(verificationToken);
+
+  const values = {
+    'ID Pemeriksaan': examId,
+    'Event Key': eventKey,
+    'Tanggal Pemeriksaan': date,
+    'Nama Pelanggan': name,
+    'Nomor HP/WA': olApiText_(data.phone, 'Nomor HP/WA', 40, false),
+    'Alamat': olApiText_(data.address, 'Alamat', 500, false),
+    'OD SPH': olApiText_(data.odSph, 'OD SPH', 30, false),
+    'OD CYL': olApiText_(data.odCyl, 'OD CYL', 30, false),
+    'OD AXIS': olApiText_(data.odAxis, 'OD AXIS', 30, false),
+    'OD ADD': olApiText_(data.odAdd, 'OD ADD', 30, false),
+    'OD PD': olApiText_(data.odPd, 'OD PD', 30, false),
+    'OS SPH': olApiText_(data.osSph, 'OS SPH', 30, false),
+    'OS CYL': olApiText_(data.osCyl, 'OS CYL', 30, false),
+    'OS AXIS': olApiText_(data.osAxis, 'OS AXIS', 30, false),
+    'OS ADD': olApiText_(data.osAdd, 'OS ADD', 30, false),
+    'OS PD': olApiText_(data.osPd, 'OS PD', 30, false),
+    'Jenis Lensa': olApiText_(data.lensType, 'Jenis lensa', 160, false),
+    'Catatan Pemeriksaan': olApiText_(data.note, 'Catatan pemeriksaan', 1000, false),
+    'Token Verifikasi': verificationToken,
+    'QR Payload': qrPayload,
+    'Dibuat Oleh': String(actor.email || 'APK')
+  };
+
+  const newRow = sh.getLastRow() + 1;
+  Object.keys(values).forEach(function(header) {
+    sh.getRange(newRow, col[header]).setValue(values[header]);
+  });
+
   return olApiJson_({
     ok: true,
-    action: 'updateOrderStatus',
-    invoice: invoice,
-    status: status,
+    action: 'saveExamination',
+    examId: examId,
+    qrPayload: qrPayload,
+    reused: false,
     processedBy: actor.email
   });
+}
+
+/**
+ * Upload only the prescription PDF for an existing examination.
+ * Does not create examination-fee receipts or fee statements.
+ */
+function olApiUploadExaminationPdf_(data, requestId, actor) {
+  const examId = String(data.examId || '').trim();
+  if (!examId || examId.length > 120) throw new Error('Nomor pemeriksaan tidak valid.');
+  const safeId = examId.replace(/[^A-Za-z0-9_-]/g, '_');
+  const fileName = 'Hasil_Pemeriksaan_' + safeId + '.pdf';
+  if (String(data.fileName || '') !== fileName) throw new Error('Nama file PDF tidak sesuai dengan nomor pemeriksaan.');
+
+  const pdfBase64 = String(data.pdfBase64 || '').trim();
+  if (!pdfBase64 || pdfBase64.length > 1600000) throw new Error('Data PDF kosong atau melebihi batas ukuran.');
+  let bytes;
+  try { bytes = Utilities.base64Decode(pdfBase64); }
+  catch (error) { throw new Error('Data PDF tidak dapat dibaca.'); }
+  if (!bytes || bytes.length < 100 || bytes.length > 1200000) throw new Error('Ukuran PDF tidak valid.');
+  const signature = String.fromCharCode(bytes[0]&255,bytes[1]&255,bytes[2]&255,bytes[3]&255,bytes[4]&255);
+  if (signature !== '%PDF-') throw new Error('Berkas yang dikirim bukan PDF yang valid.');
+
+  const folder = DriveApp.getFolderById('16cAhjCREFndJypd1GqvS79KklfhRhnn9');
+  folder.getName();
+  const incomingHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,bytes));
+  const existingFiles = folder.getFilesByName(fileName);
+  while (existingFiles.hasNext()) {
+    const oldFile = existingFiles.next();
+    const oldHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,oldFile.getBlob().getBytes()));
+    if (oldHash === incomingHash) {
+      olApiLinkExamPrescriptionPdf_(examId,oldFile.getUrl());
+      return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,fileId:oldFile.getId(),fileUrl:oldFile.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
+    }
+  }
+
+  const file = folder.createFile(Utilities.newBlob(bytes,'application/pdf',fileName));
+  if (file.getSize() !== bytes.length) { file.setTrashed(true); throw new Error('PDF gagal diverifikasi setelah diunggah ke Google Drive.'); }
+  const savedHash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,file.getBlob().getBytes()));
+  if (savedHash !== incomingHash) { file.setTrashed(true); throw new Error('Isi PDF di Google Drive tidak cocok dengan file sumber.'); }
+  olApiLinkExamPrescriptionPdf_(examId,file.getUrl());
+  return olApiJson_({ok:true,action:'uploadExaminationPdf',requestId:requestId,examId:examId,fileId:file.getId(),fileUrl:file.getUrl(),processedBy:actor&&actor.email?actor.email:'Aplikasi'});
+}
+
+function olApiLinkExamPrescriptionPdf_(examId,fileUrl) {
+  const spreadsheetId = PropertiesService.getScriptProperties().getProperty('OL_SPREADSHEET_ID');
+  if (!spreadsheetId) throw new Error('ID spreadsheet operasional belum dipasang.');
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sh = ss.getSheetByName('DATA_PEMERIKSAAN');
+  if (!sh || sh.getLastRow() < 2) throw new Error('Data pemeriksaan untuk resep tidak ditemukan.');
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getDisplayValues()[0].map(String);
+  const idCol = headers.indexOf('ID Pemeriksaan') + 1;
+  if (idCol < 1) throw new Error('Kolom ID pemeriksaan belum tersedia.');
+  let pdfCol = headers.indexOf('PDF Resep Pemeriksaan') + 1;
+  if (pdfCol < 1) {
+    pdfCol = sh.getLastColumn()+1;
+    sh.getRange(1,pdfCol).setValue('PDF Resep Pemeriksaan');
+  }
+  const ids = sh.getRange(2,idCol,sh.getLastRow()-1,1).getDisplayValues();
+  for (let i=0;i<ids.length;i++) {
+    if (String(ids[i][0]) === examId) {
+      sh.getRange(i+2,pdfCol).setValue(fileUrl);
+      return;
+    }
+  }
+  throw new Error('ID pemeriksaan tidak ditemukan untuk menautkan PDF resep.');
 }

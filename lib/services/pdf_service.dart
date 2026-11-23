@@ -152,4 +152,121 @@ class OptikPdfService {
     return await pdf.save();
   }
 
+
+  /// Customer-facing eyeglass prescription, matching the OPTIK LENTERA invoice identity.
+  static Future<Uint8List> progressPrescriptionBytes({
+    required String examId,
+    required String qrPayload,
+    required DateTime examDate,
+    required String name,
+    required String phone,
+    required String address,
+    required Map<String, String> values,
+  }) async {
+    final pdf = pw.Document();
+    String v(String key) {
+      final value = (values[key] ?? '').trim();
+      return value.isEmpty ? '' : value;
+    }
+    pw.Widget rxPair(String label, String? value) => pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 3),
+      child: pw.Row(children: [
+        pw.SizedBox(width: 112, child: pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: ink))),
+        pw.Text(': ', style: const pw.TextStyle(fontSize: 9, color: ink)),
+        pw.Expanded(child: pw.Text((value ?? '').trim(), textAlign: pw.TextAlign.right,
+          style: const pw.TextStyle(fontSize: 9, color: ink))),
+      ]),
+    );
+
+    final table = pw.Table(
+      border: pw.TableBorder.all(color: line, width: .8),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(1.55),
+        1: pw.FlexColumnWidth(1.0),
+        2: pw.FlexColumnWidth(1.0),
+        3: pw.FlexColumnWidth(1.0),
+        4: pw.FlexColumnWidth(1.0),
+        5: pw.FlexColumnWidth(1.0),
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: pink),
+          children: ['MATA','SPH','CYL','AXIS','ADD','PD'].map((label) =>
+            pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+              child: pw.Text(label, textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(fontSize: 10, font: pw.Font.helveticaBold(), color: gold)))
+            ).toList(),
+        ),
+        ...[
+          ['OD - KANAN',v('odSph'),v('odCyl'),v('odAxis'),v('odAdd'),v('odPd')],
+          ['OS - KIRI',v('osSph'),v('osCyl'),v('osAxis'),v('osAdd'),v('osPd')],
+        ].map((row) => pw.TableRow(children: row.map((value) =>
+          pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 5),
+            child: pw.Text(value, textAlign: pw.TextAlign.center,
+              style: const pw.TextStyle(fontSize: 10, color: ink)))
+          ).toList())),
+      ],
+    );
+
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.fromLTRB(34, 30, 34, 28),
+      build: (_) => pw.Container(
+        color: paper,
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: [
+            brand(),
+            pw.SizedBox(height: 18),
+            pw.Center(child: pw.Text('RESEP KACAMATA',
+              style: pw.TextStyle(fontSize: 22, font: pw.Font.helveticaBold(), color: gold, letterSpacing: 1.2))),
+            pw.SizedBox(height: 16),
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line, width: .7),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6))),
+              child: pw.Column(children: [
+                rxPair('No. resep', examId),
+                rxPair('Tanggal', date(examDate)),
+                rxPair('Nama', name),
+                rxPair('No. HP / WhatsApp', phone),
+                rxPair('Alamat', address),
+              ]),
+            ),
+            pw.SizedBox(height: 18),
+            pw.Text('HASIL UKURAN LENSA', style: pw.TextStyle(fontSize: 11, font: pw.Font.helveticaBold(), color: gold)),
+            pw.SizedBox(height: 7),
+            table,
+            pw.SizedBox(height: 12),
+            pw.SizedBox(height: 12),
+            pw.Text('CATATAN / REKOMENDASI', style: pw.TextStyle(fontSize: 10, font: pw.Font.helveticaBold(), color: gold)),
+            pw.SizedBox(height: 6),
+            pw.Container(
+              width: double.infinity, height: 56, padding: const pw.EdgeInsets.all(9),
+              decoration: pw.BoxDecoration(border: pw.Border.all(color: line, width: .7),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+              child: pw.Text(v('note'), style: const pw.TextStyle(fontSize: 9, color: ink)),
+            ),
+            pw.Spacer(),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 9),
+              decoration: pw.BoxDecoration(color: pink, border: pw.Border.all(color: line, width: .7),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+              child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
+                pw.SizedBox(width: 54, height: 54, child: qr(qrPayload)),
+                pw.SizedBox(width: 10),
+                pw.Expanded(child: pw.Text('RESEP KACAMATA OPTIK LENTERA.\nNomor resep: $examId',
+                  style: const pw.TextStyle(fontSize: 8, color: ink))),
+              ]),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Center(child: pw.Text('Harap konfirmasi kembali ukuran dan kenyamanan lensa sebelum produksi.',
+              textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 7, color: ink))),
+          ],
+        ),
+      ),
+    ));
+    return await pdf.save();
+  }
+
 }
