@@ -11,7 +11,6 @@ class OptikPdfService {
   static const line = PdfColor.fromInt(0xFFDDCBA8);
   static const ink = PdfColor.fromInt(0xFF51484A);
   static pw.MemoryImage get logo => pw.MemoryImage(base64Decode(optikLogoBase64));
-  static pw.MemoryImage get stamp => pw.MemoryImage(base64Decode(optikStampBase64));
   static pw.Widget qr(String value) => pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: value, width: 92, height: 92, drawText: false);
 
   static String money(int n) => 'Rp ' + n.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
@@ -123,39 +122,22 @@ class OptikPdfService {
           child: pw.Text(v('note'), style: const pw.TextStyle(fontSize: 8, color: ink)),
         ),
         pw.SizedBox(height: 10),
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.end,
-          children: [
-            pw.Expanded(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.',
-                    style: const pw.TextStyle(fontSize: 8, color: ink),
-                  ),
-                  pw.SizedBox(height: 5),
-                  pw.Row(children: [
-                    pw.SizedBox(width: 42, height: 42, child: qr(qrPayload)),
-                    pw.SizedBox(width: 8),
-                    pw.Expanded(child: pw.Text(
-                      'Pindai QR untuk memeriksa nomor dokumen: $examId',
-                      style: const pw.TextStyle(fontSize: 7, color: ink),
-                    )),
-                  ]),
-                ],
-              ),
-            ),
-            pw.SizedBox(width: 20),
-            pw.Column(
-              children: [
-                pw.Text('Hormat kami,', style: const pw.TextStyle(fontSize: 8, color: ink)),
-                pw.SizedBox(height: 3),
-                pw.SizedBox(width: 76, height: 76, child: pw.Image(stamp, fit: pw.BoxFit.contain)),
-                pw.Text('OPTIK LENTERA', style: pw.TextStyle(fontSize: 7, font: pw.Font.helveticaBold(), color: gold)),
-              ],
-            ),
-          ],
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(
+            color: pink,
+            border: pw.Border.all(color: line, width: .6),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+          ),
+          child: pw.Row(children: [
+            pw.SizedBox(width: 42, height: 42, child: qr(qrPayload)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: pw.Text(
+              'Dokumen pemeriksaan resmi OPTIK LENTERA. Pindai QR untuk memeriksa nomor dokumen: $examId',
+              style: const pw.TextStyle(fontSize: 7, color: ink),
+            )),
+          ]),
         ),
         pw.SizedBox(height: 5),
         pw.Container(height: .7, color: line),
