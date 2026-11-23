@@ -313,7 +313,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       final qr = result['qrPayload'].toString();
       if (!mounted) return;
       setState(() { examId=id; qrPayload=qr; });
-      final pdfBytes = await OptikPdfService.saveExaminationPdf(
+      final pdfBytes = await OptikPdfService.examinationBytes(
         examId:id,qrPayload:qr,examDate:date,name:_value(name),phone:_value(phone),
         address:_value(address),values:rx,
       );
@@ -329,7 +329,7 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
       if (!driveResponse.isSuccessful || driveResponse.data is! Map ||
           driveResponse.data['fileUrl'] == null) {
         throw Exception(
-          'PDF sudah tersimpan di HP, tetapi upload ke Google Drive gagal: '
+          'Data pemeriksaan tersimpan, tetapi PDF belum masuk Google Drive: '
           '${driveResponse.errorMessage ?? 'tautan file tidak diterima server.'}',
         );
       }
@@ -352,25 +352,12 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         lastSavedExamId = id;
         examDate = DateTime.now();
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan. Form siap untuk pelanggan berikutnya. PDF tersimpan di HP dan Google Drive.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pemeriksaan $id berhasil disimpan ke sistem dan PDF resmi masuk Google Drive. Form siap untuk pelanggan berikutnya.')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan pemeriksaan: ${e.toString().replaceFirst('Exception: ','')}')));
     } finally {
       if (mounted) setState(() => saving=false);
-    }
-  }
-
-  Future<void> shareLastExaminationPdf() async {
-    final id = lastSavedExamId;
-    if (id == null || id.isEmpty) return;
-    try {
-      await OptikPdfService.shareExaminationPdf(id);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('PDF belum bisa dibagikan: ${error.toString().replaceFirst('PlatformException(', '').replaceFirst('Exception: ', '')}'),
-      ));
     }
   }
 
@@ -406,14 +393,6 @@ class _ExaminationScreenState extends State<ExaminationScreen> {
         label:Text(saving?'Menyimpan pemeriksaan…':'Simpan Pemeriksaan & PDF'),
         style:FilledButton.styleFrom(backgroundColor:_darkGold),
       )),
-      if (lastSavedExamId != null) ...[
-        const SizedBox(height: 8),
-        SizedBox(width:double.infinity,child:OutlinedButton.icon(
-          onPressed: shareLastExaminationPdf,
-          icon: const Icon(Icons.share_outlined),
-          label: Text('Kirim PDF pemeriksaan terakhir ($lastSavedExamId)'),
-        )),
-      ],
       const Padding(padding:EdgeInsets.only(top:9),child:Text('Pemeriksaan disimpan terpisah di DATA_PEMERIKSAAN. Tidak membuat invoice maupun kuitansi.',style:TextStyle(fontSize:11,color:Colors.black54))),
     ])),
   ]);
