@@ -152,4 +152,78 @@ class OptikPdfService {
     return await pdf.save();
   }
 
+
+  /// Separate paid examination receipt. This is not a merchandise invoice.
+  static Future<Uint8List> examinationReceiptBytes({
+    required String examId,
+    required String receiptNo,
+    required String qrPayload,
+    required DateTime receiptDate,
+    required String name,
+    required String phone,
+    required int amount,
+    required String method,
+  }) async {
+    final pdf = pw.Document();
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      pageTheme: pw.PageTheme(buildBackground: (_) => pw.Container(color: paper)),
+      margin: const pw.EdgeInsets.fromLTRB(28, 20, 28, 18),
+      maxPages: 1,
+      build: (_) => [
+        brand(),
+        pw.Center(child: heading('KUITANSI', 'BUKTI PEMBAYARAN PEMERIKSAAN OPTIK LENTERA')),
+        pw.Row(children: [
+          pw.Expanded(child: pair('No. kuitansi', receiptNo)),
+          pw.SizedBox(width: 12),
+          pw.Expanded(child: pair('Tanggal', date(receiptDate))),
+          pw.SizedBox(width: 12),
+          pw.Expanded(child: pair('ID pemeriksaan', examId)),
+        ]),
+        pair('Nama pelanggan', name),
+        pair('No. HP / WA', phone),
+        section('RINCIAN PEMBAYARAN'),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(12),
+          decoration: pw.BoxDecoration(
+            color: pink,
+            border: pw.Border.all(color: line, width: .7),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+          ),
+          child: pw.Column(children: [
+            pw.Text('Telah diterima pembayaran pemeriksaan dari', style: const pw.TextStyle(fontSize: 9, color: ink)),
+            pw.SizedBox(height: 5),
+            pw.Text(name, style: pw.TextStyle(fontSize: 15, font: pw.Font.helveticaBold(), color: gold)),
+            pw.SizedBox(height: 8),
+            pw.Text(money(amount), style: pw.TextStyle(fontSize: 22, font: pw.Font.helveticaBold(), color: gold)),
+            pw.SizedBox(height: 4),
+            pw.Text('Terbilang: ${amount == 0 ? 'nol' : amount.toString()} rupiah', style: const pw.TextStyle(fontSize: 8, color: ink)),
+          ]),
+        ),
+        pair('Jenis transaksi', 'Biaya pemeriksaan mata'),
+        pair('Metode pembayaran', method),
+        pair('Status pembayaran', 'LUNAS'),
+        pw.SizedBox(height: 8),
+        pw.Row(children: [
+          pw.SizedBox(width: 54, height: 54, child: qr(qrPayload)),
+          pw.SizedBox(width: 8),
+          pw.Expanded(child: pw.Text(
+            'Kuitansi ini merupakan bukti pembayaran pemeriksaan. Pemeriksaan tersimpan dengan ID $examId. Invoice pembelian kacamata, bila ada, diterbitkan terpisah.',
+            style: const pw.TextStyle(fontSize: 8, color: ink),
+          )),
+        ]),
+        pw.SizedBox(height: 6),
+        pw.Container(height: .7, color: line),
+        pw.SizedBox(height: 4),
+        pw.Center(child: pw.Text(
+          'OPTIK LENTERA · Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang · 0858 9312 8257',
+          textAlign: pw.TextAlign.center,
+          style: const pw.TextStyle(fontSize: 6, color: ink),
+        )),
+      ],
+    ));
+    return await pdf.save();
+  }
+
 }
