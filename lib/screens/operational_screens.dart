@@ -1218,15 +1218,15 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
     _loadOfficialInvoices();
   }
 
-  Future<void> _loadOfficialInvoices() async {
+  Future<void> _loadOfficialInvoices({bool forceRefresh = false}) async {
     if (mounted) setState(() {
       loadingInvoices = true;
       invoiceSyncError = null;
     });
     try {
       final tables = await Future.wait([
-        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
-        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: forceRefresh),
+        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: forceRefresh),
       ]);
       final rows = tables[0];
       final paymentRows = tables[1];
@@ -1464,7 +1464,7 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
             ),
             IconButton(
               tooltip: 'Muat ulang invoice',
-              onPressed: _loadOfficialInvoices,
+              onPressed: () => _loadOfficialInvoices(forceRefresh: true),
               icon: const Icon(Icons.refresh),
             ),
           ]),
