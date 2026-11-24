@@ -207,6 +207,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _localCachePurgeFailed = false;
   int _unreadDocumentCount = 0;
   final Set<String> _readDocumentNoticeIds = {};
+  final Set<String> _dismissedDocumentNoticeIds = {};
   final Map<String, String> _documentNoticeStatuses = {};
 
   @override
@@ -220,6 +221,7 @@ class _MainScreenState extends State<MainScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedReadIds = prefs.getStringList('ol_document_notice_read_ids') ?? <String>[];
+      final savedDismissedIds = prefs.getStringList('ol_document_notice_dismissed_ids') ?? <String>[];
       final rawStatuses = prefs.getString('ol_document_notice_status') ?? '{}';
       final decoded = jsonDecode(rawStatuses);
       final savedStatuses = decoded is Map
@@ -230,6 +232,9 @@ class _MainScreenState extends State<MainScreen> {
         _readDocumentNoticeIds
           ..clear()
           ..addAll(savedReadIds);
+        _dismissedDocumentNoticeIds
+          ..clear()
+          ..addAll(savedDismissedIds);
         _documentNoticeStatuses
           ..clear()
           ..addAll(savedStatuses);
@@ -310,7 +315,8 @@ class _MainScreenState extends State<MainScreen> {
         }
       }
       if (!mounted) return;
-      setState(() => _unreadDocumentCount = ids.where((id) => !_readDocumentNoticeIds.contains(id)).length);
+      setState(() => _unreadDocumentCount = ids.where((id) =>
+          !_readDocumentNoticeIds.contains(id) && !_dismissedDocumentNoticeIds.contains(id)).length);
     } catch (_) {
       // Badge tidak mengganggu dashboard bila Sheets sedang tidak tersedia.
     }
@@ -334,6 +340,18 @@ class _MainScreenState extends State<MainScreen> {
     } catch (_) {
       // Status tetap berlaku selama sesi aktif jika penyimpanan lokal gagal.
     }
+    await _refreshDocumentNotificationCount();
+  }
+
+  void _handleDocumentDismissals(Set<String> ids) async {
+    final next = <String>{..._dismissedDocumentNoticeIds, ...ids};
+    setState(() {
+      _dismissedDocumentNoticeIds..clear()..addAll(next);
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('ol_document_notice_dismissed_ids', next.toList());
+    } catch (_) {}
     await _refreshDocumentNotificationCount();
   }
 
@@ -578,8 +596,10 @@ class _MainScreenState extends State<MainScreen> {
           6 => const ReportsScreen(),
           7 => DocumentNotificationsScreen(
             initialReadIds: _readDocumentNoticeIds,
+            initialDismissedIds: _dismissedDocumentNoticeIds,
             initialStatuses: _documentNoticeStatuses,
             onRead: _handleDocumentReads,
+            onDismissed: _handleDocumentDismissals,
             onStatusChanged: _handleDocumentStatuses,
           ),
           8 => const OrderStatusScreen(),
