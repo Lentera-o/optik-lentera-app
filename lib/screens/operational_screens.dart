@@ -1366,8 +1366,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
       final receipt = result is Map
           ? (result['receiptNumber'] ?? result['receipt'] ?? '').toString().trim()
           : '';
-      // Play after the server confirms the payment/receipt was recorded.
-      await _playPdfReadySound();
+      // The server has confirmed the payment. Do not make the staff wait for
+      // optional sound playback or full-sheet refresh before showing success.
+      unawaited(_playPdfReadySound());
       _pendingPaymentRequestId = null;
       _pendingPaymentPayload = null;
       widget.onAdd(OptikPayment(
@@ -1378,7 +1379,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         category: category,
         note: paymentNote.text.trim(),
       ));
-      await _loadOfficialInvoices();
+      SheetsReadService.clearCache('DATA_PESANAN');
+      SheetsReadService.clearCache('DATA_PEMBAYARAN');
+      unawaited(_loadOfficialInvoices());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(receipt.isEmpty
