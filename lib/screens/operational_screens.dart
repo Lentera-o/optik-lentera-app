@@ -1378,7 +1378,9 @@ class _PaymentEntryScreenState extends State<PaymentEntryScreen> {
         category: category,
         note: paymentNote.text.trim(),
       ));
-      await _loadOfficialInvoices();
+      // The server has already confirmed the payment. Refresh invoice balances
+      // in the background so a slow read cannot make a saved payment look failed.
+      unawaited(_loadOfficialInvoices().catchError((_) {}));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(receipt.isEmpty
