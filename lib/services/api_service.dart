@@ -35,6 +35,8 @@ class ApiResponse {
 class ApiService {
   ApiService._();
 
+  static const Duration _transactionTimeout = Duration(seconds: 90);
+
   static final HttpClient _client = HttpClient()
     ..connectionTimeout = AppConfig.apiTimeout;
 
@@ -64,7 +66,7 @@ class ApiService {
     }
 
     final uri = Uri.parse(AppConfig.appsScriptUrl);
-    final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
+    final request = await _client.postUrl(uri).timeout(_transactionTimeout);
     request.followRedirects = false;
     request.headers
       ..contentType = ContentType.json
@@ -76,7 +78,7 @@ class ApiService {
       'data': data,
     }));
 
-    final response = await request.close().timeout(AppConfig.apiTimeout);
+    final response = await request.close().timeout(_transactionTimeout);
     if (response.statusCode >= 300 && response.statusCode < 400) {
       final location = response.headers.value(HttpHeaders.locationHeader);
       await response.drain<void>();
@@ -90,10 +92,10 @@ class ApiService {
         throw const HttpException('Tujuan redirect Apps Script tidak tepercaya.');
       }
       // Do not replay the POST: Apps Script may already have written the row.
-      final redirected = await _client.getUrl(target).timeout(AppConfig.apiTimeout);
+      final redirected = await _client.getUrl(target).timeout(_transactionTimeout);
       redirected.followRedirects = true;
       redirected.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      final redirectedResponse = await redirected.close().timeout(AppConfig.apiTimeout);
+      final redirectedResponse = await redirected.close().timeout(_transactionTimeout);
       return _readResponse(redirectedResponse);
     }
     return _readResponse(response);
