@@ -2987,14 +2987,18 @@ class _DocumentNotice {
 
 class DocumentNotificationsScreen extends StatefulWidget {
   final Set<String> initialReadIds;
+  final Set<String> initialDismissedIds;
   final Map<String, String> initialStatuses;
   final ValueChanged<Set<String>>? onRead;
+  final ValueChanged<Set<String>>? onDismissed;
   final ValueChanged<Map<String, String>>? onStatusChanged;
   const DocumentNotificationsScreen({
     super.key,
     this.initialReadIds = const <String>{},
+    this.initialDismissedIds = const <String>{},
     this.initialStatuses = const <String, String>{},
     this.onRead,
+    this.onDismissed,
     this.onStatusChanged,
   });
   @override
@@ -3005,6 +3009,8 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
   List<_DocumentNotice> _notices = [];
   Map<String, String> _statuses = {};
   Set<String> _readIds = {};
+  Set<String> _dismissedIds = {};
+  final Set<String> _selectedIds = {};
   bool _loading = true;
   String? _error;
 
@@ -3047,6 +3053,7 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
     try {
       final statuses = Map<String, String>.from(widget.initialStatuses);
       final readIds = Set<String>.from(widget.initialReadIds);
+      final dismissedIds = Set<String>.from(widget.initialDismissedIds);
       final tables = await Future.wait([
         SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
         SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
@@ -3077,6 +3084,8 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
         _notices = notices;
         _statuses = statuses;
         _readIds = readIds;
+        _dismissedIds = dismissedIds;
+        _selectedIds.clear();
         _loading = false;
       });
     } catch (error) {
@@ -3096,6 +3105,27 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
     final next = Set<String>.from(_readIds)..add(notice.id);
     if (mounted) setState(() => _readIds = next);
     widget.onRead?.call(next);
+  }
+
+  void _dismissSelected() {
+    if (_selectedIds.isEmpty) return;
+    final next = <String>{..._dismissedIds, ..._selectedIds};
+    setState(() { _dismissedIds = next; _selectedIds.clear(); });
+    widget.onDismissed?.call(next);
+  }
+
+  void _dismissOne(_DocumentNotice notice) {
+    final next = <String>{..._dismissedIds, notice.id};
+    setState(() => _dismissedIds = next);
+    widget.onDismissed?.call(next);
+  }
+
+  void _dismissAllRead() {
+    final ids = _notices.where((n) => _readIds.contains(n.id)).map((n) => n.id).toSet();
+    if (ids.isEmpty) return;
+    final next = <String>{..._dismissedIds, ...ids};
+    setState(() { _dismissedIds = next; _selectedIds.removeAll(ids); });
+    widget.onDismissed?.call(next);
   }
 
   Future<void> _open(_DocumentNotice notice) async {
@@ -3120,8 +3150,9 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
 
   @override
   Widget build(BuildContext context) {
-    final pending = _notices.where((n) => _statuses[n.id] != 'sent').length;
-    final unread = _notices.where((n) => !_readIds.contains(n.id)).length;
+    final visibleNotices = _notices.where((n) => !_dismissedIds.contains(n.id)).toList();
+    final pending = visibleNotices.where((n) => _statuses[n.id] != 'sent').length;
+    final unread = visibleNotices.where((n) => !_readIds.contains(n.id)).length;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(18), children: [
@@ -3129,6 +3160,8 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: Text('$unread belum dibaca · $pending dokumen perlu ditindaklanjuti', style: const TextStyle(color: _darkGold, fontWeight: FontWeight.w700))),
+          if (_selectedIds.isNotEmpty)
+            TextButton.icon(onPressed: _dismissSelected, icon: const Icon(Icons.delete_outline), label: const Text('Hapus pilihan')),
           IconButton(onPressed: _loading ? null : _load, tooltip: 'Segarkan', icon: const Icon(Icons.sync)),
         ]),
         if (_loading) const Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator()))
@@ -3137,8 +3170,18 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
           Text(_error!, style: const TextStyle(fontSize: 11, color: Colors.deepOrange)),
           TextButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Coba lagi')),
         ]))
-        else if (_notices.isEmpty) const _Empty('Belum ada tautan PDF invoice atau kuitansi resmi pada data yang terbaca.')
-        else ..._notices.map((notice) {
+        else if (visibleNotices.isEmpty)
+          _Empty(_notices.isEmpty
+            ? 'Belum ada tautan PDF invoice atau kuitansi resmi pada data yang terbaca.'
+            : 'Semua notifikasi sudah disembunyikan dari daftar APK.')
+        else ...[
+          if (visibleNotices.any((n) => _readIds.contains(n.id)))
+            Align(alignment: Alignment.centerRight, child: TextButton.icon(
+              onPressed: _dismissAllRead,
+              icon: const Icon(Icons.delete_sweep_outlined),
+              label: const Text('Hapus semua yang sudah dibaca'),
+            )),
+          ...visibleNotices.map((notice) {
           final status = _statuses[notice.id] ?? 'ready';
           final sent = status == 'sent';
           final review = status == 'review';
@@ -3146,8 +3189,16 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
             padding: const EdgeInsets.all(14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
+                Checkbox(
+                  value: _selectedIds.contains(notice.id),
+                  onChanged: (checked) => setState(() {
+                    if (checked == true) { _selectedIds.add(notice.id); }
+                    else { _selectedIds.remove(notice.id); }
+                  }),
+                  visualDensity: VisualDensity.compact,
+                ),
                 Icon(notice.type == 'Invoice' ? Icons.receipt_long_outlined : Icons.payments_outlined, color: _darkGold),
-                const SizedBox(width: 9),
+                const SizedBox(width: 7),
                 Expanded(child: Text(notice.type + ' • ' + notice.title, style: const TextStyle(fontWeight: FontWeight.bold, color: _ink))),
                 if (!_readIds.contains(notice.id))
                   Container(
@@ -3168,16 +3219,21 @@ class _DocumentNotificationsScreenState extends State<DocumentNotificationsScree
                   icon: const Icon(Icons.check_circle_outline), label: const Text('Tandai terkirim'))
                 else TextButton.icon(onPressed: () => _setStatus(notice, 'ready'),
                   icon: const Icon(Icons.undo), label: const Text('Batalkan status')),
+                IconButton(
+                  tooltip: 'Hapus dari daftar APK',
+                  onPressed: () => _dismissOne(notice),
+                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                ),
               ]),
               if (!sent) const Text('Status terkirim hanya dicatat setelah petugas mengirim sendiri melalui WhatsApp.',
                 style: TextStyle(fontSize: 10, color: Colors.black45)),
             ]),
           ));
-        }),
+          }),
+        ],
       ]),
     );
-  }
-}
+  }}
 
 
 Widget _docLine(String label, String value, {bool strong = false}) => Padding(
