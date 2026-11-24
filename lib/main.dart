@@ -213,7 +213,30 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _purgeLocalTransactionCache();
-    _refreshDocumentNotificationCount();
+    _loadDocumentNoticeState().then((_) => _refreshDocumentNotificationCount());
+  }
+
+  Future<void> _loadDocumentNoticeState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedReadIds = prefs.getStringList('ol_document_notice_read_ids') ?? <String>[];
+      final rawStatuses = prefs.getString('ol_document_notice_status') ?? '{}';
+      final decoded = jsonDecode(rawStatuses);
+      final savedStatuses = decoded is Map
+          ? decoded.map((key, value) => MapEntry(key.toString(), value.toString()))
+          : <String, String>{};
+      if (!mounted) return;
+      setState(() {
+        _readDocumentNoticeIds
+          ..clear()
+          ..addAll(savedReadIds);
+        _documentNoticeStatuses
+          ..clear()
+          ..addAll(savedStatuses);
+      });
+    } catch (_) {
+      // Notifikasi tetap dapat digunakan meski preferensi lokal gagal dibaca.
+    }
   }
 
   String _noticeKey(String value) =>
@@ -298,13 +321,38 @@ class _MainScreenState extends State<MainScreen> {
     _refreshDocumentNotificationCount();
   }
 
-  void _handleDocumentReads(Set<String> ids) {
-    setState(() => _readDocumentNoticeIds.addAll(ids));
-    _refreshDocumentNotificationCount();
+  void _handleDocumentReads(Set<String> ids) async {
+    final next = <String>{..._readDocumentNoticeIds, ...ids};
+    setState(() {
+      _readDocumentNoticeIds
+        ..clear()
+        ..addAll(next);
+      _unreadDocumentCount = _unreadDocumentCount < ids.length
+          ? 0
+          : _unreadDocumentCount - ids.length;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('ol_document_notice_read_ids', next.toList());
+    } catch (_) {
+      // Status tetap berlaku selama sesi aktif jika penyimpanan lokal gagal.
+    }
+    await _refreshDocumentNotificationCount();
   }
 
-  void _handleDocumentStatuses(Map<String, String> statuses) {
-    setState(() => _documentNoticeStatuses.addAll(statuses));
+  void _handleDocumentStatuses(Map<String, String> statuses) async {
+    final next = <String, String>{..._documentNoticeStatuses, ...statuses};
+    setState(() {
+      _documentNoticeStatuses
+        ..clear()
+        ..addAll(next);
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('ol_document_notice_status', jsonEncode(next));
+    } catch (_) {
+      // Status tetap berlaku selama sesi aktif jika penyimpanan lokal gagal.
+    }
   }
 
   /// Remove legacy customer/order/payment snapshots from the phone.
@@ -323,8 +371,6 @@ class _MainScreenState extends State<MainScreen> {
       await prefs.remove('ol_customers');
       await prefs.remove('ol_orders');
       await prefs.remove('ol_payments');
-      await prefs.remove('ol_document_notice_read_ids');
-      await prefs.remove('ol_document_notice_status');
     } catch (_) {
       // Fail closed: do not open operational screens while legacy transaction
       // cache removal has not completed successfully.
