@@ -84,8 +84,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
     if (mounted) setState(() { loading = true; error = null; });
     try {
       final data = await Future.wait([
-        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
-        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PESANAN'),
+        SheetsReadService.readTable('DATA_PEMBAYARAN'),
       ]);
       if (!mounted) return;
       setState(() {
