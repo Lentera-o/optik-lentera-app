@@ -327,9 +327,6 @@ class _MainScreenState extends State<MainScreen> {
       _readDocumentNoticeIds
         ..clear()
         ..addAll(next);
-      _unreadDocumentCount = _unreadDocumentCount < ids.length
-          ? 0
-          : _unreadDocumentCount - ids.length;
     });
     try {
       final prefs = await SharedPreferences.getInstance();
