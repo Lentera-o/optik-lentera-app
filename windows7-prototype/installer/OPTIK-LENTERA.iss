@@ -27,7 +27,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Buat ikon di Desktop"; GroupDescription: "Pintasan:"; Flags: checkedonce
 
 [Files]
-Source: "..\bin\Release\OPTIK-LENTERA.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\bin\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\OPTIK LENTERA"; Filename: "{app}\{#MyAppExeName}"
