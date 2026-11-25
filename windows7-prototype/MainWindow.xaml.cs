@@ -25,12 +25,21 @@ namespace OptikLentera.Win7
         private DataGrid examGrid;
         private TextBlock examStatus, examCount;
 
+        private readonly ObservableCollection<Order> orders = new ObservableCollection<Order>();
+        private string orderFile;
+        private ComboBox orderCustomerBox;
+        private TextBox orderDateBox, frameBrandBox, frameModelBox, frameColorBox, framePriceBox;
+        private TextBox lensTypeBox, lensSizeBox, lensCoatingBox, lensPriceBox, otherItemBox, otherPriceBox, orderNotesBox, orderSearchBox;
+        private TextBlock orderTotalText, orderStatus, orderCount;
+        private DataGrid orderGrid;
+
         public MainWindow()
         {
             InitializeComponent();
             var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OptikLenteraWin7");
             customerFile = Path.Combine(folder, "pelanggan.json");
             examinationFile = Path.Combine(folder, "pemeriksaan.json");
+            orderFile = Path.Combine(folder, "pesanan.json");
         }
 
         private void Navigate_Click(object sender, RoutedEventArgs e)
@@ -57,6 +66,12 @@ namespace OptikLentera.Win7
             {
                 PageSubtitle.Text = "Catat resep OD dan OS secara lokal di komputer ini";
                 BuildExaminationPage();
+                return;
+            }
+            if (page == "Pesanan")
+            {
+                PageSubtitle.Text = "Kelola detail frame, lensa, dan nilai pesanan secara lokal";
+                BuildOrderPage();
                 return;
             }
 
@@ -217,6 +232,195 @@ namespace OptikLentera.Win7
             ApplyExaminationSearch();
         }
 
+        private void BuildOrderPage()
+        {
+            LoadCustomers();
+            LoadOrders();
+            var root = new StackPanel();
+
+            var form = MakePanel();
+            var formStack = new StackPanel();
+            formStack.Children.Add(new TextBlock { Text = "BUAT PESANAN BARU", FontSize = 16, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,0,0,5) });
+            formStack.Children.Add(new TextBlock { Text = "Pilih pelanggan, lengkapi frame dan lensa. Total dihitung otomatis.", FontSize = 11, Foreground = Brush("#777168"), Margin = new Thickness(0,0,0,14) });
+
+            var identity = new Grid();
+            identity.ColumnDefinitions.Add(new ColumnDefinition());
+            identity.ColumnDefinitions.Add(new ColumnDefinition());
+            identity.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var customerWrap = new StackPanel { Margin = new Thickness(0,0,10,10) };
+            customerWrap.Children.Add(new TextBlock { Text = "Pelanggan", FontSize = 11, Foreground = Brush("#777168"), Margin = new Thickness(0,0,0,5) });
+            orderCustomerBox = new ComboBox { Height = 34, Padding = new Thickness(7,5,7,5), FontSize = 12, ItemsSource = customers, DisplayMemberPath = "Name" };
+            if (customers.Count > 0) orderCustomerBox.SelectedIndex = 0;
+            customerWrap.Children.Add(orderCustomerBox);
+            identity.Children.Add(customerWrap);
+            orderDateBox = AddField(identity, "Tanggal pesanan", 0, 1);
+            orderDateBox.Text = DateTime.Now.ToString("dd-MM-yyyy");
+            formStack.Children.Add(identity);
+
+            formStack.Children.Add(SectionCaption("DETAIL FRAME"));
+            var frameGrid = MakeInputGrid();
+            frameBrandBox = AddField(frameGrid, "Merek frame", 0, 0);
+            frameModelBox = AddField(frameGrid, "Model", 0, 1);
+            frameColorBox = AddField(frameGrid, "Warna", 0, 2);
+            framePriceBox = AddField(frameGrid, "Harga frame (Rp)", 1, 0);
+            formStack.Children.Add(frameGrid);
+
+            formStack.Children.Add(SectionCaption("DETAIL LENSA"));
+            var lensGrid = MakeInputGrid();
+            lensTypeBox = AddField(lensGrid, "Jenis lensa", 0, 0);
+            lensSizeBox = AddField(lensGrid, "Ukuran / indeks", 0, 1);
+            lensCoatingBox = AddField(lensGrid, "Coating", 0, 2);
+            lensPriceBox = AddField(lensGrid, "Harga lensa (Rp)", 1, 0);
+            formStack.Children.Add(lensGrid);
+
+            formStack.Children.Add(SectionCaption("TAMBAHAN & CATATAN"));
+            var otherGrid = MakeInputGrid();
+            otherItemBox = AddField(otherGrid, "Barang / biaya tambahan", 0, 0);
+            otherPriceBox = AddField(otherGrid, "Harga tambahan (Rp)", 0, 1);
+            orderNotesBox = AddField(otherGrid, "Catatan pesanan (opsional)", 0, 2);
+            formStack.Children.Add(otherGrid);
+
+            var footer = new Grid { Margin = new Thickness(0,12,0,0) };
+            footer.ColumnDefinitions.Add(new ColumnDefinition());
+            footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var save = MakeActionButton("Simpan pesanan");
+            save.Click += AddOrder_Click;
+            actions.Children.Add(save);
+            orderStatus = new TextBlock { Text = "Data pesanan tersimpan lokal di komputer ini.", Foreground = Brush("#777168"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12,0,0,0) };
+            actions.Children.Add(orderStatus);
+            footer.Children.Add(actions);
+            var totalPanel = new Border { Background = Brush("#20211F"), CornerRadius = new CornerRadius(10), Padding = new Thickness(18,10,18,10), Margin = new Thickness(12,0,0,0) };
+            var totalStack = new StackPanel();
+            totalStack.Children.Add(new TextBlock { Text = "TOTAL PESANAN", Foreground = Brush("#C8A45D"), FontSize = 10, FontWeight = FontWeights.Bold });
+            orderTotalText = new TextBlock { Text = "Rp 0", Foreground = Brush("#F7F3EA"), FontSize = 21, FontWeight = FontWeights.Bold, Margin = new Thickness(0,3,0,0) };
+            totalStack.Children.Add(orderTotalText);
+            totalPanel.Child = totalStack;
+            Grid.SetColumn(totalPanel, 1);
+            footer.Children.Add(totalPanel);
+            formStack.Children.Add(footer);
+            form.Child = formStack;
+            root.Children.Add(form);
+
+            var listPanel = MakePanel();
+            listPanel.Margin = new Thickness(0,16,0,0);
+            var listStack = new StackPanel();
+            var header = new Grid();
+            header.ColumnDefinitions.Add(new ColumnDefinition());
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(250) });
+            orderCount = new TextBlock { Text = "DAFTAR PESANAN", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), VerticalAlignment = VerticalAlignment.Center };
+            header.Children.Add(orderCount);
+            orderSearchBox = new TextBox { Height = 32, Padding = new Thickness(9,5,9,5), FontSize = 12, ToolTip = "Cari pelanggan, frame, atau lensa" };
+            orderSearchBox.TextChanged += SearchOrders_Changed;
+            Grid.SetColumn(orderSearchBox, 1);
+            header.Children.Add(orderSearchBox);
+            listStack.Children.Add(header);
+
+            orderGrid = new DataGrid { AutoGenerateColumns = false, IsReadOnly = true, CanUserAddRows = false, HeadersVisibility = DataGridHeadersVisibility.Column, RowHeaderWidth = 0, Height = 250, Margin = new Thickness(0,14,0,0), Background = Brushes.White, BorderBrush = Brush("#ECE6DA"), BorderThickness = new Thickness(1), ItemsSource = orders };
+            orderGrid.Columns.Add(new DataGridTextColumn { Header = "Tanggal", Binding = new System.Windows.Data.Binding("Date"), Width = 105 });
+            orderGrid.Columns.Add(new DataGridTextColumn { Header = "Pelanggan", Binding = new System.Windows.Data.Binding("CustomerName"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+            orderGrid.Columns.Add(new DataGridTextColumn { Header = "Frame", Binding = new System.Windows.Data.Binding("FrameDescription"), Width = 170 });
+            orderGrid.Columns.Add(new DataGridTextColumn { Header = "Lensa", Binding = new System.Windows.Data.Binding("LensDescription"), Width = 170 });
+            orderGrid.Columns.Add(new DataGridTextColumn { Header = "Total", Binding = new System.Windows.Data.Binding("TotalDisplay"), Width = 130 });
+            listStack.Children.Add(orderGrid);
+            listPanel.Child = listStack;
+            root.Children.Add(listPanel);
+            DashboardContent.Children.Add(root);
+
+            framePriceBox.TextChanged += OrderPrice_Changed;
+            lensPriceBox.TextChanged += OrderPrice_Changed;
+            otherPriceBox.TextChanged += OrderPrice_Changed;
+            UpdateOrderTotal();
+            ApplyOrderSearch();
+        }
+
+        private Grid MakeInputGrid()
+        {
+            var grid = new Grid { Margin = new Thickness(0,0,0,3) };
+            for (int i = 0; i < 3; i++) grid.ColumnDefinitions.Add(new ColumnDefinition());
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            return grid;
+        }
+
+        private TextBlock SectionCaption(string text)
+        {
+            return new TextBlock { Text = text, FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), Margin = new Thickness(0,12,0,8) };
+        }
+
+        private decimal ParsePrice(string value)
+        {
+            decimal result;
+            var cleaned = (value ?? "").Replace("Rp", "").Replace(".", "").Replace(",", "").Trim();
+            return decimal.TryParse(cleaned, out result) && result > 0 ? result : 0;
+        }
+
+        private void OrderPrice_Changed(object sender, TextChangedEventArgs e) { UpdateOrderTotal(); }
+
+        private void UpdateOrderTotal()
+        {
+            if (orderTotalText == null) return;
+            var total = ParsePrice(framePriceBox == null ? "" : framePriceBox.Text) +
+                        ParsePrice(lensPriceBox == null ? "" : lensPriceBox.Text) +
+                        ParsePrice(otherPriceBox == null ? "" : otherPriceBox.Text);
+            orderTotalText.Text = "Rp " + total.ToString("N0");
+        }
+
+        private void AddOrder_Click(object sender, RoutedEventArgs e)
+        {
+            var customer = orderCustomerBox == null ? null : orderCustomerBox.SelectedItem as Customer;
+            if (customer == null) { orderStatus.Text = "Pilih pelanggan terlebih dahulu. Tambahkan di menu Pelanggan jika belum ada."; return; }
+            var framePrice = ParsePrice(framePriceBox.Text);
+            var lensPrice = ParsePrice(lensPriceBox.Text);
+            var otherPrice = ParsePrice(otherPriceBox.Text);
+            if (framePrice <= 0 || lensPrice <= 0) { orderStatus.Text = "Harga frame dan lensa wajib diisi."; return; }
+            var record = new Order {
+                Date = Read(orderDateBox), CustomerName = customer.Name, CustomerPhone = customer.Phone,
+                FrameBrand = Read(frameBrandBox), FrameModel = Read(frameModelBox), FrameColor = Read(frameColorBox), FramePrice = framePrice,
+                LensType = Read(lensTypeBox), LensSize = Read(lensSizeBox), LensCoating = Read(lensCoatingBox), LensPrice = lensPrice,
+                OtherItem = Read(otherItemBox), OtherPrice = otherPrice, Notes = Read(orderNotesBox)
+            };
+            orders.Add(record);
+            if (!SaveOrders()) { orders.Remove(record); orderStatus.Text = "Gagal menyimpan pesanan. Data belum ditambahkan."; return; }
+            frameBrandBox.Clear(); frameModelBox.Clear(); frameColorBox.Clear(); framePriceBox.Clear();
+            lensTypeBox.Clear(); lensSizeBox.Clear(); lensCoatingBox.Clear(); lensPriceBox.Clear();
+            otherItemBox.Clear(); otherPriceBox.Clear(); orderNotesBox.Clear();
+            ApplyOrderSearch();
+            orderStatus.Text = "Pesanan berhasil disimpan secara lokal.";
+        }
+
+        private void SearchOrders_Changed(object sender, TextChangedEventArgs e) { ApplyOrderSearch(); }
+
+        private void ApplyOrderSearch()
+        {
+            if (orderGrid == null) return;
+            var query = orderSearchBox == null ? "" : (orderSearchBox.Text ?? "").Trim();
+            orderGrid.ItemsSource = orders.Where(x => query.Length == 0 ||
+                x.CustomerName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                x.FrameDescription.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                x.LensDescription.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+            if (orderCount != null) orderCount.Text = "DAFTAR PESANAN  •  " + orders.Count + " data";
+        }
+
+        private void LoadOrders()
+        {
+            orders.Clear();
+            try { if (!File.Exists(orderFile)) return; var loaded = new JavaScriptSerializer().Deserialize<List<Order>>(File.ReadAllText(orderFile)); if (loaded != null) foreach (var item in loaded) orders.Add(item); }
+            catch { MessageBox.Show("Data pesanan lokal belum dapat dibaca. File tidak dihapus.", "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        }
+
+        private bool SaveOrders()
+        {
+            try
+            {
+                var folder = Path.GetDirectoryName(orderFile);
+                if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+                File.WriteAllText(orderFile, new JavaScriptSerializer().Serialize(orders.ToList()));
+                return true;
+            }
+            catch (Exception ex) { MessageBox.Show("Pesanan gagal disimpan: " + ex.Message, "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Error); return false; }
+        }
+
         private Border MakeEyePanel(string title)
         {
             var panel = MakePanel();
@@ -346,6 +550,28 @@ namespace OptikLentera.Win7
         private SolidColorBrush Brush(string hex) { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); }
 
         public class Customer { public string Name { get; set; } public string Phone { get; set; } public string Address { get; set; } }
+
+        public class Order
+        {
+            public string Date { get; set; }
+            public string CustomerName { get; set; }
+            public string CustomerPhone { get; set; }
+            public string FrameBrand { get; set; }
+            public string FrameModel { get; set; }
+            public string FrameColor { get; set; }
+            public decimal FramePrice { get; set; }
+            public string LensType { get; set; }
+            public string LensSize { get; set; }
+            public string LensCoating { get; set; }
+            public decimal LensPrice { get; set; }
+            public string OtherItem { get; set; }
+            public decimal OtherPrice { get; set; }
+            public string Notes { get; set; }
+            public decimal Total { get { return FramePrice + LensPrice + OtherPrice; } }
+            public string TotalDisplay { get { return "Rp " + Total.ToString("N0"); } }
+            public string FrameDescription { get { return string.Join(" ", new[] { FrameBrand, FrameModel, FrameColor }.Where(v => !string.IsNullOrWhiteSpace(v))); } }
+            public string LensDescription { get { return string.Join(" ", new[] { LensType, LensSize, LensCoating }.Where(v => !string.IsNullOrWhiteSpace(v))); } }
+        }
 
         public class Examination
         {
