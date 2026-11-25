@@ -731,6 +731,7 @@ namespace OptikLentera.Win7
             var date = new TextBlock { Text = "Tanggal: " + exam.Date, FontSize = 12, Foreground = Brush("#292823"), TextAlignment = TextAlignment.Right };
             Grid.SetColumn(date,1); identity.Children.Add(date); root.Children.Add(identity);
             root.Children.Add(new TextBlock { Text = "HASIL PEMERIKSAAN", FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brush("#A7833F"), Margin = new Thickness(0,0,0,7) });
+            root.Children.Add(BuildCylinderAxisDiagram(exam.ODAXIS, exam.OSAXIS));
             var table = new Grid { Margin = new Thickness(0,0,0,12) };
             for (int i=0;i<6;i++) table.ColumnDefinitions.Add(new ColumnDefinition());
             for (int i=0;i<3;i++) table.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -753,6 +754,86 @@ namespace OptikLentera.Win7
             }
             root.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 9, Foreground = Brush("#777168"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,20,0,0) });
             return root;
+        }
+
+        private Border BuildCylinderAxisDiagram(string odAxis, string osAxis)
+        {
+            var panel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+            panel.Children.Add(BuildAxisDial("OD • KANAN", odAxis));
+            panel.Children.Add(BuildAxisDial("OS • KIRI", osAxis));
+            var outer = new StackPanel();
+            outer.Children.Add(new TextBlock
+            {
+                Text = "DIAGRAM SUMBU SILINDER (AXIS)",
+                FontSize = 10, FontWeight = FontWeights.Bold,
+                Foreground = Brushes.Black, TextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 5)
+            });
+            outer.Children.Add(panel);
+            return new Border
+            {
+                BorderBrush = Brushes.Black, BorderThickness = new Thickness(1),
+                Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 12),
+                Child = outer
+            };
+        }
+
+        private Border BuildAxisDial(string eye, string axisText)
+        {
+            double axis;
+            bool hasAxis = double.TryParse(axisText, out axis);
+            var canvas = new Canvas { Width = 126, Height = 112, Background = Brushes.White };
+            const double cx = 63, cy = 54, radius = 43;
+            canvas.Children.Add(new Ellipse
+            {
+                Width = radius * 2, Height = radius * 2,
+                Stroke = Brushes.Black, StrokeThickness = 1,
+                Fill = Brushes.White
+            });
+            Canvas.SetLeft(canvas.Children[0], cx - radius);
+            Canvas.SetTop(canvas.Children[0], cy - radius);
+
+            for (int degree = 0; degree < 180; degree += 15)
+            {
+                double angle = degree * Math.PI / 180.0;
+                double dx = Math.Cos(angle) * radius;
+                double dy = Math.Sin(angle) * radius;
+                canvas.Children.Add(new Line
+                {
+                    X1 = cx - dx, Y1 = cy - dy, X2 = cx + dx, Y2 = cy + dy,
+                    Stroke = Brushes.Black, StrokeThickness = degree % 30 == 0 ? 0.8 : 0.45,
+                    Opacity = degree % 30 == 0 ? 0.8 : 0.45
+                });
+            }
+
+            if (hasAxis && axis >= 0 && axis <= 180)
+            {
+                double angle = axis * Math.PI / 180.0;
+                double dx = Math.Cos(angle) * (radius + 3);
+                double dy = Math.Sin(angle) * (radius + 3);
+                canvas.Children.Add(new Line
+                {
+                    X1 = cx - dx, Y1 = cy - dy, X2 = cx + dx, Y2 = cy + dy,
+                    Stroke = Brushes.Black, StrokeThickness = 2.5
+                });
+            }
+
+            var label = new TextBlock
+            {
+                Text = eye + "    AXIS: " + (hasAxis ? axisText + "°" : "—"),
+                FontSize = 9, FontWeight = FontWeights.Bold,
+                Foreground = Brushes.Black, TextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 2)
+            };
+            var content = new StackPanel();
+            content.Children.Add(label);
+            content.Children.Add(canvas);
+            return new Border
+            {
+                BorderBrush = Brushes.Black, BorderThickness = new Thickness(0.6),
+                Margin = new Thickness(5, 0, 5, 0), Padding = new Thickness(3),
+                Child = content
+            };
         }
 
         private void PrintDocumentVisual(StackPanel content, string title)
