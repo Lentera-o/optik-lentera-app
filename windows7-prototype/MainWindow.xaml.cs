@@ -568,6 +568,7 @@ namespace OptikLentera.Win7
             var otherPrice = ParsePrice(otherPriceBox.Text);
             if (framePrice <= 0 || lensPrice <= 0) { orderStatus.Text = "Harga frame dan lensa wajib diisi."; return; }
             var record = new Order {
+                OrderId = Guid.NewGuid().ToString("N"),
                 Date = Read(orderDateBox), CustomerName = customer.Name, CustomerPhone = customer.Phone,
                 FrameBrand = Read(frameBrandBox), FrameModel = Read(frameModelBox), FrameColor = Read(frameColorBox), FramePrice = framePrice,
                 LensType = Read(lensTypeBox), LensSize = Read(lensSizeBox), LensCoating = Read(lensCoatingBox), LensPrice = lensPrice,
@@ -746,7 +747,7 @@ namespace OptikLentera.Win7
 
         public class Order
         {
-            public string OrderKey { get; set; }
+            public string OrderId { get; set; }
             public string PaymentLabel { get { return Date + " • " + CustomerName + " • Rp " + Total.ToString("N0"); } }
             public string Date { get; set; }
             public string CustomerName { get; set; }
@@ -765,7 +766,7 @@ namespace OptikLentera.Win7
             public decimal Total { get { return FramePrice + LensPrice + OtherPrice; } }
             public string TotalDisplay { get { return "Rp " + Total.ToString("N0"); } }
             public string FrameDescription { get { return string.Join(" ", new[] { FrameBrand, FrameModel, FrameColor }.Where(v => !string.IsNullOrWhiteSpace(v))); } }
-            public string OrderKey { get { return Date + "|" + CustomerPhone + "|" + CustomerName + "|" + FrameBrand + "|" + FrameModel + "|" + Total.ToString(System.Globalization.CultureInfo.InvariantCulture); } }
+            public string OrderKey { get { return !string.IsNullOrWhiteSpace(OrderId) ? OrderId : Date + "|" + CustomerPhone + "|" + CustomerName + "|" + FrameBrand + "|" + FrameModel + "|" + Total.ToString(System.Globalization.CultureInfo.InvariantCulture); } }
             public string LensDescription { get { return string.Join(" ", new[] { LensType, LensSize, LensCoating }.Where(v => !string.IsNullOrWhiteSpace(v))); } }
         }
 
