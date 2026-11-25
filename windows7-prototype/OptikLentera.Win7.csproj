@@ -31,6 +31,7 @@
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="QRCoder"><HintPath>..\\packages\\QRCoder.1.4.1\\lib\\net40\\QRCoder.dll</HintPath><Private>True</Private></Reference>
   </ItemGroup>
   <ItemGroup>
