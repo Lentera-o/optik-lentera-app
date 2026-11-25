@@ -891,6 +891,28 @@ namespace OptikLentera.Win7
                 page.Arrange(new Rect(0, 0, formWidth, formHeight));
                 page.UpdateLayout();
 
+                // Preview is a screen-only bitmap snapshot. Do not put the live
+                // print visual into the preview window: some legacy WPF/driver
+                // combinations can initialize the printer when that visual is
+                // hosted, causing continuous-form paper to advance prematurely.
+                // The original page stays detached and is sent to PrintVisual
+                // only after the user explicitly confirms "Lanjut ke Printer".
+                var previewBitmap = new RenderTargetBitmap(
+                    (int)Math.Ceiling(formWidth),
+                    (int)Math.Ceiling(formHeight),
+                    96, 96, PixelFormats.Pbgra32);
+                previewBitmap.Render(page);
+                previewBitmap.Freeze();
+
+                var previewImage = new Image
+                {
+                    Source = previewBitmap,
+                    Width = formWidth,
+                    Height = formHeight,
+                    Stretch = Stretch.Uniform,
+                    SnapsToDevicePixels = true
+                };
+
                 var previewWindow = new Window
                 {
                     Title = "Pratinjau Cetak - " + title,
@@ -929,7 +951,7 @@ namespace OptikLentera.Win7
                     BorderThickness = new Thickness(1),
                     Padding = new Thickness(10),
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    Child = page
+                    Child = previewImage
                 };
                 var scroll = new ScrollViewer
                 {
@@ -943,9 +965,8 @@ namespace OptikLentera.Win7
 
                 if (!continueToPrint) return;
 
-                // Detach the page from the preview window before handing it
-                // to the WPF print pipeline.
-                pageFrame.Child = null;
+                // The preview window contains only a bitmap snapshot.
+                // The original print visual has never been hosted there.
                 var dialog = new PrintDialog();
                 if (dialog.ShowDialog() != true) return;
 
