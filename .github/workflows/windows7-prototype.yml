@@ -19,16 +19,29 @@ jobs:
         uses: microsoft/setup-msbuild@v2
       - name: Build WPF application
         run: msbuild windows7-prototype/OptikLentera.Win7.csproj /p:Configuration=Release /p:Platform=AnyCPU /m
-      - name: Package prototype
+      - name: Package portable prototype
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package | Out-Null
           Copy-Item windows7-prototype/bin/Release/OPTIK-LENTERA.exe package/
           Compress-Archive -Path package/* -DestinationPath OPTIK-LENTERA-Win7-Prototipe.zip -Force
-      - name: Upload prototype
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $compiler)) { throw "Inno Setup compiler not found: $compiler" }
+          & $compiler "windows7-prototype/installer/OPTIK-LENTERA.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
+          if (!(Test-Path "windows7-prototype/installer-output/OPTIK-LENTERA-Setup-Windows7.exe")) { throw "Installer output missing." }
+      - name: Upload Windows installer and portable ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: OPTIK-LENTERA-Win7-Prototipe
-          path: OPTIK-LENTERA-Win7-Prototipe.zip
+          name: OPTIK-LENTERA-Win7-Installer
+          path: |
+            windows7-prototype/installer-output/OPTIK-LENTERA-Setup-Windows7.exe
+            OPTIK-LENTERA-Win7-Prototipe.zip
           if-no-files-found: error
           retention-days: 14
