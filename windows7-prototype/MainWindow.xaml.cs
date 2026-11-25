@@ -56,6 +56,8 @@ namespace OptikLentera.Win7
             examinationFile = Path.Combine(folder, "pemeriksaan.json");
             orderFile = Path.Combine(folder, "pesanan.json");
             paymentFile = Path.Combine(folder, "pembayaran.json");
+            DashboardContent.Children.Clear();
+            BuildDashboardPlaceholder();
         }
 
         private void Navigate_Click(object sender, RoutedEventArgs e)
