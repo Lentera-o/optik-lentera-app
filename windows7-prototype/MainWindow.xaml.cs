@@ -145,7 +145,8 @@ namespace OptikLentera.Win7
             heroText.Children.Add(new TextBlock { Text = "Pantau usaha, layani pelanggan, dan tambah wawasan optik dalam satu ruang kerja.", Foreground = Brush("#D8D1C4"), FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 620 });
             heroText.Children.Add(new TextBlock { Text = today.ToString("dddd, dd MMMM yyyy", new System.Globalization.CultureInfo("id-ID")), Foreground = Brush("#C8A45D"), FontSize = 11, Margin = new Thickness(0,13,0,0) });
             heroGrid.Children.Add(heroText);
-            var emblem = new Border { GridColumn = 1, Background = Brush("#292923"), CornerRadius = new CornerRadius(14), Padding = new Thickness(17), Margin = new Thickness(12,0,0,0) };
+            var emblem = new Border { Background = Brush("#292923"), CornerRadius = new CornerRadius(14), Padding = new Thickness(17), Margin = new Thickness(12,0,0,0) };
+            Grid.SetColumn(emblem, 1);
             emblem.Child = new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_launcher_emblem.png")), Stretch = Stretch.Uniform, Opacity = 0.96 };
             heroGrid.Children.Add(emblem);
             hero.Child = heroGrid;
@@ -160,7 +161,7 @@ namespace OptikLentera.Win7
 
             var middle = new Grid { Margin = new Thickness(0,0,0,17) };
             middle.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.55, GridUnitType.Star) });
-            middle.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) };
+            middle.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var chartPanel = MakePanel();
             chartPanel.Margin = new Thickness(0,0,12,0);
             var chartStack = new StackPanel();
