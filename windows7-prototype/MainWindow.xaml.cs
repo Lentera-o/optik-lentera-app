@@ -496,7 +496,7 @@ namespace OptikLentera.Win7
             orderNotesBox = AddField(otherGrid, "Catatan pesanan (opsional)", 0, 2);
             formStack.Children.Add(otherGrid);
 
-            var footer = new Grid { Margin = new Thickness(0,5,0,0) };
+            var footer = new Grid { Margin = new Thickness(0,12,0,0) };
             footer.ColumnDefinitions.Add(new ColumnDefinition());
             footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
