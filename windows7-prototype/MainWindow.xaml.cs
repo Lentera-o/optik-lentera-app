@@ -889,8 +889,7 @@ namespace OptikLentera.Win7
                     Height = pageHeight,
                     Stretch = Stretch.Uniform,
                     StretchDirection = StretchDirection.DownOnly,
-                    Child = printable,
-                    Background = Brushes.White
+                    Child = printable
                 };
                 onePage.Measure(new Size(pageWidth, pageHeight));
                 onePage.Arrange(new Rect(0, 0, pageWidth, pageHeight));
