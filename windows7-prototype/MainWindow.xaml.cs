@@ -897,7 +897,43 @@ namespace OptikLentera.Win7
 
         private Button MakeActionButton(string caption)
         {
-            return new Button { Content = caption, Padding = new Thickness(18,9,18,9), Background = Brush("#20211F"), Foreground = Brush("#E6C982"), BorderThickness = new Thickness(0), FontWeight = FontWeights.SemiBold, Cursor = System.Windows.Input.Cursors.Hand };
+            var button = new Button
+            {
+                Content = caption,
+                Padding = new Thickness(19,10,19,10),
+                Background = Brush("#20211F"),
+                Foreground = Brush("#E6C982"),
+                BorderThickness = new Thickness(0),
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Cursor = System.Windows.Input.Cursors.Hand,
+                FocusVisualStyle = null,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            var template = new ControlTemplate(typeof(Button));
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.Name = "buttonBorder";
+            border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
+            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(9));
+            border.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Button.PaddingProperty));
+            border.SetValue(Border.SnapsToDevicePixelsProperty, true);
+            var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            presenter.SetValue(ContentPresenter.RecognizesAccessKeyProperty, true);
+            border.AppendChild(presenter);
+            template.VisualTree = border;
+            var hover = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
+            hover.Setters.Add(new Setter(Border.BackgroundProperty, Brush("#3A3428"), "buttonBorder"));
+            hover.Setters.Add(new Setter(Button.ForegroundProperty, Brushes.White));
+            template.Triggers.Add(hover);
+            var pressed = new Trigger { Property = Button.IsPressedProperty, Value = true };
+            pressed.Setters.Add(new Setter(Border.BackgroundProperty, Brush("#A78342"), "buttonBorder"));
+            pressed.Setters.Add(new Setter(Button.ForegroundProperty, Brushes.White));
+            template.Triggers.Add(pressed);
+            button.Template = template;
+            return button;
         }
 
         private void AddCustomer_Click(object sender, RoutedEventArgs e)
