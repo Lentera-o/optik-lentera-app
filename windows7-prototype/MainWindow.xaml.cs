@@ -926,7 +926,9 @@ namespace OptikLentera.Win7
                 var previewImage = new Image
                 {
                     Source = previewBitmap,
-                    Stretch = Stretch.Uniform,
+                    Width = formWidth,
+                    Height = formHeight,
+                    Stretch = Stretch.Fill,
                     SnapsToDevicePixels = true
                 };
                 var pageFrame = new Border
@@ -935,8 +937,8 @@ namespace OptikLentera.Win7
                     BorderBrush = Brush("#B9AD98"),
                     BorderThickness = new Thickness(1),
                     Padding = new Thickness(8),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Stretch,
                     Child = new Viewbox { Stretch = Stretch.Uniform, Child = previewImage }
                 };
                 layout.Children.Add(pageFrame);
