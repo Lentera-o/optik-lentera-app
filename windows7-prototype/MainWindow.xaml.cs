@@ -319,7 +319,7 @@ namespace OptikLentera.Win7
             orderNotesBox = AddField(otherGrid, "Catatan pesanan (opsional)", 0, 2);
             formStack.Children.Add(otherGrid);
 
-            var footer = new Grid { Margin = new Thickness(0,12,0,0) };
+            var footer = new Grid { Margin = new Thickness(0,6,0,0) };
             footer.ColumnDefinitions.Add(new ColumnDefinition());
             footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -560,7 +560,7 @@ namespace OptikLentera.Win7
         {
             var c = new StackPanel();
             c.Children.Add(MakeLetterhead(printMode));
-            c.Children.Add(new TextBlock { Text = heading, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,18) });
+            c.Children.Add(new TextBlock { Text = heading, FontSize = 16, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,8) });
             c.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold });
             c.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 11, Foreground = Brush("#69645B"), Margin = new Thickness(0,4,0,12) });
             c.Children.Add(new TextBlock { Text = "Pelanggan: " + order.CustomerName + "   |   WhatsApp: " + order.CustomerPhone, FontSize = 12, Margin = new Thickness(0,0,0,12) });
@@ -581,7 +581,7 @@ namespace OptikLentera.Win7
             var qrPayload = payment == null
                 ? "OPTIK LENTERA | INVOICE | " + documentNumber + " | TANGGAL " + order.Date + " | PELANGGAN " + order.CustomerName + " | TOTAL " + order.Total.ToString("0") + " IDR"
                 : "OPTIK LENTERA | KUITANSI | " + documentNumber + " | INVOICE " + "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() + " | TANGGAL " + payment.Date + " | DIBAYAR " + payment.Amount.ToString("0") + " IDR | SISA " + Math.Max(0,order.Total-PaidForOrder(order)).ToString("0") + " IDR";
-            var qrSize = printMode ? 160.0 : 112.0;
+            var qrSize = printMode ? 124.0 : 112.0;
             var qrImage = new Image { Source = CreateQrImage(qrPayload), Width = qrSize, Height = qrSize, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,4,0,0), SnapsToDevicePixels = true };
             if (printMode)
             {
@@ -597,7 +597,7 @@ namespace OptikLentera.Win7
                 c.Children.Add(qrImage);
                 c.Children.Add(new TextBlock { Text = "Pindai untuk membaca ringkasan dokumen", FontSize = 8, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,2,0,8) });
             }
-            c.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 10, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,8,0,0), HorizontalAlignment = HorizontalAlignment.Center });
+            c.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 9, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,5,0,0), HorizontalAlignment = HorizontalAlignment.Center });
             return c;
         }
 
@@ -866,35 +866,32 @@ namespace OptikLentera.Win7
                 const double formWidth = 14.0 * 96.0 / 2.54;
                 const double formHeight = 24.0 * 96.0 / 2.54;
 
+                // Design directly at the physical form size. Never shrink an oversized
+                // document to hide a layout error: preview and print use this same page.
                 var printable = new Border
                 {
                     Background = Brushes.White,
                     Padding = new Thickness(12),
-                    Width = 720,
+                    Width = formWidth,
+                    Height = formHeight,
+                    ClipToBounds = true,
                     Child = content
                 };
-                printable.Measure(new Size(720, double.PositiveInfinity));
-                double measuredHeight = Math.Max(1, printable.DesiredSize.Height);
-                printable.Arrange(new Rect(0, 0, 720, measuredHeight));
+                printable.Measure(new Size(formWidth, formHeight));
+                printable.Arrange(new Rect(0, 0, formWidth, formHeight));
                 printable.UpdateLayout();
+
+                if (content.DesiredSize.Height > formHeight - 24)
+                {
+                    MessageBox.Show("Isi dokumen masih melebihi batas kertas 14 × 24 cm. Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
                 var previewBitmap = new RenderTargetBitmap(
                     (int)Math.Ceiling(formWidth), (int)Math.Ceiling(formHeight),
                     96, 96, PixelFormats.Pbgra32);
-                var drawing = new DrawingVisual();
-                using (var dc = drawing.RenderOpen())
-                {
-                    dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, formWidth, formHeight));
-                    double scale = Math.Min(formWidth / 720.0, formHeight / measuredHeight);
-                    double w = 720.0 * scale;
-                    double h = measuredHeight * scale;
-                    dc.PushTransform(new TranslateTransform((formWidth - w) / 2.0, 0));
-                    dc.PushTransform(new ScaleTransform(scale, scale));
-                    dc.DrawRectangle(new VisualBrush(printable), null, new Rect(0, 0, 720, measuredHeight));
-                    dc.Pop();
-                    dc.Pop();
-                }
-                previewBitmap.Render(drawing);
+                previewBitmap.Render(printable);
                 previewBitmap.Freeze();
 
                 var previewWindow = new Window
@@ -947,16 +944,9 @@ namespace OptikLentera.Win7
                 if (!continueToPrint) return;
 
                 // Create the printable page only after explicit user approval.
-                var page = new Viewbox
-                {
-                    Width = formWidth, Height = formHeight,
-                    Stretch = Stretch.Uniform,
-                    StretchDirection = StretchDirection.DownOnly,
-                    Child = printable
-                };
-                page.Measure(new Size(formWidth, formHeight));
-                page.Arrange(new Rect(0, 0, formWidth, formHeight));
-                page.UpdateLayout();
+                printable.Measure(new Size(formWidth, formHeight));
+                printable.Arrange(new Rect(0, 0, formWidth, formHeight));
+                printable.UpdateLayout();
 
                 var dialog = new PrintDialog();
                 if (dialog.ShowDialog() != true) return;
@@ -964,7 +954,7 @@ namespace OptikLentera.Win7
                 ticket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
                 ticket.PageOrientation = System.Printing.PageOrientation.Portrait;
                 dialog.PrintTicket = ticket;
-                dialog.PrintVisual(page, title);
+                dialog.PrintVisual(printable, title);
                 if (documentStatus != null)
                     documentStatus.Text = "Dokumen dikirim ke printer setelah pratinjau.";
             }
