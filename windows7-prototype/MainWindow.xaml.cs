@@ -519,17 +519,14 @@ namespace OptikLentera.Win7
         private StackPanel MakeDocumentContent(string heading, Order order, Payment payment, bool printMode)
         {
             var c = new StackPanel();
-            if (printMode)
+            var logo = new Image
             {
-                // Dot-matrix profile: use crisp text instead of a detailed bitmap logo.
-                c.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 18, FontWeight = FontWeights.Bold, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 8) });
-            }
-            else
-            {
-                var logo = new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute)), Width = 142, Height = 76, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center };
-                RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
-                c.Children.Add(logo);
-            }
+                Source = printMode ? CreatePrintLogoSource() : new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute)),
+                Width = 150, Height = 76, Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
+            c.Children.Add(new Border { Background = Brushes.White, Padding = new Thickness(2), HorizontalAlignment = HorizontalAlignment.Center, Child = logo });
             c.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA", FontSize = 9, Foreground = printMode ? Brushes.Black : Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,14) });
             c.Children.Add(new TextBlock { Text = heading, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,18) });
             c.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold });
@@ -553,11 +550,70 @@ namespace OptikLentera.Win7
                 ? "OPTIK LENTERA | INVOICE | " + documentNumber + " | TANGGAL " + order.Date + " | PELANGGAN " + order.CustomerName + " | TOTAL " + order.Total.ToString("0") + " IDR"
                 : "OPTIK LENTERA | KUITANSI | " + documentNumber + " | INVOICE " + "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() + " | TANGGAL " + payment.Date + " | DIBAYAR " + payment.Amount.ToString("0") + " IDR | SISA " + Math.Max(0,order.Total-PaidForOrder(order)).ToString("0") + " IDR";
             var qrSize = printMode ? 160.0 : 112.0;
-            var qrImage = new Image { Source = CreateQrImage(qrPayload), Width = qrSize, Height = qrSize, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,12,0,0), SnapsToDevicePixels = true };
-            c.Children.Add(qrImage);
-            c.Children.Add(new TextBlock { Text = "Pindai untuk membaca ringkasan dokumen", FontSize = 8, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,2,0,8) });
+            var qrImage = new Image { Source = CreateQrImage(qrPayload), Width = qrSize, Height = qrSize, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,4,0,0), SnapsToDevicePixels = true };
+            if (printMode)
+            {
+                // Leave a clean white area beside the QR for the user's wet stamp.
+                var validationRow = new Grid { Margin = new Thickness(0,12,0,0), HorizontalAlignment = HorizontalAlignment.Stretch };
+                validationRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                validationRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                var stampArea = new Border
+                {
+                    Width = 150, Height = 104, Margin = new Thickness(0,0,14,0),
+                    BorderBrush = Brushes.Black, BorderThickness = new Thickness(1),
+                    Background = Brushes.White, Padding = new Thickness(6),
+                    Child = new TextBlock { Text = "AREA STEMPEL BASAH", FontSize = 8, Foreground = Brushes.Black, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom }
+                };
+                validationRow.Children.Add(stampArea);
+                var qrStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right };
+                qrStack.Children.Add(qrImage);
+                qrStack.Children.Add(new TextBlock { Text = "Pindai ringkasan dokumen", FontSize = 8, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,0) });
+                Grid.SetColumn(qrStack,1);
+                validationRow.Children.Add(qrStack);
+                c.Children.Add(validationRow);
+            }
+            else
+            {
+                qrImage.HorizontalAlignment = HorizontalAlignment.Right;
+                c.Children.Add(qrImage);
+                c.Children.Add(new TextBlock { Text = "Pindai untuk membaca ringkasan dokumen", FontSize = 8, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,2,0,8) });
+            }
             c.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 10, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,8,0,0), HorizontalAlignment = HorizontalAlignment.Center });
             return c;
+        }
+
+        private ImageSource CreatePrintLogoSource()
+        {
+            // Remove the dark artwork background and convert the colored mark to solid black
+            // so the logo prints clearly on white paper with a dot-matrix printer.
+            var source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute));
+            var converted = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+            converted.Freeze();
+            int stride = converted.PixelWidth * 4;
+            byte[] pixels = new byte[stride * converted.PixelHeight];
+            converted.CopyPixels(pixels, stride, 0);
+            for (int i = 0; i < pixels.Length; i += 4)
+            {
+                byte blue = pixels[i];
+                byte green = pixels[i + 1];
+                byte red = pixels[i + 2];
+                byte alpha = pixels[i + 3];
+                if (alpha == 0) continue;
+                int luminance = (red * 299 + green * 587 + blue * 114) / 1000;
+                if (luminance < 48)
+                {
+                    pixels[i + 3] = 0;
+                }
+                else
+                {
+                    pixels[i] = 0;
+                    pixels[i + 1] = 0;
+                    pixels[i + 2] = 0;
+                }
+            }
+            var result = BitmapSource.Create(converted.PixelWidth, converted.PixelHeight, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
+            result.Freeze();
+            return result;
         }
 
         private ImageSource CreateQrImage(string payload)
@@ -658,12 +714,12 @@ namespace OptikLentera.Win7
             var root = new StackPanel();
             var logo = new Image
             {
-                Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png")),
-                Width = 142, Height = 76, Stretch = System.Windows.Media.Stretch.Uniform,
+                Source = CreatePrintLogoSource(),
+                Width = 150, Height = 76, Stretch = System.Windows.Media.Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center
             };
             RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
-            root.Children.Add(logo);
+            root.Children.Add(new Border { Background = Brushes.White, Padding = new Thickness(2), HorizontalAlignment = HorizontalAlignment.Center, Child = logo });
             root.Children.Add(new TextBlock { Text = "RESEP KACAMATA", FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#20211F"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,8,0,3) });
             root.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brush("#A7833F"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,0,0,16) });
             var identity = new Grid { Margin = new Thickness(0,0,0,14) };
