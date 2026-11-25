@@ -121,12 +121,186 @@ namespace OptikLentera.Win7
 
         private void BuildDashboardPlaceholder()
         {
-            var panel = MakePanel();
+            // Dashboard mengambil angka langsung dari berkas lokal yang sudah dipakai aplikasi.
+            LoadCustomers();
+            LoadOrders();
+            LoadPayments();
+            LoadExaminations();
+
+            var root = new StackPanel();
+            var today = DateTime.Today;
+            var todayOrders = orders.Where(o => DashboardDate(o.Date).Date == today).ToList();
+            var todayPayments = payments.Where(p => DashboardDate(p.Date).Date == today).ToList();
+            var totalSales = todayOrders.Sum(o => o.Total);
+            var totalPaid = todayPayments.Sum(p => p.Amount);
+            var outstanding = orders.Sum(o => Math.Max(0, o.Total - PaidForOrder(o)));
+
+            var hero = new Border { Background = Brush("#20211F"), BorderBrush = Brush("#B99550"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(17), Padding = new Thickness(24), Margin = new Thickness(0,0,0,17) };
+            var heroGrid = new Grid();
+            heroGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            heroGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
+            var heroText = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            heroText.Children.Add(new TextBlock { Text = "SELAMAT DATANG DI OPTIK LENTERA", Foreground = Brush("#E6C982"), FontSize = 10, FontWeight = FontWeights.Bold });
+            heroText.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA.", Foreground = Brush("#FFFDF7"), FontSize = 23, FontWeight = FontWeights.Bold, Margin = new Thickness(0,8,0,5), TextWrapping = TextWrapping.Wrap });
+            heroText.Children.Add(new TextBlock { Text = "Pantau usaha, layani pelanggan, dan tambah wawasan optik dalam satu ruang kerja.", Foreground = Brush("#D8D1C4"), FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 620 });
+            heroText.Children.Add(new TextBlock { Text = today.ToString("dddd, dd MMMM yyyy", new System.Globalization.CultureInfo("id-ID")), Foreground = Brush("#C8A45D"), FontSize = 11, Margin = new Thickness(0,13,0,0) });
+            heroGrid.Children.Add(heroText);
+            var emblem = new Border { GridColumn = 1, Background = Brush("#292923"), CornerRadius = new CornerRadius(14), Padding = new Thickness(17), Margin = new Thickness(12,0,0,0) };
+            emblem.Child = new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_launcher_emblem.png")), Stretch = Stretch.Uniform, Opacity = 0.96 };
+            heroGrid.Children.Add(emblem);
+            hero.Child = heroGrid;
+            root.Children.Add(hero);
+
+            var metrics = new System.Windows.Controls.Primitives.UniformGrid { Columns = 4, Margin = new Thickness(0,0,0,17) };
+            AddDashboardMetric(metrics, "PENJUALAN HARI INI", "Rp " + totalSales.ToString("N0"), todayOrders.Count + " pesanan hari ini");
+            AddDashboardMetric(metrics, "PEMBAYARAN HARI INI", "Rp " + totalPaid.ToString("N0"), todayPayments.Count + " transaksi masuk");
+            AddDashboardMetric(metrics, "TOTAL PELANGGAN", customers.Count.ToString("N0"), "Pelanggan tersimpan");
+            AddDashboardMetric(metrics, "SISA TAGIHAN", "Rp " + outstanding.ToString("N0"), orders.Count + " pesanan tercatat");
+            root.Children.Add(metrics);
+
+            var middle = new Grid { Margin = new Thickness(0,0,0,17) };
+            middle.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.55, GridUnitType.Star) });
+            middle.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) };
+            var chartPanel = MakePanel();
+            chartPanel.Margin = new Thickness(0,0,12,0);
+            var chartStack = new StackPanel();
+            chartStack.Children.Add(new TextBlock { Text = "PERKEMBANGAN USAHA", FontSize = 14, FontWeight = FontWeights.Bold, Foreground = Brush("#292823") });
+            chartStack.Children.Add(new TextBlock { Text = "Nilai pesanan dan pembayaran • 6 bulan terakhir", FontSize = 10, Foreground = Brush("#817B70"), Margin = new Thickness(0,4,0,12) });
+            chartStack.Children.Add(BuildDashboardChart());
+            chartPanel.Child = chartStack;
+            middle.Children.Add(chartPanel);
+
+            var actionPanel = MakePanel();
+            actionPanel.SetValue(Grid.ColumnProperty, 1);
+            var actionStack = new StackPanel();
+            actionStack.Children.Add(new TextBlock { Text = "AKSES CEPAT", FontSize = 14, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,0,0,12) });
+            AddDashboardAction(actionStack, "＋  Transaksi / Pesanan Baru", "Pesanan");
+            AddDashboardAction(actionStack, "♙  Cari atau Tambah Pelanggan", "Pelanggan");
+            AddDashboardAction(actionStack, "▧  Invoice, Resep & Kuitansi", "Invoice & Kuitansi");
+            AddDashboardAction(actionStack, "◉  Pemeriksaan Mata", "Pemeriksaan Mata");
+            actionPanel.Child = actionStack;
+            middle.Children.Add(actionPanel);
+            root.Children.Add(middle);
+
+            var learning = MakePanel();
+            learning.Background = Brush("#FBF7EE");
+            learning.BorderBrush = Brush("#E6D8B9");
+            var learnGrid = new Grid();
+            learnGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.1, GridUnitType.Star) });
+            learnGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var daily = new StackPanel { Margin = new Thickness(0,0,18,0) };
+            daily.Children.Add(new TextBlock { Text = "LENTERA HARI INI", Foreground = Brush("#A78342"), FontSize = 10, FontWeight = FontWeights.Bold });
+            var lessons = new[] {
+                new { Title = "Aturan 20-20-20", Body = "Setelah 20 menit melihat layar, alihkan pandangan ke objek sekitar 20 kaki selama 20 detik untuk membantu mengurangi kelelahan mata." },
+                new { Title = "Kenali lensa sesuai kebutuhan", Body = "Pilihan lensa perlu mempertimbangkan resep, aktivitas harian, kenyamanan, dan kebutuhan visual pelanggan." },
+                new { Title = "Frame yang nyaman itu penting", Body = "Pastikan lebar frame, posisi nose pad, dan panjang gagang sesuai agar kacamata stabil dan nyaman dipakai." },
+                new { Title = "Resep mata perlu dibaca utuh", Body = "SPH, CYL, AXIS, ADD, dan PD memiliki fungsi berbeda. Periksa setiap kolom sebelum pesanan lensa diproses." },
+                new { Title = "Dengarkan kebutuhan pelanggan", Body = "Tanyakan aktivitas utama pelanggan, kebiasaan memakai kacamata, serta keluhan yang paling mengganggu penglihatannya." },
+                new { Title = "Perawatan kacamata", Body = "Bersihkan lensa dengan cairan dan kain khusus, lalu simpan kacamata dalam kotak saat tidak digunakan." },
+                new { Title = "Pahami coating lensa", Body = "Coating memiliki fungsi berbeda. Jelaskan manfaat dan batasannya sesuai jenis lapisan yang dipilih." }
+            };
+            var lesson = lessons[(today.DayOfYear - 1) % lessons.Length];
+            daily.Children.Add(new TextBlock { Text = lesson.Title, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,7,0,6) });
+            daily.Children.Add(new TextBlock { Text = lesson.Body, FontSize = 12, Foreground = Brush("#625D54"), TextWrapping = TextWrapping.Wrap, LineHeight = 19 });
+            daily.Children.Add(new TextBlock { Text = "Materi edukasi berganti otomatis setiap hari.", FontSize = 10, Foreground = Brush("#A78342"), Margin = new Thickness(0,10,0,0) });
+            learnGrid.Children.Add(daily);
+
+            var topics = new StackPanel { Margin = new Thickness(18,0,0,0) };
+            topics.Children.Add(new TextBlock { Text = "RUANG BELAJAR LENTERA", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), Margin = new Thickness(0,0,0,8) });
+            AddLearningTopic(topics, "Pemeriksaan & resep", "Memahami OD, OS, SPH, CYL, AXIS, ADD dan PD.");
+            AddLearningTopic(topics, "Jenis lensa & coating", "Mengenal indeks, bahan lensa, dan lapisan.");
+            AddLearningTopic(topics, "Frame & pelayanan", "Panduan fitting, kenyamanan, dan komunikasi pelanggan.");
+            learnGrid.Children.Add(topics);
+            learnGrid.Children[1].SetValue(Grid.ColumnProperty, 1);
+            learning.Child = learnGrid;
+            root.Children.Add(learning);
+
+            DashboardContent.Children.Add(root);
+        }
+
+        private DateTime DashboardDate(string value)
+        {
+            DateTime parsed;
+            var formats = new[] { "dd-MM-yyyy", "d-M-yyyy", "yyyy-MM-dd", "dd/MM/yyyy", "d/M/yyyy" };
+            if (DateTime.TryParseExact(value ?? "", formats, new System.Globalization.CultureInfo("id-ID"), System.Globalization.DateTimeStyles.None, out parsed)) return parsed.Date;
+            if (DateTime.TryParse(value, out parsed)) return parsed.Date;
+            return DateTime.MinValue;
+        }
+
+        private void AddDashboardMetric(System.Windows.Controls.Primitives.UniformGrid grid, string caption, string value, string note)
+        {
+            var panel = new Border { Background = Brushes.White, BorderBrush = Brush("#ECE6DA"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Padding = new Thickness(15), Margin = new Thickness(0,0,10,0) };
             var stack = new StackPanel();
-            stack.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA", FontSize = 18, FontWeight = FontWeights.Bold, Foreground = Brush("#B18D4D") });
-            stack.Children.Add(new TextBlock { Text = "Workspace desktop OPTIK LENTERA siap dikembangkan.", FontSize = 13, Foreground = Brush("#69645B"), Margin = new Thickness(0,10,0,0) });
+            stack.Children.Add(new TextBlock { Text = caption, FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Brush("#8A847A") });
+            stack.Children.Add(new TextBlock { Text = value, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,8,0,3), TextTrimming = TextTrimming.CharacterEllipsis });
+            stack.Children.Add(new TextBlock { Text = note, FontSize = 10, Foreground = Brush("#8A847A") });
             panel.Child = stack;
-            DashboardContent.Children.Add(panel);
+            grid.Children.Add(panel);
+        }
+
+        private FrameworkElement BuildDashboardChart()
+        {
+            var months = Enumerable.Range(0, 6).Select(i => new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(i - 5)).ToList();
+            var max = 1m;
+            foreach (var month in months)
+            {
+                var amount = orders.Where(o => { var d = DashboardDate(o.Date); return d.Year == month.Year && d.Month == month.Month; }).Sum(o => o.Total);
+                var paid = payments.Where(p => { var d = DashboardDate(p.Date); return d.Year == month.Year && d.Month == month.Month; }).Sum(p => p.Amount);
+                if (amount > max) max = amount;
+                if (paid > max) max = paid;
+            }
+            var root = new Grid { Height = 168 };
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var bars = new Grid { VerticalAlignment = VerticalAlignment.Stretch };
+            for (int i = 0; i < 6; i++) bars.ColumnDefinitions.Add(new ColumnDefinition());
+            for (int i = 0; i < 3; i++) bars.RowDefinitions.Add(new RowDefinition());
+            for (int i = 0; i < 6; i++)
+            {
+                var month = months[i];
+                var amount = orders.Where(o => { var d = DashboardDate(o.Date); return d.Year == month.Year && d.Month == month.Month; }).Sum(o => o.Total);
+                var paid = payments.Where(p => { var d = DashboardDate(p.Date); return d.Year == month.Year && d.Month == month.Month; }).Sum(p => p.Amount);
+                var group = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Height = 112 };
+                var orderBar = new Border { Width = 15, Height = Math.Max(2, (double)(amount / max) * 100), Background = Brush("#B18D4D"), CornerRadius = new CornerRadius(3,3,0,0), VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(1,0,2,0), ToolTip = "Nilai pesanan: Rp " + amount.ToString("N0") };
+                var paidBar = new Border { Width = 15, Height = Math.Max(2, (double)(paid / max) * 100), Background = Brush("#6F9B87"), CornerRadius = new CornerRadius(3,3,0,0), VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(2,0,1,0), ToolTip = "Pembayaran: Rp " + paid.ToString("N0") };
+                group.Children.Add(orderBar); group.Children.Add(paidBar);
+                Grid.SetColumn(group, i); bars.Children.Add(group);
+                var label = new TextBlock { Text = month.ToString("MMM", new System.Globalization.CultureInfo("id-ID")), FontSize = 9, Foreground = Brush("#817B70"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,5,0,0) };
+                Grid.SetRow(label, 1); Grid.SetColumn(label, i); bars.Children.Add(label);
+            }
+            Grid.SetRow(bars, 0); root.Children.Add(bars);
+            var legend = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,8,0,0) };
+            legend.Children.Add(new Border { Width = 9, Height = 9, Background = Brush("#B18D4D"), CornerRadius = new CornerRadius(2), Margin = new Thickness(0,0,5,0) });
+            legend.Children.Add(new TextBlock { Text = "Nilai pesanan", FontSize = 9, Foreground = Brush("#6D675D"), Margin = new Thickness(0,0,14,0) });
+            legend.Children.Add(new Border { Width = 9, Height = 9, Background = Brush("#6F9B87"), CornerRadius = new CornerRadius(2), Margin = new Thickness(0,0,5,0) });
+            legend.Children.Add(new TextBlock { Text = "Pembayaran", FontSize = 9, Foreground = Brush("#6D675D") });
+            Grid.SetRow(legend, 1); root.Children.Add(legend);
+            return root;
+        }
+
+        private void AddDashboardAction(Panel panel, string caption, string page)
+        {
+            var button = MakeActionButton(caption);
+            button.HorizontalContentAlignment = HorizontalAlignment.Left;
+            button.Margin = new Thickness(0,0,0,8);
+            button.Click += (sender, args) =>
+            {
+                PageTitle.Text = page;
+                DashboardContent.Children.Clear();
+                if (page == "Pesanan") { PageSubtitle.Text = "Kelola pesanan pelanggan"; BuildOrderPage(); }
+                else if (page == "Pelanggan") { PageSubtitle.Text = "Data pelanggan tersimpan lokal"; BuildCustomerPage(); }
+                else if (page == "Invoice & Kuitansi") { PageSubtitle.Text = "Cetak dokumen transaksi"; BuildInvoicePage(); }
+                else if (page == "Pemeriksaan Mata") { PageSubtitle.Text = "Catat resep dan hasil pemeriksaan"; BuildExaminationPage(); }
+            };
+            panel.Children.Add(button);
+        }
+
+        private void AddLearningTopic(Panel panel, string title, string description)
+        {
+            var item = new StackPanel { Margin = new Thickness(0,0,0,10) };
+            item.Children.Add(new TextBlock { Text = title, FontSize = 12, FontWeight = FontWeights.Bold, Foreground = Brush("#35322B") });
+            item.Children.Add(new TextBlock { Text = description, FontSize = 10, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,3,0,0) });
+            panel.Children.Add(item);
         }
 
         private void BuildCustomerPage()
