@@ -551,30 +551,46 @@ namespace OptikLentera.Win7
             return c;
         }
 
-        private BitmapSource CreateQrImage(string payload)
+        private ImageSource CreateQrImage(string payload)
         {
-            // Decode the QR PNG fully, then convert it to opaque 24-bit RGB.
-            // Some legacy Windows 7 printer drivers crash on indexed/alpha PNG
-            // surfaces passed through WPF PrintVisual; the original document
-            // layout and PrintVisual route remain unchanged.
+            // Build QR as frozen WPF vector geometry, not a raster bitmap.
+            // Legacy Epson/Windows 7 printer drivers can fail when PrintVisual
+            // contains bitmap image sources. Vector modules keep the QR sharp
+            // and preserve the original, proven WPF PrintVisual document layout.
             using (var generator = new QRCodeGenerator())
             using (var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M))
             {
-                var qr = new PngByteQRCode(data);
-                byte[] png = qr.GetGraphic(5);
-                using (var stream = new MemoryStream(png))
-                {
-                    var decoded = new BitmapImage();
-                    decoded.BeginInit();
-                    decoded.CacheOption = BitmapCacheOption.OnLoad;
-                    decoded.StreamSource = stream;
-                    decoded.EndInit();
-                    decoded.Freeze();
+                var modules = data.ModuleMatrix;
+                int count = modules.Count;
+                const double quiet = 4.0;
+                const double moduleSize = 3.0;
+                double extent = (count + quiet * 2) * moduleSize;
 
-                    var printerSafeImage = new FormatConvertedBitmap(decoded, PixelFormats.Bgr24, null, 0);
-                    printerSafeImage.Freeze();
-                    return printerSafeImage;
+                var geometry = new GeometryGroup();
+                for (int y = 0; y < count; y++)
+                {
+                    for (int x = 0; x < modules[y].Length; x++)
+                    {
+                        if (modules[y][x])
+                        {
+                            geometry.Children.Add(new RectangleGeometry(new Rect(
+                                (x + quiet) * moduleSize,
+                                (y + quiet) * moduleSize,
+                                moduleSize,
+                                moduleSize)));
+                        }
+                    }
                 }
+
+                var drawing = new DrawingGroup();
+                drawing.Children.Add(new GeometryDrawing(Brushes.White, null,
+                    new RectangleGeometry(new Rect(0, 0, extent, extent))));
+                drawing.Children.Add(new GeometryDrawing(Brushes.Black, null, geometry));
+                drawing.Freeze();
+
+                var image = new DrawingImage(drawing);
+                image.Freeze();
+                return image;
             }
         }
 
