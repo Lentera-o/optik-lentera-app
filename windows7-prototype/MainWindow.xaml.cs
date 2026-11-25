@@ -671,9 +671,8 @@ namespace OptikLentera.Win7
         {
             try
             {
-                // Render the existing WPF invoice/receipt once to a PNG, then send
-                // that raster page through the classic GDI+ printing pipeline.
-                // This avoids WPF PrintVisual/FixedDocument printer-driver paths.
+                // Restore the original WPF print route that was confirmed working
+                // on the user's Windows 7 + Epson LQ-300+ setup before QR changes.
                 var printable = new Border
                 {
                     Background = Brushes.White,
@@ -681,64 +680,21 @@ namespace OptikLentera.Win7
                     Width = 720,
                     Child = content
                 };
+                printable.Measure(new Size(720, 1000));
+                printable.Arrange(new Rect(0, 0, 720, Math.Max(900, printable.DesiredSize.Height)));
 
-                printable.Measure(new Size(720, 12000));
-                double pageHeight = Math.Max(900, printable.DesiredSize.Height);
-                printable.Arrange(new Rect(0, 0, 720, pageHeight));
-                printable.UpdateLayout();
-
-                int pixelWidth = 1440;
-                int pixelHeight = Math.Max(1, (int)Math.Ceiling(pageHeight * 2.0));
-                var rendered = new RenderTargetBitmap(pixelWidth, pixelHeight, 192, 192, PixelFormats.Pbgra32);
-                rendered.Render(printable);
-
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(rendered));
-                var pngStream = new MemoryStream();
-                encoder.Save(pngStream);
-                pngStream.Position = 0;
-
-                using (var image = System.Drawing.Image.FromStream(pngStream))
-                using (var printDocument = new System.Drawing.Printing.PrintDocument())
-                using (var printDialog = new System.Windows.Forms.PrintDialog())
+                var dialog = new PrintDialog();
+                if (dialog.ShowDialog() == true)
                 {
-                    printDocument.DocumentName = title;
-                    printDialog.Document = printDocument;
-                    printDialog.AllowSomePages = false;
-                    printDialog.AllowSelection = false;
-                    printDialog.UseEXDialog = true;
-
-                    printDocument.PrintPage += delegate(object sender, System.Drawing.Printing.PrintPageEventArgs args)
-                    {
-                        // Keep the full document visible and preserve its proportions
-                        // inside the page area selected in the printer driver.
-                        var bounds = args.MarginBounds;
-                        if (bounds.Width <= 0 || bounds.Height <= 0)
-                            bounds = args.PageBounds;
-
-                        double scale = Math.Min((double)bounds.Width / image.Width, (double)bounds.Height / image.Height);
-                        int drawWidth = Math.Max(1, (int)Math.Round(image.Width * scale));
-                        int drawHeight = Math.Max(1, (int)Math.Round(image.Height * scale));
-                        int x = bounds.Left + Math.Max(0, (bounds.Width - drawWidth) / 2);
-                        int y = bounds.Top;
-                        args.Graphics.DrawImage(image, new System.Drawing.Rectangle(x, y, drawWidth, drawHeight));
-                        args.HasMorePages = false;
-                    };
-
-                    if (printDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                    {
-                        printDocument.Print();
-                        if (documentStatus != null) documentStatus.Text = "Dokumen dikirim ke printer.";
-                    }
+                    dialog.PrintVisual(printable, title);
+                    if (documentStatus != null)
+                        documentStatus.Text = "Dokumen dikirim ke printer.";
                 }
-                pngStream.Dispose();
             }
             catch (Exception ex)
             {
-                if (documentStatus != null)
-                    documentStatus.Text = "Gagal mengirim dokumen ke printer: " + ex.Message;
-                MessageBox.Show("Dokumen belum berhasil dicetak. Periksa printer dan driver, lalu coba lagi.\\n\\n" + ex.Message,
-                    "Cetak OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Dokumen gagal dicetak: " + ex.Message, "OPTIK LENTERA",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
