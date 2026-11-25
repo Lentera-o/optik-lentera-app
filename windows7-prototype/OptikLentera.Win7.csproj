@@ -40,6 +40,7 @@
     <Resource Include="Assets\optik_lentera_app_logo.png" />
     <Resource Include="Assets\optik_lentera_launcher_emblem.png" />
     <Compile Include="MainWindow.xaml.cs"><DependentUpon>MainWindow.xaml</DependentUpon></Compile>
+    <Compile Include="IAddChild.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
