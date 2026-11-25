@@ -51,7 +51,7 @@ namespace OptikLentera.Win7
             var stack = new StackPanel();
             stack.Children.Add(new TextBlock { Text = page, FontSize = 21, FontWeight = FontWeights.Bold, Foreground = Brush("#23221E"), Margin = new Thickness(0,0,0,10) });
             stack.Children.Add(new TextBlock { Text = "Menu ini sudah masuk dalam rancangan prototipe OPTIK LENTERA.", FontSize = 13, Foreground = Brush("#69645B"), Margin = new Thickness(0,0,0,8) });
-            stack.Children.Add(new TextBlock { Text = "Tahap pengembangan berikutnya akan mengaktifkan fungsi menu ini satu per satu. Belum ada koneksi ke Android, Google Sheets, atau internet.", FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = Brush("#847D72),", MaxWidth = 680 });
+            stack.Children.Add(new TextBlock { Text = "Tahap pengembangan berikutnya akan mengaktifkan fungsi menu ini satu per satu. Belum ada koneksi ke Android, Google Sheets, atau internet.", FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = Brush("#847D72"), MaxWidth = 680 });
             panel.Child = stack;
             DashboardContent.Children.Add(panel);
         }
