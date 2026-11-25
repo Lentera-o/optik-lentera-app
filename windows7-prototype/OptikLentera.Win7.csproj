@@ -35,6 +35,8 @@
     <ApplicationDefinition Include="App.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></ApplicationDefinition>
     <Compile Include="App.xaml.cs"><DependentUpon>App.xaml</DependentUpon></Compile>
     <Page Include="MainWindow.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Resource Include="Assets\optik_lentera_app_logo.png" />
+    <Resource Include="Assets\optik_lentera_launcher_emblem.png" />
     <Compile Include="MainWindow.xaml.cs"><DependentUpon>MainWindow.xaml</DependentUpon></Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
