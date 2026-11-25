@@ -891,7 +891,7 @@ namespace OptikLentera.Win7
             var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
             var payment = documentPaymentBox == null ? null : documentPaymentBox.SelectedItem as Payment;
             if (order == null || payment == null) { documentStatus.Text = "Pilih pembayaran untuk mencetak kuitansi."; return; }
-            PrintDocumentVisual(MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment, true), "Kuitansi OPTIK LENTERA", false);
+            PrintDocumentVisual(MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment, true), "Kuitansi OPTIK LENTERA", true);
         }
 
         private void PrintExamination_Click(object sender, RoutedEventArgs e)
@@ -914,7 +914,7 @@ namespace OptikLentera.Win7
                 if (examStatus != null) examStatus.Text = "Pilih satu riwayat pemeriksaan terlebih dahulu.";
                 return;
             }
-            PrintDocumentVisual(MakePrescriptionContent(exam), "Resep OPTIK LENTERA", false);
+            PrintDocumentVisual(MakePrescriptionContent(exam), "Resep OPTIK LENTERA", true);
         }
 
         private StackPanel MakePrescriptionContent(Examination exam)
@@ -1038,10 +1038,10 @@ namespace OptikLentera.Win7
         {
             try
             {
-                // Invoice is landscape (22 x 12 cm); receipt and prescription are portrait (12 x 22 cm).
+                // All three documents use the continuous form: landscape 22 cm wide x 14 cm high.
                 // Preview is a detached bitmap only. Printer APIs are not touched until approval.
-                double formWidth = (landscape ? 22.0 : 12.0) * 96.0 / 2.54;
-                double formHeight = (landscape ? 12.0 : 22.0) * 96.0 / 2.54;
+                double formWidth = 22.0 * 96.0 / 2.54;
+                double formHeight = 14.0 * 96.0 / 2.54;
 
                 // Design directly at the physical form size. Never shrink an oversized
                 // document to hide a layout error: preview and print use this same page.
@@ -1062,7 +1062,7 @@ namespace OptikLentera.Win7
 
                 if (contentHeight > formHeight - 24)
                 {
-                    MessageBox.Show("Isi dokumen masih melebihi batas kertas " + (landscape ? "landscape 22 × 12 cm" : "portrait 12 × 22 cm") + ". Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
+                    MessageBox.Show("Isi dokumen masih melebihi batas kertas landscape 22 × 14 cm. Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
@@ -1133,7 +1133,7 @@ namespace OptikLentera.Win7
                 if (dialog.ShowDialog() != true) return;
                 var ticket = dialog.PrintTicket ?? new System.Printing.PrintTicket();
                 ticket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
-                ticket.PageOrientation = landscape ? System.Printing.PageOrientation.Landscape : System.Printing.PageOrientation.Portrait;
+                ticket.PageOrientation = System.Printing.PageOrientation.Landscape;
                 dialog.PrintTicket = ticket;
                 dialog.PrintVisual(printable, title);
                 if (documentStatus != null)
