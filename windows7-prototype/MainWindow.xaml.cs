@@ -1097,6 +1097,14 @@ namespace OptikLentera.Win7
             var wrap = new StackPanel { Margin = new Thickness(column == 0 ? 0 : 10, 0, 0, 10) };
             wrap.Children.Add(new TextBlock { Text = hint, FontSize = 11, Foreground = Brush("#777168"), Margin = new Thickness(0,0,0,5) });
             var box = new TextBox { Height = 34, Padding = new Thickness(9,6,9,6), FontSize = 12 };
+            box.KeyDown += (sender, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Enter)
+                {
+                    e.Handled = true;
+                    box.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
+                }
+            };
             wrap.Children.Add(box);
             Grid.SetRow(wrap, row);
             Grid.SetColumn(wrap, column);
