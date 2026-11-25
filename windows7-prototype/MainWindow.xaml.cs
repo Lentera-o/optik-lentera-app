@@ -861,9 +861,8 @@ namespace OptikLentera.Win7
         {
             try
             {
-                // Prepare exactly one 14 x 24 cm page and show it to the user
-                // before opening the printer dialog. This avoids silent direct
-                // printing to legacy tractor-feed dot-matrix printers.
+                // Preview uses only a detached bitmap. Printer objects and the
+                // final print page are created only after explicit confirmation.
                 const double formWidth = 14.0 * 96.0 / 2.54;
                 const double formHeight = 24.0 * 96.0 / 2.54;
 
@@ -879,36 +878,28 @@ namespace OptikLentera.Win7
                 printable.Arrange(new Rect(0, 0, 720, measuredHeight));
                 printable.UpdateLayout();
 
-                var page = new Viewbox
-                {
-                    Width = formWidth,
-                    Height = formHeight,
-                    Stretch = Stretch.Uniform,
-                    StretchDirection = StretchDirection.DownOnly,
-                    Child = printable
-                };
-                page.Measure(new Size(formWidth, formHeight));
-                page.Arrange(new Rect(0, 0, formWidth, formHeight));
-                page.UpdateLayout();
-
-                // Preview is a screen-only bitmap snapshot. Do not put the live
-                // print visual into the preview window: some legacy WPF/driver
-                // combinations can initialize the printer when that visual is
-                // hosted, causing continuous-form paper to advance prematurely.
-                // The original page stays detached and is sent to PrintVisual
-                // only after the user explicitly confirms "Lanjut ke Printer".
                 var previewBitmap = new RenderTargetBitmap(
-                    (int)Math.Ceiling(formWidth),
-                    (int)Math.Ceiling(formHeight),
+                    (int)Math.Ceiling(formWidth), (int)Math.Ceiling(formHeight),
                     96, 96, PixelFormats.Pbgra32);
-                previewBitmap.Render(page);
+                var previewDrawing = new DrawingVisual();
+                using (var dc = previewDrawing.RenderOpen())
+                {
+                    dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, formWidth, formHeight));
+                    double scale = Math.Min(formWidth / 720.0, formHeight / measuredHeight);
+                    double drawnWidth = 720.0 * scale;
+                    double drawnHeight = measuredHeight * scale;
+                    dc.PushTransform(new TranslateTransform((formWidth - drawnWidth) / 2.0, 0));
+                    dc.PushTransform(new ScaleTransform(scale, scale));
+                    dc.DrawRectangle(new VisualBrush(printable), null, new Rect(0, 0, 720, measuredHeight));
+                    dc.Pop();
+                    dc.Pop();
+                }
+                previewBitmap.Render(previewDrawing);
                 previewBitmap.Freeze();
 
                 var previewImage = new Image
                 {
                     Source = previewBitmap,
-                    Width = formWidth,
-                    Height = formHeight,
                     Stretch = Stretch.Uniform,
                     SnapsToDevicePixels = true
                 };
@@ -944,29 +935,41 @@ namespace OptikLentera.Win7
                 DockPanel.SetDock(toolbar, Dock.Top);
                 layout.Children.Add(toolbar);
 
+                // A Viewbox fits the complete 14 x 24 cm sheet into the
+                // available screen area: no long scrolling preview.
                 var pageFrame = new Border
                 {
                     Background = Brushes.White,
                     BorderBrush = Brush("#B9AD98"),
                     BorderThickness = new Thickness(1),
-                    Padding = new Thickness(10),
+                    Padding = new Thickness(8),
                     HorizontalAlignment = HorizontalAlignment.Center,
-                    Child = previewImage
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Child = new Viewbox
+                    {
+                        Stretch = Stretch.Uniform,
+                        Child = previewImage
+                    }
                 };
-                var scroll = new ScrollViewer
-                {
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    Content = pageFrame
-                };
-                layout.Children.Add(scroll);
+                layout.Children.Add(pageFrame);
                 previewWindow.Content = layout;
                 previewWindow.ShowDialog();
 
                 if (!continueToPrint) return;
 
-                // The preview window contains only a bitmap snapshot.
-                // The original print visual has never been hosted there.
+                // Only now create the WPF page and access the printer driver.
+                var page = new Viewbox
+                {
+                    Width = formWidth,
+                    Height = formHeight,
+                    Stretch = Stretch.Uniform,
+                    StretchDirection = StretchDirection.DownOnly,
+                    Child = printable
+                };
+                page.Measure(new Size(formWidth, formHeight));
+                page.Arrange(new Rect(0, 0, formWidth, formHeight));
+                page.UpdateLayout();
+
                 var dialog = new PrintDialog();
                 if (dialog.ShowDialog() != true) return;
 
@@ -985,427 +988,4 @@ namespace OptikLentera.Win7
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
-
-        private void BuildReportPage()
-        {
-            LoadOrders(); LoadPayments();
-            var root = new StackPanel();
-            var panel = MakePanel();
-            var st = new StackPanel();
-            var sales = orders.Sum(o => o.Total);
-            var paid = payments.Sum(p => p.Amount);
-            var due = orders.Sum(o => Math.Max(0,o.Total-PaidForOrder(o)));
-            st.Children.Add(new TextBlock { Text = "RINGKASAN USAHA", FontSize = 16, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,0,0,14) });
-            st.Children.Add(new TextBlock { Text = "Jumlah pesanan: " + orders.Count, FontSize = 13, Margin = new Thickness(0,4,0,4) });
-            st.Children.Add(new TextBlock { Text = "Nilai seluruh pesanan: Rp " + sales.ToString("N0"), FontSize = 13, Margin = new Thickness(0,4,0,4) });
-            st.Children.Add(new TextBlock { Text = "Pembayaran diterima: Rp " + paid.ToString("N0"), FontSize = 13, Margin = new Thickness(0,4,0,4) });
-            st.Children.Add(new TextBlock { Text = "Sisa tagihan: Rp " + due.ToString("N0"), FontSize = 13, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), Margin = new Thickness(0,4,0,4) });
-            panel.Child = st; root.Children.Add(panel);
-            var list = MakePanel(); list.Margin = new Thickness(0,14,0,0);
-            var grid = new DataGrid { AutoGenerateColumns = false, IsReadOnly = true, CanUserAddRows = false, HeadersVisibility = DataGridHeadersVisibility.Column, RowHeaderWidth = 0, Height = 320, ItemsSource = orders, Background = Brushes.White, BorderBrush = Brush("#ECE6DA"), BorderThickness = new Thickness(1) };
-            grid.Columns.Add(new DataGridTextColumn { Header = "Tanggal", Binding = new System.Windows.Data.Binding("Date"), Width = 110 });
-            grid.Columns.Add(new DataGridTextColumn { Header = "Pelanggan", Binding = new System.Windows.Data.Binding("CustomerName"), Width = new DataGridLength(1,DataGridLengthUnitType.Star) });
-            grid.Columns.Add(new DataGridTextColumn { Header = "Total", Binding = new System.Windows.Data.Binding("TotalDisplay"), Width = 130 });
-            list.Child = grid; root.Children.Add(list);
-            DashboardContent.Children.Add(root);
-        }
-
-        private TextBlock BalanceValue(Grid grid, string caption, string value, int column)
-        {
-            var panel = new StackPanel { Margin = new Thickness(column == 0 ? 0 : 12,0,0,0) };
-            panel.Children.Add(new TextBlock { Text = caption, Foreground = Brush("#C8A45D"), FontSize = 10, FontWeight = FontWeights.Bold });
-            var result = new TextBlock { Text = value, Foreground = Brush("#F7F3EA"), FontSize = 18, FontWeight = FontWeights.Bold, Margin = new Thickness(0,4,0,0) };
-            panel.Children.Add(result);
-            Grid.SetColumn(panel, column);
-            grid.Children.Add(panel);
-            return result;
-        }
-
-        private void PaymentOrder_Changed(object sender, SelectionChangedEventArgs e) { UpdatePaymentBalance(); }
-
-        private decimal PaidForOrder(Order order)
-        {
-            if (order == null) return 0;
-            return payments.Where(p => p.OrderKey == order.OrderKey).Sum(p => p.Amount);
-        }
-
-        private void UpdatePaymentBalance()
-        {
-            if (paymentTotalText == null) return;
-            var order = paymentOrderBox == null ? null : paymentOrderBox.SelectedItem as Order;
-            var total = order == null ? 0 : order.Total;
-            var paid = PaidForOrder(order);
-            paymentTotalText.Text = "Rp " + total.ToString("N0");
-            paymentPaidText.Text = "Rp " + paid.ToString("N0");
-            paymentRemainingText.Text = "Rp " + Math.Max(0, total - paid).ToString("N0");
-        }
-
-        private void AddPayment_Click(object sender, RoutedEventArgs e)
-        {
-            var order = paymentOrderBox == null ? null : paymentOrderBox.SelectedItem as Order;
-            if (order == null) { paymentStatus.Text = "Belum ada pesanan. Buat pesanan terlebih dahulu."; return; }
-            var amount = ParsePrice(paymentAmountBox.Text);
-            if (amount <= 0) { paymentStatus.Text = "Masukkan jumlah pembayaran yang valid."; return; }
-            var remaining = order.Total - PaidForOrder(order);
-            if (remaining <= 0) { paymentStatus.Text = "Pesanan ini sudah lunas."; return; }
-            if (amount > remaining) { paymentStatus.Text = "Jumlah melebihi sisa tagihan Rp " + remaining.ToString("N0") + "."; return; }
-            var record = new Payment {
-                ReceiptNumber = "KWT-" + DateTime.Now.ToString("yyyyMMdd") + "-" + (payments.Count + 1).ToString("D4"),
-                OrderKey = order.OrderKey, OrderDate = order.Date, CustomerName = order.CustomerName,
-                CustomerPhone = order.CustomerPhone, Date = Read(paymentDateBox), Amount = amount,
-                Method = paymentMethodBox.SelectedItem == null ? "Tunai" : paymentMethodBox.SelectedItem.ToString(),
-                Notes = Read(paymentNotesBox), OrderTotal = order.Total
-            };
-            payments.Add(record);
-            if (!SavePayments()) { payments.Remove(record); paymentStatus.Text = "Gagal menyimpan pembayaran. Data tidak ditambahkan."; return; }
-            paymentAmountBox.Clear();
-            paymentNotesBox.Clear();
-            UpdatePaymentBalance();
-            ApplyPaymentSearch();
-            paymentStatus.Text = "Pembayaran tersimpan. No. kuitansi: " + record.ReceiptNumber;
-        }
-
-        private void SearchPayments_Changed(object sender, TextChangedEventArgs e) { ApplyPaymentSearch(); }
-
-        private void ApplyPaymentSearch()
-        {
-            if (paymentGrid == null) return;
-            var query = paymentSearchBox == null ? "" : (paymentSearchBox.Text ?? "").Trim();
-            paymentGrid.ItemsSource = payments.Where(p => query.Length == 0 ||
-                p.ReceiptNumber.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                p.CustomerName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
-            if (paymentCount != null) paymentCount.Text = "RIWAYAT PEMBAYARAN  •  " + payments.Count + " transaksi";
-        }
-
-        private void LoadPayments()
-        {
-            payments.Clear();
-            try { if (!File.Exists(paymentFile)) return; var loaded = new JavaScriptSerializer().Deserialize<List<Payment>>(File.ReadAllText(paymentFile)); if (loaded != null) foreach (var item in loaded) payments.Add(item); }
-            catch { MessageBox.Show("Data pembayaran lokal belum dapat dibaca. File tidak dihapus.", "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning); }
-        }
-
-        private bool SavePayments()
-        {
-            try
-            {
-                var folder = Path.GetDirectoryName(paymentFile);
-                if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
-                File.WriteAllText(paymentFile, new JavaScriptSerializer().Serialize(payments.ToList()));
-                return true;
-            }
-            catch (Exception ex) { MessageBox.Show("Pembayaran gagal disimpan: " + ex.Message, "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Error); return false; }
-        }
-
-        private Grid MakeInputGrid()
-        {
-            var grid = new Grid { Margin = new Thickness(0,0,0,3) };
-            for (int i = 0; i < 3; i++) grid.ColumnDefinitions.Add(new ColumnDefinition());
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            return grid;
-        }
-
-        private TextBlock SectionCaption(string text)
-        {
-            return new TextBlock { Text = text, FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), Margin = new Thickness(0,12,0,8) };
-        }
-
-        private decimal ParsePrice(string value)
-        {
-            decimal result;
-            var cleaned = (value ?? "").Replace("Rp", "").Replace(".", "").Replace(",", "").Trim();
-            return decimal.TryParse(cleaned, out result) && result > 0 ? result : 0;
-        }
-
-        private void OrderPrice_Changed(object sender, TextChangedEventArgs e) { UpdateOrderTotal(); }
-
-        private void UpdateOrderTotal()
-        {
-            if (orderTotalText == null) return;
-            var total = ParsePrice(framePriceBox == null ? "" : framePriceBox.Text) +
-                        ParsePrice(lensPriceBox == null ? "" : lensPriceBox.Text) +
-                        ParsePrice(otherPriceBox == null ? "" : otherPriceBox.Text);
-            orderTotalText.Text = "Rp " + total.ToString("N0");
-        }
-
-        private void AddOrder_Click(object sender, RoutedEventArgs e)
-        {
-            var customer = orderCustomerBox == null ? null : orderCustomerBox.SelectedItem as Customer;
-            if (customer == null) { orderStatus.Text = "Pilih pelanggan terlebih dahulu. Tambahkan di menu Pelanggan jika belum ada."; return; }
-            var framePrice = ParsePrice(framePriceBox.Text);
-            var lensPrice = ParsePrice(lensPriceBox.Text);
-            var otherPrice = ParsePrice(otherPriceBox.Text);
-            if (framePrice <= 0 || lensPrice <= 0) { orderStatus.Text = "Harga frame dan lensa wajib diisi."; return; }
-            var record = new Order {
-                OrderId = Guid.NewGuid().ToString("N"),
-                Date = Read(orderDateBox), CustomerName = customer.Name, CustomerPhone = customer.Phone,
-                FrameBrand = Read(frameBrandBox), FrameModel = Read(frameModelBox), FrameColor = Read(frameColorBox), FramePrice = framePrice,
-                LensType = Read(lensTypeBox), LensSize = Read(lensSizeBox), LensCoating = Read(lensCoatingBox), LensPrice = lensPrice,
-                OtherItem = Read(otherItemBox), OtherPrice = otherPrice, Notes = Read(orderNotesBox)
-            };
-            orders.Add(record);
-            if (!SaveOrders()) { orders.Remove(record); orderStatus.Text = "Gagal menyimpan pesanan. Data belum ditambahkan."; return; }
-            frameBrandBox.Clear(); frameModelBox.Clear(); frameColorBox.Clear(); framePriceBox.Clear();
-            lensTypeBox.Clear(); lensSizeBox.Clear(); lensCoatingBox.Clear(); lensPriceBox.Clear();
-            otherItemBox.Clear(); otherPriceBox.Clear(); orderNotesBox.Clear();
-            ApplyOrderSearch();
-            orderStatus.Text = "Pesanan berhasil disimpan secara lokal.";
-        }
-
-        private void SearchOrders_Changed(object sender, TextChangedEventArgs e) { ApplyOrderSearch(); }
-
-        private void ApplyOrderSearch()
-        {
-            if (orderGrid == null) return;
-            var query = orderSearchBox == null ? "" : (orderSearchBox.Text ?? "").Trim();
-            orderGrid.ItemsSource = orders.Where(x => query.Length == 0 ||
-                x.CustomerName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                x.FrameDescription.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                x.LensDescription.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
-            if (orderCount != null) orderCount.Text = "DAFTAR PESANAN  •  " + orders.Count + " data";
-        }
-
-        private void LoadOrders()
-        {
-            orders.Clear();
-            try { if (!File.Exists(orderFile)) return; var loaded = new JavaScriptSerializer().Deserialize<List<Order>>(File.ReadAllText(orderFile)); if (loaded != null) foreach (var item in loaded) orders.Add(item); }
-            catch { MessageBox.Show("Data pesanan lokal belum dapat dibaca. File tidak dihapus.", "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning); }
-        }
-
-        private bool SaveOrders()
-        {
-            try
-            {
-                var folder = Path.GetDirectoryName(orderFile);
-                if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
-                File.WriteAllText(orderFile, new JavaScriptSerializer().Serialize(orders.ToList()));
-                return true;
-            }
-            catch (Exception ex) { MessageBox.Show("Pesanan gagal disimpan: " + ex.Message, "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Error); return false; }
-        }
-
-        private Border MakeEyePanel(string title)
-        {
-            var panel = MakePanel();
-            panel.Margin = new Thickness(0,0,10,0);
-            var stack = new StackPanel();
-            stack.Children.Add(new TextBlock { Text = title, FontSize = 12, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), Margin = new Thickness(0,0,0,8) });
-            var grid = new Grid();
-            for (int i = 0; i < 5; i++) grid.ColumnDefinitions.Add(new ColumnDefinition());
-            stack.Children.Add(grid);
-            panel.Child = stack;
-            panel.Tag = grid;
-            return panel;
-        }
-
-        private TextBox AddEyeField(Border panel, string label, int column)
-        {
-            var grid = panel.Tag as Grid;
-            var stack = new StackPanel { Margin = new Thickness(0,0,6,0) };
-            stack.Children.Add(new TextBlock { Text = label, FontSize = 10, Foreground = Brush("#777168"), Margin = new Thickness(0,0,0,4) });
-            var box = new TextBox { Height = 31, Padding = new Thickness(5,5,5,5), FontSize = 11 };
-            stack.Children.Add(box);
-            Grid.SetColumn(stack, column);
-            grid.Children.Add(stack);
-            return box;
-        }
-
-        private TextBox AddField(Grid grid, string hint, int row, int column)
-        {
-            var wrap = new StackPanel { Margin = new Thickness(column == 0 ? 0 : 10, 0, 0, 10) };
-            wrap.Children.Add(new TextBlock { Text = hint, FontSize = 11, Foreground = Brush("#777168"), Margin = new Thickness(0,0,0,5) });
-            var box = new TextBox { Height = 34, Padding = new Thickness(9,6,9,6), FontSize = 12 };
-            box.KeyDown += (sender, e) =>
-            {
-                if (e.Key == System.Windows.Input.Key.Enter)
-                {
-                    e.Handled = true;
-                    box.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
-                }
-            };
-            wrap.Children.Add(box);
-            Grid.SetRow(wrap, row);
-            Grid.SetColumn(wrap, column);
-            grid.Children.Add(wrap);
-            return box;
-        }
-
-        private Button MakeActionButton(string caption)
-        {
-            var button = new Button
-            {
-                Content = caption,
-                Padding = new Thickness(19,10,19,10),
-                Background = Brush("#20211F"),
-                Foreground = Brush("#E6C982"),
-                BorderThickness = new Thickness(0),
-                FontSize = 12,
-                FontWeight = FontWeights.SemiBold,
-                Cursor = System.Windows.Input.Cursors.Hand,
-                FocusVisualStyle = null,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center
-            };
-            var template = new ControlTemplate(typeof(Button));
-            var border = new FrameworkElementFactory(typeof(Border));
-            border.Name = "buttonBorder";
-            border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
-            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(9));
-            border.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Button.PaddingProperty));
-            border.SetValue(Border.SnapsToDevicePixelsProperty, true);
-            var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
-            presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
-            presenter.SetValue(ContentPresenter.RecognizesAccessKeyProperty, true);
-            border.AppendChild(presenter);
-            template.VisualTree = border;
-            var hover = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
-            hover.Setters.Add(new Setter(Border.BackgroundProperty, Brush("#3A3428"), "buttonBorder"));
-            hover.Setters.Add(new Setter(Button.ForegroundProperty, Brushes.White));
-            template.Triggers.Add(hover);
-            var pressed = new Trigger { Property = Button.IsPressedProperty, Value = true };
-            pressed.Setters.Add(new Setter(Border.BackgroundProperty, Brush("#A78342"), "buttonBorder"));
-            pressed.Setters.Add(new Setter(Button.ForegroundProperty, Brushes.White));
-            template.Triggers.Add(pressed);
-            button.Template = template;
-            return button;
-        }
-
-        private void AddCustomer_Click(object sender, RoutedEventArgs e)
-        {
-            var name = (nameBox.Text ?? "").Trim();
-            var phone = (phoneBox.Text ?? "").Trim();
-            var address = (addressBox.Text ?? "").Trim();
-            if (name.Length == 0 || phone.Length == 0) { customerStatus.Text = "Nama dan nomor WhatsApp wajib diisi."; return; }
-            if (customers.Any(c => string.Equals(c.Phone, phone, StringComparison.OrdinalIgnoreCase))) { customerStatus.Text = "Nomor WhatsApp sudah terdaftar."; return; }
-            customers.Add(new Customer { Name = name, Phone = phone, Address = address });
-            SaveCustomers();
-            nameBox.Clear(); phoneBox.Clear(); addressBox.Clear();
-            ApplyCustomerSearch();
-            customerStatus.Text = "Pelanggan berhasil disimpan secara lokal.";
-        }
-
-        private void AddExamination_Click(object sender, RoutedEventArgs e)
-        {
-            var name = (examCustomerBox.Text ?? "").Trim();
-            if (name.Length == 0) { examStatus.Text = "Nama pelanggan wajib diisi."; return; }
-            var record = new Examination {
-                CustomerName = name, Date = (examDateBox.Text ?? "").Trim(),
-                ODSPH = Read(odSphBox), ODCYL = Read(odCylBox), ODAXIS = Read(odAxisBox), ODADD = Read(odAddBox), ODPD = Read(odPdBox),
-                OSSPH = Read(osSphBox), OSCYL = Read(osCylBox), OSAXIS = Read(osAxisBox), OSADD = Read(osAddBox), OSPD = Read(osPdBox),
-                Notes = Read(examNotesBox)
-            };
-            examinations.Add(record);
-            SaveExaminations();
-            examCustomerBox.Clear(); odSphBox.Clear(); odCylBox.Clear(); odAxisBox.Clear(); odAddBox.Clear(); odPdBox.Clear();
-            osSphBox.Clear(); osCylBox.Clear(); osAxisBox.Clear(); osAddBox.Clear(); osPdBox.Clear(); examNotesBox.Clear();
-            ApplyExaminationSearch();
-            examStatus.Text = "Pemeriksaan berhasil disimpan secara lokal.";
-        }
-
-        private string Read(TextBox box) { return (box.Text ?? "").Trim(); }
-        private void SearchCustomers_Changed(object sender, TextChangedEventArgs e) { ApplyCustomerSearch(); }
-        private void SearchExaminations_Changed(object sender, TextChangedEventArgs e) { ApplyExaminationSearch(); }
-
-        private void ApplyCustomerSearch()
-        {
-            if (customerGrid == null) return;
-            var query = searchBox == null ? "" : (searchBox.Text ?? "").Trim();
-            customerGrid.ItemsSource = customers.Where(c => query.Length == 0 || c.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 || c.Phone.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 || c.Address.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
-            if (customerCount != null) customerCount.Text = "DAFTAR PELANGGAN  •  " + customers.Count + " data";
-        }
-
-        private void ApplyExaminationSearch()
-        {
-            if (examGrid == null) return;
-            var query = examSearchBox == null ? "" : (examSearchBox.Text ?? "").Trim();
-            examGrid.ItemsSource = examinations.Where(x => query.Length == 0 || x.CustomerName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 || x.Date.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
-            if (examCount != null) examCount.Text = "RIWAYAT PEMERIKSAAN  •  " + examinations.Count + " data";
-        }
-
-        private void LoadCustomers()
-        {
-            customers.Clear();
-            try { if (!File.Exists(customerFile)) return; var loaded = new JavaScriptSerializer().Deserialize<List<Customer>>(File.ReadAllText(customerFile)); if (loaded != null) foreach (var item in loaded) customers.Add(item); }
-            catch { MessageBox.Show("Data pelanggan lokal belum dapat dibaca. File tidak dihapus.", "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning); }
-        }
-
-        private void SaveCustomers()
-        {
-            try { var folder = Path.GetDirectoryName(customerFile); if (!Directory.Exists(folder)) Directory.CreateDirectory(folder); File.WriteAllText(customerFile, new JavaScriptSerializer().Serialize(customers.ToList())); }
-            catch (Exception ex) { customerStatus.Text = "Gagal menyimpan: " + ex.Message; }
-        }
-
-        private void LoadExaminations()
-        {
-            examinations.Clear();
-            try { if (!File.Exists(examinationFile)) return; var loaded = new JavaScriptSerializer().Deserialize<List<Examination>>(File.ReadAllText(examinationFile)); if (loaded != null) foreach (var item in loaded) examinations.Add(item); }
-            catch { MessageBox.Show("Riwayat pemeriksaan lokal belum dapat dibaca. File tidak dihapus.", "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning); }
-        }
-
-        private void SaveExaminations()
-        {
-            try { var folder = Path.GetDirectoryName(examinationFile); if (!Directory.Exists(folder)) Directory.CreateDirectory(folder); File.WriteAllText(examinationFile, new JavaScriptSerializer().Serialize(examinations.ToList())); }
-            catch (Exception ex) { examStatus.Text = "Gagal menyimpan: " + ex.Message; }
-        }
-
-        private Border MakePanel()
-        {
-            return new Border { Background = Brushes.White, BorderBrush = Brush("#ECE6DA"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14), Padding = new Thickness(22) };
-        }
-
-        private SolidColorBrush Brush(string hex) { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); }
-
-        public class Customer { public string Name { get; set; } public string Phone { get; set; } public string Address { get; set; } }
-
-        public class Order
-        {
-            public string OrderId { get; set; }
-            public string PaymentLabel { get { return Date + " • " + CustomerName + " • Rp " + Total.ToString("N0"); } }
-            public string Date { get; set; }
-            public string CustomerName { get; set; }
-            public string CustomerPhone { get; set; }
-            public string FrameBrand { get; set; }
-            public string FrameModel { get; set; }
-            public string FrameColor { get; set; }
-            public decimal FramePrice { get; set; }
-            public string LensType { get; set; }
-            public string LensSize { get; set; }
-            public string LensCoating { get; set; }
-            public decimal LensPrice { get; set; }
-            public string OtherItem { get; set; }
-            public decimal OtherPrice { get; set; }
-            public string Notes { get; set; }
-            public decimal Total { get { return FramePrice + LensPrice + OtherPrice; } }
-            public string TotalDisplay { get { return "Rp " + Total.ToString("N0"); } }
-            public string FrameDescription { get { return string.Join(" ", new[] { FrameBrand, FrameModel, FrameColor }.Where(v => !string.IsNullOrWhiteSpace(v))); } }
-            public string OrderKey { get { return !string.IsNullOrWhiteSpace(OrderId) ? OrderId : Date + "|" + CustomerPhone + "|" + CustomerName + "|" + FrameBrand + "|" + FrameModel + "|" + Total.ToString(System.Globalization.CultureInfo.InvariantCulture); } }
-            public string LensDescription { get { return string.Join(" ", new[] { LensType, LensSize, LensCoating }.Where(v => !string.IsNullOrWhiteSpace(v))); } }
-        }
-
-        public class Payment
-        {
-            public string ReceiptNumber { get; set; }
-            public string OrderKey { get; set; }
-            public string OrderDate { get; set; }
-            public string CustomerName { get; set; }
-            public string CustomerPhone { get; set; }
-            public string Date { get; set; }
-            public decimal Amount { get; set; }
-            public string Method { get; set; }
-            public string Notes { get; set; }
-            public decimal OrderTotal { get; set; }
-            public string AmountDisplay { get { return "Rp " + Amount.ToString("N0"); } }
-        }
-
-        public class Examination
-        {
-            public string CustomerName { get; set; } public string Date { get; set; }
-            public string ODSPH { get; set; } public string ODCYL { get; set; } public string ODAXIS { get; set; } public string ODADD { get; set; } public string ODPD { get; set; }
-            public string OSSPH { get; set; } public string OSCYL { get; set; } public string OSAXIS { get; set; } public string OSADD { get; set; } public string OSPD { get; set; }
-            public string Notes { get; set; }
-            public string ODSummary { get { return ODSPH + " / " + ODCYL + " / " + ODAXIS; } }
-            public string OSSummary { get { return OSSPH + " / " + OSCYL + " / " + OSAXIS; } }
-        }
-    }
 }
