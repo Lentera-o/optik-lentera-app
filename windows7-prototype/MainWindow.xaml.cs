@@ -584,7 +584,7 @@ namespace OptikLentera.Win7
             }
             else
             {
-nt = HorizontalAlignment.Right;
+                qrImage.HorizontalAlignment = HorizontalAlignment.Right;
                 c.Children.Add(qrImage);
                 c.Children.Add(new TextBlock { Text = "Pindai untuk membaca ringkasan dokumen", FontSize = 8, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,2,0,8) });
             }
