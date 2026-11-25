@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -198,7 +199,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int selectedIndex = 0;
   final List<Customer> customers = [];
   final List<OptikOrder> orders = [];
@@ -206,6 +207,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _loadingLocalData = true;
   bool _localCachePurgeFailed = false;
   int _unreadDocumentCount = 0;
+  Timer? _documentNotificationTimer;
   final Set<String> _readDocumentNoticeIds = {};
   final Set<String> _dismissedDocumentNoticeIds = {};
   final Map<String, String> _documentNoticeStatuses = {};
@@ -213,8 +215,29 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _purgeLocalTransactionCache();
     _loadDocumentNoticeState().then((_) => _refreshDocumentNotificationCount());
+    // Pesanan/dokumen yang masuk dari Google Form saat aplikasi terbuka
+    // akan memunculkan badge merah tanpa harus menekan ikon lonceng.
+    _documentNotificationTimer = Timer.periodic(
+      const Duration(seconds: 45),
+      (_) => _refreshDocumentNotificationCount(),
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshDocumentNotificationCount();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _documentNotificationTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadDocumentNoticeState() async {
