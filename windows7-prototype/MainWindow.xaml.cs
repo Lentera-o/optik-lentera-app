@@ -257,6 +257,11 @@ namespace OptikLentera.Win7
             examGrid.Columns.Add(new DataGridTextColumn { Header = "OD (SPH/CYL/AXIS)", Binding = new System.Windows.Data.Binding("ODSummary"), Width = 180 });
             examGrid.Columns.Add(new DataGridTextColumn { Header = "OS (SPH/CYL/AXIS)", Binding = new System.Windows.Data.Binding("OSSummary"), Width = 180 });
             listStack.Children.Add(examGrid);
+            var printExam = MakeActionButton("Cetak Resep Terpilih");
+            printExam.Margin = new Thickness(0,12,0,0);
+            printExam.HorizontalAlignment = HorizontalAlignment.Left;
+            printExam.Click += PrintExamination_Click;
+            listStack.Children.Add(printExam);
             listPanel.Child = listStack;
             root.Children.Add(listPanel);
             DashboardContent.Children.Add(root);
@@ -560,6 +565,61 @@ namespace OptikLentera.Win7
             var payment = documentPaymentBox == null ? null : documentPaymentBox.SelectedItem as Payment;
             if (order == null || payment == null) { documentStatus.Text = "Pilih pembayaran untuk mencetak kuitansi."; return; }
             PrintDocumentVisual(MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment), "Kuitansi OPTIK LENTERA");
+        }
+
+        private void PrintExamination_Click(object sender, RoutedEventArgs e)
+        {
+            var exam = examGrid == null ? null : examGrid.SelectedItem as Examination;
+            if (exam == null)
+            {
+                if (examStatus != null) examStatus.Text = "Pilih satu riwayat pemeriksaan terlebih dahulu.";
+                return;
+            }
+            PrintDocumentVisual(MakePrescriptionContent(exam), "Resep OPTIK LENTERA");
+        }
+
+        private StackPanel MakePrescriptionContent(Examination exam)
+        {
+            var root = new StackPanel();
+            var logo = new Image
+            {
+                Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png")),
+                Width = 142, Height = 76, Stretch = System.Windows.Media.Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
+            root.Children.Add(logo);
+            root.Children.Add(new TextBlock { Text = "RESEP KACAMATA", FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#20211F"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,8,0,3) });
+            root.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brush("#A7833F"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,0,0,16) });
+            var identity = new Grid { Margin = new Thickness(0,0,0,14) };
+            identity.ColumnDefinitions.Add(new ColumnDefinition());
+            identity.ColumnDefinitions.Add(new ColumnDefinition());
+            identity.Children.Add(new TextBlock { Text = "Nama: " + exam.CustomerName, FontSize = 12, Foreground = Brush("#292823") });
+            var date = new TextBlock { Text = "Tanggal: " + exam.Date, FontSize = 12, Foreground = Brush("#292823"), TextAlignment = TextAlignment.Right };
+            Grid.SetColumn(date,1); identity.Children.Add(date); root.Children.Add(identity);
+            root.Children.Add(new TextBlock { Text = "HASIL PEMERIKSAAN", FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brush("#A7833F"), Margin = new Thickness(0,0,0,7) });
+            var table = new Grid { Margin = new Thickness(0,0,0,12) };
+            for (int i=0;i<6;i++) table.ColumnDefinitions.Add(new ColumnDefinition());
+            for (int i=0;i<3;i++) table.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            string[][] values = new string[][] {
+                new string[] { "MATA", "SPH", "CYL", "AXIS", "ADD", "PD" },
+                new string[] { "OD • KANAN", exam.ODSPH, exam.ODCYL, exam.ODAXIS, exam.ODADD, exam.ODPD },
+                new string[] { "OS • KIRI", exam.OSSPH, exam.OSCYL, exam.OSAXIS, exam.OSADD, exam.OSPD }
+            };
+            for (int r=0;r<3;r++) for (int col=0;col<6;col++)
+            {
+                var cell = new Border { BorderBrush = Brush("#D8D0C2"), BorderThickness = new Thickness(0,0,1,1), Padding = new Thickness(7,9,7,9), Background = r==0 ? Brush("#F2EBDD") : Brushes.White };
+                cell.Child = new TextBlock { Text = values[r][col] ?? "", FontSize = 10, FontWeight = r==0 ? FontWeights.Bold : FontWeights.Normal, Foreground = Brush("#292823"), TextAlignment = col==0 ? TextAlignment.Left : TextAlignment.Center };
+                Grid.SetRow(cell,r); Grid.SetColumn(cell,col); table.Children.Add(cell);
+            }
+            root.Children.Add(table);
+            if (!string.IsNullOrWhiteSpace(exam.Notes))
+            {
+                root.Children.Add(new TextBlock { Text = "CATATAN", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = Brush("#A7833F"), Margin = new Thickness(0,3,0,4) });
+                root.Children.Add(new TextBlock { Text = exam.Notes, FontSize = 11, Foreground = Brush("#292823"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,18) });
+            }
+            root.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 9, Foreground = Brush("#777168"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,20,0,0) });
+            return root;
         }
 
         private void PrintDocumentVisual(StackPanel content, string title)
