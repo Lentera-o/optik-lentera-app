@@ -33,6 +33,13 @@ namespace OptikLentera.Win7
         private TextBlock orderTotalText, orderStatus, orderCount;
         private DataGrid orderGrid;
 
+        private readonly ObservableCollection<Payment> payments = new ObservableCollection<Payment>();
+        private string paymentFile;
+        private ComboBox paymentOrderBox, paymentMethodBox;
+        private TextBox paymentDateBox, paymentAmountBox, paymentNotesBox, paymentSearchBox;
+        private TextBlock paymentTotalText, paymentPaidText, paymentRemainingText, paymentStatus, paymentCount;
+        private DataGrid paymentGrid;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -40,6 +47,7 @@ namespace OptikLentera.Win7
             customerFile = Path.Combine(folder, "pelanggan.json");
             examinationFile = Path.Combine(folder, "pemeriksaan.json");
             orderFile = Path.Combine(folder, "pesanan.json");
+            paymentFile = Path.Combine(folder, "pembayaran.json");
         }
 
         private void Navigate_Click(object sender, RoutedEventArgs e)
@@ -72,6 +80,12 @@ namespace OptikLentera.Win7
             {
                 PageSubtitle.Text = "Kelola detail frame, lensa, dan nilai pesanan secara lokal";
                 BuildOrderPage();
+                return;
+            }
+            if (page == "Pembayaran")
+            {
+                PageSubtitle.Text = "Catat DP dan pelunasan, saldo dihitung otomatis";
+                BuildPaymentPage();
                 return;
             }
 
@@ -334,6 +348,185 @@ namespace OptikLentera.Win7
             ApplyOrderSearch();
         }
 
+
+        private void BuildPaymentPage()
+        {
+            LoadOrders();
+            LoadPayments();
+            var root = new StackPanel();
+            var form = MakePanel();
+            var stack = new StackPanel();
+            stack.Children.Add(new TextBlock { Text = "CATAT PEMBAYARAN", FontSize = 16, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,0,0,5) });
+            stack.Children.Add(new TextBlock { Text = "Pilih pesanan, masukkan DP atau pelunasan. Saldo dihitung dari seluruh pembayaran yang tersimpan.", FontSize = 11, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,12) });
+
+            var identity = new Grid();
+            identity.ColumnDefinitions.Add(new ColumnDefinition());
+            identity.ColumnDefinitions.Add(new ColumnDefinition());
+            identity.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var orderWrap = new StackPanel { Margin = new Thickness(0,0,10,10) };
+            orderWrap.Children.Add(new TextBlock { Text = "Pesanan pelanggan", FontSize = 11, Foreground = Brush("#777168"), Margin = new Thickness(0,0,0,5) });
+            paymentOrderBox = new ComboBox { Height = 34, Padding = new Thickness(7,5,7,5), FontSize = 12, DisplayMemberPath = "PaymentLabel" };
+            paymentOrderBox.ItemsSource = orders;
+            paymentOrderBox.SelectionChanged += PaymentOrder_Changed;
+            orderWrap.Children.Add(paymentOrderBox);
+            identity.Children.Add(orderWrap);
+            paymentDateBox = AddField(identity, "Tanggal pembayaran", 0, 1);
+            paymentDateBox.Text = DateTime.Now.ToString("dd-MM-yyyy");
+            stack.Children.Add(identity);
+
+            var moneyGrid = MakeInputGrid();
+            paymentAmountBox = AddField(moneyGrid, "Jumlah dibayar (Rp)", 0, 0);
+            paymentMethodBox = new ComboBox { Height = 34, Padding = new Thickness(7,5,7,5), FontSize = 12, Margin = new Thickness(10,0,0,10) };
+            paymentMethodBox.Items.Add("Tunai");
+            paymentMethodBox.Items.Add("Transfer");
+            paymentMethodBox.Items.Add("QRIS");
+            paymentMethodBox.Items.Add("Debit / Kredit");
+            paymentMethodBox.Items.Add("Lainnya");
+            paymentMethodBox.SelectedIndex = 0;
+            var methodWrap = new StackPanel { Margin = new Thickness(10,0,0,10) };
+            methodWrap.Children.Add(new TextBlock { Text = "Metode pembayaran", FontSize = 11, Foreground = Brush("#777168"), Margin = new Thickness(0,0,0,5) });
+            methodWrap.Children.Add(paymentMethodBox);
+            Grid.SetRow(methodWrap, 0);
+            Grid.SetColumn(methodWrap, 1);
+            moneyGrid.Children.Add(methodWrap);
+            paymentNotesBox = AddField(moneyGrid, "Catatan (opsional)", 0, 2);
+            stack.Children.Add(moneyGrid);
+
+            var balance = new Border { Background = Brush("#20211F"), CornerRadius = new CornerRadius(10), Padding = new Thickness(16,12,16,12), Margin = new Thickness(0,5,0,0) };
+            var balanceGrid = new Grid();
+            for (int i = 0; i < 3; i++) balanceGrid.ColumnDefinitions.Add(new ColumnDefinition());
+            paymentTotalText = BalanceValue(balanceGrid, "TOTAL PESANAN", "Rp 0", 0);
+            paymentPaidText = BalanceValue(balanceGrid, "SUDAH DIBAYAR", "Rp 0", 1);
+            paymentRemainingText = BalanceValue(balanceGrid, "SISA TAGIHAN", "Rp 0", 2);
+            balance.Child = balanceGrid;
+            stack.Children.Add(balance);
+
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0,14,0,0) };
+            var save = MakeActionButton("Simpan pembayaran");
+            save.Click += AddPayment_Click;
+            actions.Children.Add(save);
+            paymentStatus = new TextBlock { Text = "Pembayaran tersimpan lokal di komputer ini.", Foreground = Brush("#777168"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12,0,0,0) };
+            actions.Children.Add(paymentStatus);
+            stack.Children.Add(actions);
+            form.Child = stack;
+            root.Children.Add(form);
+
+            var listPanel = MakePanel();
+            listPanel.Margin = new Thickness(0,16,0,0);
+            var listStack = new StackPanel();
+            var header = new Grid();
+            header.ColumnDefinitions.Add(new ColumnDefinition());
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(250) });
+            paymentCount = new TextBlock { Text = "RIWAYAT PEMBAYARAN", FontSize = 15, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), VerticalAlignment = VerticalAlignment.Center };
+            header.Children.Add(paymentCount);
+            paymentSearchBox = new TextBox { Height = 32, Padding = new Thickness(9,5,9,5), FontSize = 12, ToolTip = "Cari nomor kuitansi atau pelanggan" };
+            paymentSearchBox.TextChanged += SearchPayments_Changed;
+            Grid.SetColumn(paymentSearchBox, 1);
+            header.Children.Add(paymentSearchBox);
+            listStack.Children.Add(header);
+
+            paymentGrid = new DataGrid { AutoGenerateColumns = false, IsReadOnly = true, CanUserAddRows = false, HeadersVisibility = DataGridHeadersVisibility.Column, RowHeaderWidth = 0, Height = 260, Margin = new Thickness(0,14,0,0), Background = Brushes.White, BorderBrush = Brush("#ECE6DA"), BorderThickness = new Thickness(1), ItemsSource = payments };
+            paymentGrid.Columns.Add(new DataGridTextColumn { Header = "No. Kuitansi", Binding = new System.Windows.Data.Binding("ReceiptNumber"), Width = 165 });
+            paymentGrid.Columns.Add(new DataGridTextColumn { Header = "Tanggal", Binding = new System.Windows.Data.Binding("Date"), Width = 105 });
+            paymentGrid.Columns.Add(new DataGridTextColumn { Header = "Pelanggan", Binding = new System.Windows.Data.Binding("CustomerName"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+            paymentGrid.Columns.Add(new DataGridTextColumn { Header = "Metode", Binding = new System.Windows.Data.Binding("Method"), Width = 120 });
+            paymentGrid.Columns.Add(new DataGridTextColumn { Header = "Dibayar", Binding = new System.Windows.Data.Binding("AmountDisplay"), Width = 130 });
+            listStack.Children.Add(paymentGrid);
+            listPanel.Child = listStack;
+            root.Children.Add(listPanel);
+            DashboardContent.Children.Add(root);
+
+            if (orders.Count > 0) paymentOrderBox.SelectedIndex = 0;
+            UpdatePaymentBalance();
+            ApplyPaymentSearch();
+        }
+
+        private TextBlock BalanceValue(Grid grid, string caption, string value, int column)
+        {
+            var panel = new StackPanel { Margin = new Thickness(column == 0 ? 0 : 12,0,0,0) };
+            panel.Children.Add(new TextBlock { Text = caption, Foreground = Brush("#C8A45D"), FontSize = 10, FontWeight = FontWeights.Bold });
+            var result = new TextBlock { Text = value, Foreground = Brush("#F7F3EA"), FontSize = 18, FontWeight = FontWeights.Bold, Margin = new Thickness(0,4,0,0) };
+            panel.Children.Add(result);
+            Grid.SetColumn(panel, column);
+            grid.Children.Add(panel);
+            return result;
+        }
+
+        private void PaymentOrder_Changed(object sender, SelectionChangedEventArgs e) { UpdatePaymentBalance(); }
+
+        private decimal PaidForOrder(Order order)
+        {
+            if (order == null) return 0;
+            return payments.Where(p => p.OrderKey == order.OrderKey).Sum(p => p.Amount);
+        }
+
+        private void UpdatePaymentBalance()
+        {
+            if (paymentTotalText == null) return;
+            var order = paymentOrderBox == null ? null : paymentOrderBox.SelectedItem as Order;
+            var total = order == null ? 0 : order.Total;
+            var paid = PaidForOrder(order);
+            paymentTotalText.Text = "Rp " + total.ToString("N0");
+            paymentPaidText.Text = "Rp " + paid.ToString("N0");
+            paymentRemainingText.Text = "Rp " + Math.Max(0, total - paid).ToString("N0");
+        }
+
+        private void AddPayment_Click(object sender, RoutedEventArgs e)
+        {
+            var order = paymentOrderBox == null ? null : paymentOrderBox.SelectedItem as Order;
+            if (order == null) { paymentStatus.Text = "Belum ada pesanan. Buat pesanan terlebih dahulu."; return; }
+            var amount = ParsePrice(paymentAmountBox.Text);
+            if (amount <= 0) { paymentStatus.Text = "Masukkan jumlah pembayaran yang valid."; return; }
+            var remaining = order.Total - PaidForOrder(order);
+            if (remaining <= 0) { paymentStatus.Text = "Pesanan ini sudah lunas."; return; }
+            if (amount > remaining) { paymentStatus.Text = "Jumlah melebihi sisa tagihan Rp " + remaining.ToString("N0") + "."; return; }
+            var record = new Payment {
+                ReceiptNumber = "KWT-" + DateTime.Now.ToString("yyyyMMdd") + "-" + (payments.Count + 1).ToString("D4"),
+                OrderKey = order.OrderKey, OrderDate = order.Date, CustomerName = order.CustomerName,
+                CustomerPhone = order.CustomerPhone, Date = Read(paymentDateBox), Amount = amount,
+                Method = paymentMethodBox.SelectedItem == null ? "Tunai" : paymentMethodBox.SelectedItem.ToString(),
+                Notes = Read(paymentNotesBox), OrderTotal = order.Total
+            };
+            payments.Add(record);
+            if (!SavePayments()) { payments.Remove(record); paymentStatus.Text = "Gagal menyimpan pembayaran. Data tidak ditambahkan."; return; }
+            paymentAmountBox.Clear();
+            paymentNotesBox.Clear();
+            UpdatePaymentBalance();
+            ApplyPaymentSearch();
+            paymentStatus.Text = "Pembayaran tersimpan. No. kuitansi: " + record.ReceiptNumber;
+        }
+
+        private void SearchPayments_Changed(object sender, TextChangedEventArgs e) { ApplyPaymentSearch(); }
+
+        private void ApplyPaymentSearch()
+        {
+            if (paymentGrid == null) return;
+            var query = paymentSearchBox == null ? "" : (paymentSearchBox.Text ?? "").Trim();
+            paymentGrid.ItemsSource = payments.Where(p => query.Length == 0 ||
+                p.ReceiptNumber.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                p.CustomerName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+            if (paymentCount != null) paymentCount.Text = "RIWAYAT PEMBAYARAN  •  " + payments.Count + " transaksi";
+        }
+
+        private void LoadPayments()
+        {
+            payments.Clear();
+            try { if (!File.Exists(paymentFile)) return; var loaded = new JavaScriptSerializer().Deserialize<List<Payment>>(File.ReadAllText(paymentFile)); if (loaded != null) foreach (var item in loaded) payments.Add(item); }
+            catch { MessageBox.Show("Data pembayaran lokal belum dapat dibaca. File tidak dihapus.", "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        }
+
+        private bool SavePayments()
+        {
+            try
+            {
+                var folder = Path.GetDirectoryName(paymentFile);
+                if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+                File.WriteAllText(paymentFile, new JavaScriptSerializer().Serialize(payments.ToList()));
+                return true;
+            }
+            catch (Exception ex) { MessageBox.Show("Pembayaran gagal disimpan: " + ex.Message, "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Error); return false; }
+        }
+
         private Grid MakeInputGrid()
         {
             var grid = new Grid { Margin = new Thickness(0,0,0,3) };
@@ -553,6 +746,8 @@ namespace OptikLentera.Win7
 
         public class Order
         {
+            public string OrderKey { get; set; }
+            public string PaymentLabel { get { return Date + " • " + CustomerName + " • Rp " + Total.ToString("N0"); } }
             public string Date { get; set; }
             public string CustomerName { get; set; }
             public string CustomerPhone { get; set; }
@@ -570,7 +765,23 @@ namespace OptikLentera.Win7
             public decimal Total { get { return FramePrice + LensPrice + OtherPrice; } }
             public string TotalDisplay { get { return "Rp " + Total.ToString("N0"); } }
             public string FrameDescription { get { return string.Join(" ", new[] { FrameBrand, FrameModel, FrameColor }.Where(v => !string.IsNullOrWhiteSpace(v))); } }
+            public string OrderKey { get { return Date + "|" + CustomerPhone + "|" + CustomerName + "|" + FrameBrand + "|" + FrameModel + "|" + Total.ToString(System.Globalization.CultureInfo.InvariantCulture); } }
             public string LensDescription { get { return string.Join(" ", new[] { LensType, LensSize, LensCoating }.Where(v => !string.IsNullOrWhiteSpace(v))); } }
+        }
+
+        public class Payment
+        {
+            public string ReceiptNumber { get; set; }
+            public string OrderKey { get; set; }
+            public string OrderDate { get; set; }
+            public string CustomerName { get; set; }
+            public string CustomerPhone { get; set; }
+            public string Date { get; set; }
+            public decimal Amount { get; set; }
+            public string Method { get; set; }
+            public string Notes { get; set; }
+            public decimal OrderTotal { get; set; }
+            public string AmountDisplay { get { return "Rp " + Amount.ToString("N0"); } }
         }
 
         public class Examination
