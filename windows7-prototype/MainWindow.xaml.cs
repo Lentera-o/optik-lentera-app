@@ -553,21 +553,23 @@ namespace OptikLentera.Win7
 
         private BitmapImage CreateQrImage(string payload)
         {
+            // PngByteQRCode avoids the GDI+ bitmap renderer, which can crash on some
+            // Windows 7 machines when the invoice preview is first opened.
             using (var generator = new QRCodeGenerator())
             using (var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M))
-            using (var qr = new QRCode(data))
-            using (var bitmap = qr.GetGraphic(5))
-            using (var stream = new MemoryStream())
             {
-                bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-                stream.Position = 0;
-                var image = new BitmapImage();
-                image.BeginInit();
-                image.CacheOption = BitmapCacheOption.OnLoad;
-                image.StreamSource = stream;
-                image.EndInit();
-                image.Freeze();
-                return image;
+                var qr = new PngByteQRCode(data);
+                byte[] png = qr.GetGraphic(5);
+                using (var stream = new MemoryStream(png))
+                {
+                    var image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.StreamSource = stream;
+                    image.EndInit();
+                    image.Freeze();
+                    return image;
+                }
             }
         }
 
@@ -576,8 +578,23 @@ namespace OptikLentera.Win7
             if (documentPreview == null) return;
             var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
             var payment = documentPaymentBox == null ? null : documentPaymentBox.SelectedItem as Payment;
-            documentPreview.Child = order == null ? (UIElement)new TextBlock { Text = "Belum ada pesanan. Buat pesanan terlebih dahulu.", Foreground = Brush("#777168") } : MakeDocumentContent(payment == null ? "INVOICE PESANAN" : "KUITANSI PEMBAYARAN", order, payment);
-            if (documentStatus != null) documentStatus.Text = order == null ? "Tidak ada data pesanan." : payment == null ? "Pratinjau invoice." : "Pratinjau kuitansi " + payment.ReceiptNumber + ".";
+            if (order == null)
+            {
+                documentPreview.Child = new TextBlock { Text = "Belum ada pesanan. Buat pesanan terlebih dahulu.", Foreground = Brush("#777168") };
+                if (documentStatus != null) documentStatus.Text = "Tidak ada data pesanan.";
+                return;
+            }
+            try
+            {
+                documentPreview.Child = MakeDocumentContent(payment == null ? "INVOICE PESANAN" : "KUITANSI PEMBAYARAN", order, payment);
+                if (documentStatus != null) documentStatus.Text = payment == null ? "Pratinjau invoice." : "Pratinjau kuitansi " + payment.ReceiptNumber + ".";
+            }
+            catch (Exception ex)
+            {
+                // Keep the invoice page usable even if preview rendering fails.
+                documentPreview.Child = new TextBlock { Text = "Pratinjau dokumen belum dapat dibuat. Gunakan tombol cetak atau periksa data transaksi.\n" + ex.Message, Foreground = Brush("#9A5A42"), TextWrapping = TextWrapping.Wrap };
+                if (documentStatus != null) documentStatus.Text = "Pratinjau mengalami kendala; halaman tetap bisa digunakan.";
+            }
         }
 
         private void PrintInvoice_Click(object sender, RoutedEventArgs e)
