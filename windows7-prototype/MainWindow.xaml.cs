@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Web.Script.Serialization;
 
@@ -39,6 +40,9 @@ namespace OptikLentera.Win7
         private TextBox paymentDateBox, paymentAmountBox, paymentNotesBox, paymentSearchBox;
         private TextBlock paymentTotalText, paymentPaidText, paymentRemainingText, paymentStatus, paymentCount;
         private DataGrid paymentGrid;
+        private ComboBox documentOrderBox, documentPaymentBox;
+        private Border documentPreview;
+        private TextBlock documentStatus;
 
         public MainWindow()
         {
@@ -86,6 +90,18 @@ namespace OptikLentera.Win7
             {
                 PageSubtitle.Text = "Catat DP dan pelunasan, saldo dihitung otomatis";
                 BuildPaymentPage();
+                return;
+            }
+            if (page == "Invoice & Kuitansi")
+            {
+                PageSubtitle.Text = "Cetak invoice pesanan dan kuitansi pembayaran";
+                BuildInvoicePage();
+                return;
+            }
+            if (page == "Laporan")
+            {
+                PageSubtitle.Text = "Ringkasan pesanan dan pembayaran lokal";
+                BuildReportPage();
                 return;
             }
 
@@ -439,6 +455,141 @@ namespace OptikLentera.Win7
             if (orders.Count > 0) paymentOrderBox.SelectedIndex = 0;
             UpdatePaymentBalance();
             ApplyPaymentSearch();
+        }
+
+
+        private void BuildInvoicePage()
+        {
+            LoadOrders();
+            LoadPayments();
+            var root = new StackPanel();
+            var panel = MakePanel();
+            var stack = new StackPanel();
+            stack.Children.Add(new TextBlock { Text = "DOKUMEN TRANSAKSI", FontSize = 16, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,0,0,12) });
+            var selectors = new Grid();
+            selectors.ColumnDefinitions.Add(new ColumnDefinition());
+            selectors.ColumnDefinitions.Add(new ColumnDefinition());
+            var ow = new StackPanel { Margin = new Thickness(0,0,10,10) };
+            ow.Children.Add(new TextBlock { Text = "Pilih pesanan / invoice", FontSize = 11, Foreground = Brush("#777168") });
+            documentOrderBox = new ComboBox { Height = 34, DisplayMemberPath = "PaymentLabel", ItemsSource = orders };
+            documentOrderBox.SelectionChanged += DocumentOrder_Changed;
+            ow.Children.Add(documentOrderBox);
+            selectors.Children.Add(ow);
+            var pw = new StackPanel { Margin = new Thickness(10,0,0,10) };
+            pw.Children.Add(new TextBlock { Text = "Pilih kuitansi pembayaran", FontSize = 11, Foreground = Brush("#777168") });
+            documentPaymentBox = new ComboBox { Height = 34, DisplayMemberPath = "ReceiptNumber" };
+            documentPaymentBox.SelectionChanged += DocumentPayment_Changed;
+            pw.Children.Add(documentPaymentBox);
+            Grid.SetColumn(pw, 1);
+            selectors.Children.Add(pw);
+            stack.Children.Add(selectors);
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0,8,0,12) };
+            var ib = MakeActionButton("Cetak Invoice"); ib.Click += PrintInvoice_Click; actions.Children.Add(ib);
+            var rb = MakeActionButton("Cetak Kuitansi"); rb.Margin = new Thickness(10,0,0,0); rb.Click += PrintReceipt_Click; actions.Children.Add(rb);
+            documentStatus = new TextBlock { Text = "Pilih pesanan untuk melihat invoice.", FontSize = 11, Foreground = Brush("#777168"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12,0,0,0) };
+            actions.Children.Add(documentStatus);
+            stack.Children.Add(actions);
+            panel.Child = stack; root.Children.Add(panel);
+            var preview = MakePanel(); preview.Margin = new Thickness(0,14,0,0);
+            documentPreview = new Border { Background = Brushes.White, Padding = new Thickness(28), BorderBrush = Brush("#D8CBAE"), BorderThickness = new Thickness(1), MinHeight = 280 };
+            preview.Child = documentPreview; root.Children.Add(preview);
+            DashboardContent.Children.Add(root);
+            if (orders.Count > 0) documentOrderBox.SelectedIndex = 0;
+            RefreshDocumentPayments(); UpdateDocumentPreview();
+        }
+
+        private void DocumentOrder_Changed(object sender, SelectionChangedEventArgs e) { RefreshDocumentPayments(); UpdateDocumentPreview(); }
+        private void DocumentPayment_Changed(object sender, SelectionChangedEventArgs e) { UpdateDocumentPreview(); }
+
+        private void RefreshDocumentPayments()
+        {
+            if (documentPaymentBox == null) return;
+            var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
+            documentPaymentBox.ItemsSource = order == null ? new List<Payment>() : payments.Where(p => p.OrderKey == order.OrderKey).OrderBy(p => p.Date).ToList();
+            if (documentPaymentBox.Items.Count > 0) documentPaymentBox.SelectedIndex = documentPaymentBox.Items.Count - 1;
+        }
+
+        private StackPanel MakeDocumentContent(string heading, Order order, Payment payment)
+        {
+            var c = new StackPanel();
+            c.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 23, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), HorizontalAlignment = HorizontalAlignment.Center });
+            c.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA", FontSize = 10, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,18) });
+            c.Children.Add(new TextBlock { Text = heading, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,18) });
+            c.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold });
+            c.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 11, Foreground = Brush("#69645B"), Margin = new Thickness(0,4,0,12) });
+            c.Children.Add(new TextBlock { Text = "Pelanggan: " + order.CustomerName + "   |   WhatsApp: " + order.CustomerPhone, FontSize = 12, Margin = new Thickness(0,0,0,12) });
+            c.Children.Add(new Border { Height = 1, Background = Brush("#D8CBAE"), Margin = new Thickness(0,0,0,10) });
+            c.Children.Add(new TextBlock { Text = "Frame: " + order.FrameDescription + "    Rp " + order.FramePrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
+            c.Children.Add(new TextBlock { Text = "Lensa: " + order.LensDescription + "    Rp " + order.LensPrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
+            if (order.OtherPrice > 0 || !string.IsNullOrWhiteSpace(order.OtherItem)) c.Children.Add(new TextBlock { Text = "Tambahan: " + order.OtherItem + "    Rp " + order.OtherPrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
+            c.Children.Add(new Border { Height = 1, Background = Brush("#D8CBAE"), Margin = new Thickness(0,10,0,10) });
+            c.Children.Add(new TextBlock { Text = "TOTAL PESANAN: Rp " + order.Total.ToString("N0"), FontSize = 15, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), HorizontalAlignment = HorizontalAlignment.Right });
+            if (payment != null)
+            {
+                var paid = PaidForOrder(order);
+                c.Children.Add(new TextBlock { Text = "Pembayaran ini: Rp " + payment.Amount.ToString("N0") + " (" + payment.Method + ")", FontSize = 12, Margin = new Thickness(0,10,0,3) });
+                c.Children.Add(new TextBlock { Text = "Total sudah dibayar: Rp " + paid.ToString("N0"), FontSize = 12, Margin = new Thickness(0,3,0,3) });
+                c.Children.Add(new TextBlock { Text = "Sisa tagihan: Rp " + Math.Max(0,order.Total-paid).ToString("N0"), FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0,3,0,3) });
+            }
+            c.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 10, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,24,0,0), HorizontalAlignment = HorizontalAlignment.Center });
+            return c;
+        }
+
+        private void UpdateDocumentPreview()
+        {
+            if (documentPreview == null) return;
+            var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
+            var payment = documentPaymentBox == null ? null : documentPaymentBox.SelectedItem as Payment;
+            documentPreview.Child = order == null ? (UIElement)new TextBlock { Text = "Belum ada pesanan. Buat pesanan terlebih dahulu.", Foreground = Brush("#777168") } : MakeDocumentContent(payment == null ? "INVOICE PESANAN" : "KUITANSI PEMBAYARAN", order, payment);
+            if (documentStatus != null) documentStatus.Text = order == null ? "Tidak ada data pesanan." : payment == null ? "Pratinjau invoice." : "Pratinjau kuitansi " + payment.ReceiptNumber + ".";
+        }
+
+        private void PrintInvoice_Click(object sender, RoutedEventArgs e)
+        {
+            var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
+            if (order == null) { documentStatus.Text = "Pilih pesanan terlebih dahulu."; return; }
+            PrintDocumentVisual(MakeDocumentContent("INVOICE PESANAN", order, null), "Invoice OPTIK LENTERA");
+        }
+
+        private void PrintReceipt_Click(object sender, RoutedEventArgs e)
+        {
+            var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
+            var payment = documentPaymentBox == null ? null : documentPaymentBox.SelectedItem as Payment;
+            if (order == null || payment == null) { documentStatus.Text = "Pilih pembayaran untuk mencetak kuitansi."; return; }
+            PrintDocumentVisual(MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment), "Kuitansi OPTIK LENTERA");
+        }
+
+        private void PrintDocumentVisual(StackPanel content, string title)
+        {
+            var printable = new Border { Background = Brushes.White, Padding = new Thickness(35), Width = 720, Child = content };
+            printable.Measure(new Size(720, 1000));
+            printable.Arrange(new Rect(0, 0, 720, Math.Max(900, printable.DesiredSize.Height)));
+            var dialog = new PrintDialog();
+            if (dialog.ShowDialog() == true) { dialog.PrintVisual(printable, title); if (documentStatus != null) documentStatus.Text = "Dokumen dikirim ke printer."; }
+        }
+
+        private void BuildReportPage()
+        {
+            LoadOrders(); LoadPayments();
+            var root = new StackPanel();
+            var panel = MakePanel();
+            var st = new StackPanel();
+            var sales = orders.Sum(o => o.Total);
+            var paid = payments.Sum(p => p.Amount);
+            var due = orders.Sum(o => Math.Max(0,o.Total-PaidForOrder(o)));
+            st.Children.Add(new TextBlock { Text = "RINGKASAN USAHA", FontSize = 16, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,0,0,14) });
+            st.Children.Add(new TextBlock { Text = "Jumlah pesanan: " + orders.Count, FontSize = 13, Margin = new Thickness(0,4,0,4) });
+            st.Children.Add(new TextBlock { Text = "Nilai seluruh pesanan: Rp " + sales.ToString("N0"), FontSize = 13, Margin = new Thickness(0,4,0,4) });
+            st.Children.Add(new TextBlock { Text = "Pembayaran diterima: Rp " + paid.ToString("N0"), FontSize = 13, Margin = new Thickness(0,4,0,4) });
+            st.Children.Add(new TextBlock { Text = "Sisa tagihan: Rp " + due.ToString("N0"), FontSize = 13, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), Margin = new Thickness(0,4,0,4) });
+            panel.Child = st; root.Children.Add(panel);
+            var list = MakePanel(); list.Margin = new Thickness(0,14,0,0);
+            var grid = new DataGrid { AutoGenerateColumns = false, IsReadOnly = true, CanUserAddRows = false, HeadersVisibility = DataGridHeadersVisibility.Column, RowHeaderWidth = 0, Height = 320, ItemsSource = orders, Background = Brushes.White, BorderBrush = Brush("#ECE6DA"), BorderThickness = new Thickness(1) };
+            grid.Columns.Add(new DataGridTextColumn { Header = "Tanggal", Binding = new System.Windows.Data.Binding("Date"), Width = 110 });
+            grid.Columns.Add(new DataGridTextColumn { Header = "Pelanggan", Binding = new System.Windows.Data.Binding("CustomerName"), Width = new DataGridLength(1,DataGridLengthUnitType.Star) });
+            grid.Columns.Add(new DataGridTextColumn { Header = "Total", Binding = new System.Windows.Data.Binding("TotalDisplay"), Width = 130 });
+            list.Child = grid; root.Children.Add(list);
+            DashboardContent.Children.Add(root);
         }
 
         private TextBlock BalanceValue(Grid grid, string caption, string value, int column)
