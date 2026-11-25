@@ -203,7 +203,7 @@ namespace OptikLentera.Win7
                 new { Title = "Pahami coating lensa", Body = "Coating memiliki fungsi berbeda. Jelaskan manfaat dan batasannya sesuai jenis lapisan yang dipilih." }
             };
             var lesson = lessons[(today.DayOfYear - 1) % lessons.Length];
-            daily.Children.Add(new TextBlock { Text = lesson.Title, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,7,0,6) });
+            daily.Children.Add(new TextBlock { Text = lesson.Title, FontSize = 24, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,7,0,6) });
             daily.Children.Add(new TextBlock { Text = lesson.Body, FontSize = 12, Foreground = Brush("#625D54"), TextWrapping = TextWrapping.Wrap, LineHeight = 19 });
             daily.Children.Add(new TextBlock { Text = "Materi edukasi berganti otomatis setiap hari.", FontSize = 10, Foreground = Brush("#A78342"), Margin = new Thickness(0,10,0,0) });
             learnGrid.Children.Add(daily);
@@ -705,22 +705,22 @@ namespace OptikLentera.Win7
         private Border MakeLetterhead(bool printMode)
         {
             var header = new Grid { Margin = new Thickness(0,0,0,12) };
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(112) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(168) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var logo = new Image
             {
                 Source = CreatePrintLogoSource(),
-                Width = 100, Height = 78, Stretch = Stretch.Uniform,
+                Width = 150, Height = 108, Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
             };
             RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
-            var logoBox = new Border { Background = Brushes.White, Padding = new Thickness(2), Child = logo, VerticalAlignment = VerticalAlignment.Center };
+            var logoBox = new Border { Background = Brushes.White, Padding = new Thickness(4), Child = logo, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(logoBox, 0);
             header.Children.Add(logoBox);
 
             var details = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8,0,0,0) };
             details.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 19, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#98752A"), Margin = new Thickness(0,0,0,2) });
-            details.Children.Add(new TextBlock { Text = "Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang", FontSize = 9, Foreground = printMode ? Brushes.Black : Brush("#51484A"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,2,0,0) });
+            details.Children.Add(new TextBlock { Text = "Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang", FontSize = 11, Foreground = printMode ? Brushes.Black : Brush("#51484A"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,2,0,0) });
             details.Children.Add(new TextBlock { Text = "Telp/WA: 0858 9312 8257", FontSize = 9, Foreground = printMode ? Brushes.Black : Brush("#51484A"), Margin = new Thickness(0,2,0,0) });
             Grid.SetColumn(details, 1);
             header.Children.Add(details);
