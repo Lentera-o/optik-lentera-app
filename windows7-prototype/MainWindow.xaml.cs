@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Web.Script.Serialization;
 
 namespace OptikLentera.Win7
@@ -512,8 +513,10 @@ namespace OptikLentera.Win7
         private StackPanel MakeDocumentContent(string heading, Order order, Payment payment)
         {
             var c = new StackPanel();
-            c.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 23, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), HorizontalAlignment = HorizontalAlignment.Center });
-            c.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA", FontSize = 10, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,18) });
+            var logo = new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute)), Width = 142, Height = 76, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center };
+            RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
+            c.Children.Add(logo);
+            c.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA", FontSize = 9, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,14) });
             c.Children.Add(new TextBlock { Text = heading, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,18) });
             c.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold });
             c.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 11, Foreground = Brush("#69645B"), Margin = new Thickness(0,4,0,12) });
