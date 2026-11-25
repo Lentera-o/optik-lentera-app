@@ -30,9 +30,9 @@
   <Grid.ColumnDefinitions><ColumnDefinition Width="244"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
   <Border Grid.Column="0" Background="#191A19">
    <DockPanel Margin="18">
-    <StackPanel DockPanel.Dock="Top" Margin="4,7,4,28">
-     <Border Width="48" Height="48" CornerRadius="24" Background="#C8A45D" HorizontalAlignment="Left">
-      <TextBlock Text="L" Foreground="#171717" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <StackPanel DockPanel.Dock="Top" Margin="0,7,0,24">
+     <Border Width="190" Height="190" Background="Transparent" HorizontalAlignment="Center" Margin="0,0,0,8">
+      <Image Source="/Assets/optik_lentera_app_logo.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
      </Border>
      <TextBlock Text="OPTIK LENTERA" Foreground="#F7F3EA" FontSize="18" FontWeight="Bold" Margin="0,13,0,2"/>
      <TextBlock Text="DESKTOP WORKSPACE" Foreground="#C8A45D" FontSize="10" FontWeight="SemiBold"/>
