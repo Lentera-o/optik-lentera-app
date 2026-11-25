@@ -30,6 +30,8 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Xaml" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="QRCoder"><HintPath>..\\packages\\QRCoder.1.4.1\\lib\\net40\\QRCoder.dll</HintPath><Private>True</Private></Reference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></ApplicationDefinition>
