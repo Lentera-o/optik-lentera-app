@@ -863,8 +863,8 @@ namespace OptikLentera.Win7
             {
                 // Preview is a detached bitmap only. Printer APIs are not
                 // touched until the user explicitly chooses to continue.
-                const double formWidth = 12.0 * 96.0 / 2.54;
-                const double formHeight = 22.0 * 96.0 / 2.54;
+                const double formWidth = 22.0 * 96.0 / 2.54;
+                const double formHeight = 12.0 * 96.0 / 2.54;
 
                 // Design directly at the physical form size. Never shrink an oversized
                 // document to hide a layout error: preview and print use this same page.
@@ -885,7 +885,7 @@ namespace OptikLentera.Win7
 
                 if (contentHeight > formHeight - 24)
                 {
-                    MessageBox.Show("Isi dokumen masih melebihi batas kertas 12 × 22 cm. Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
+                    MessageBox.Show("Isi dokumen masih melebihi batas kertas landscape 22 × 12 cm. Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
@@ -954,7 +954,7 @@ namespace OptikLentera.Win7
                 if (dialog.ShowDialog() != true) return;
                 var ticket = dialog.PrintTicket ?? new System.Printing.PrintTicket();
                 ticket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
-                ticket.PageOrientation = System.Printing.PageOrientation.Portrait;
+                ticket.PageOrientation = System.Printing.PageOrientation.Landscape;
                 dialog.PrintTicket = ticket;
                 dialog.PrintVisual(printable, title);
                 if (documentStatus != null)
