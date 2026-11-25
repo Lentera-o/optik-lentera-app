@@ -516,23 +516,31 @@ namespace OptikLentera.Win7
             if (documentPaymentBox.Items.Count > 0) documentPaymentBox.SelectedIndex = documentPaymentBox.Items.Count - 1;
         }
 
-        private StackPanel MakeDocumentContent(string heading, Order order, Payment payment)
+        private StackPanel MakeDocumentContent(string heading, Order order, Payment payment, bool printMode)
         {
             var c = new StackPanel();
-            var logo = new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute)), Width = 142, Height = 76, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center };
-            RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
-            c.Children.Add(logo);
-            c.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA", FontSize = 9, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,14) });
-            c.Children.Add(new TextBlock { Text = heading, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,18) });
+            if (printMode)
+            {
+                // Dot-matrix profile: use crisp text instead of a detailed bitmap logo.
+                c.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 18, FontWeight = FontWeights.Bold, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 8) });
+            }
+            else
+            {
+                var logo = new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute)), Width = 142, Height = 76, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center };
+                RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
+                c.Children.Add(logo);
+            }
+            c.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA", FontSize = 9, Foreground = printMode ? Brushes.Black : Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,14) });
+            c.Children.Add(new TextBlock { Text = heading, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,18) });
             c.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold });
             c.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 11, Foreground = Brush("#69645B"), Margin = new Thickness(0,4,0,12) });
             c.Children.Add(new TextBlock { Text = "Pelanggan: " + order.CustomerName + "   |   WhatsApp: " + order.CustomerPhone, FontSize = 12, Margin = new Thickness(0,0,0,12) });
-            c.Children.Add(new Border { Height = 1, Background = Brush("#D8CBAE"), Margin = new Thickness(0,0,0,10) });
+            c.Children.Add(new Border { Height = 1, Background = printMode ? Brushes.Black : Brush("#D8CBAE"), Margin = new Thickness(0,0,0,10) });
             c.Children.Add(new TextBlock { Text = "Frame: " + order.FrameDescription + "    Rp " + order.FramePrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
             c.Children.Add(new TextBlock { Text = "Lensa: " + order.LensDescription + "    Rp " + order.LensPrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
             if (order.OtherPrice > 0 || !string.IsNullOrWhiteSpace(order.OtherItem)) c.Children.Add(new TextBlock { Text = "Tambahan: " + order.OtherItem + "    Rp " + order.OtherPrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
-            c.Children.Add(new Border { Height = 1, Background = Brush("#D8CBAE"), Margin = new Thickness(0,10,0,10) });
-            c.Children.Add(new TextBlock { Text = "TOTAL PESANAN: Rp " + order.Total.ToString("N0"), FontSize = 15, FontWeight = FontWeights.Bold, Foreground = Brush("#A78342"), HorizontalAlignment = HorizontalAlignment.Right });
+            c.Children.Add(new Border { Height = 1, Background = printMode ? Brushes.Black : Brush("#D8CBAE"), Margin = new Thickness(0,10,0,10) });
+            c.Children.Add(new TextBlock { Text = "TOTAL PESANAN: Rp " + order.Total.ToString("N0"), FontSize = 15, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#A78342"), HorizontalAlignment = HorizontalAlignment.Right });
             if (payment != null)
             {
                 var paid = PaidForOrder(order);
@@ -544,7 +552,8 @@ namespace OptikLentera.Win7
             var qrPayload = payment == null
                 ? "OPTIK LENTERA | INVOICE | " + documentNumber + " | TANGGAL " + order.Date + " | PELANGGAN " + order.CustomerName + " | TOTAL " + order.Total.ToString("0") + " IDR"
                 : "OPTIK LENTERA | KUITANSI | " + documentNumber + " | INVOICE " + "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() + " | TANGGAL " + payment.Date + " | DIBAYAR " + payment.Amount.ToString("0") + " IDR | SISA " + Math.Max(0,order.Total-PaidForOrder(order)).ToString("0") + " IDR";
-            var qrImage = new Image { Source = CreateQrImage(qrPayload), Width = 92, Height = 92, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,12,0,0) };
+            var qrSize = printMode ? 160.0 : 112.0;
+            var qrImage = new Image { Source = CreateQrImage(qrPayload), Width = qrSize, Height = qrSize, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,12,0,0), SnapsToDevicePixels = true };
             c.Children.Add(qrImage);
             c.Children.Add(new TextBlock { Text = "Pindai untuk membaca ringkasan dokumen", FontSize = 8, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,2,0,8) });
             c.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 10, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,8,0,0), HorizontalAlignment = HorizontalAlignment.Center });
@@ -607,7 +616,7 @@ namespace OptikLentera.Win7
             }
             try
             {
-                documentPreview.Child = MakeDocumentContent(payment == null ? "INVOICE PESANAN" : "KUITANSI PEMBAYARAN", order, payment);
+                documentPreview.Child = MakeDocumentContent(payment == null ? "INVOICE PESANAN" : "KUITANSI PEMBAYARAN", order, payment, false);
                 if (documentStatus != null) documentStatus.Text = payment == null ? "Pratinjau invoice." : "Pratinjau kuitansi " + payment.ReceiptNumber + ".";
             }
             catch (Exception ex)
@@ -622,7 +631,7 @@ namespace OptikLentera.Win7
         {
             var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
             if (order == null) { documentStatus.Text = "Pilih pesanan terlebih dahulu."; return; }
-            PrintDocumentVisual(MakeDocumentContent("INVOICE PESANAN", order, null), "Invoice OPTIK LENTERA");
+            PrintDocumentVisual(MakeDocumentContent("INVOICE PESANAN", order, null, true), "Invoice OPTIK LENTERA");
         }
 
         private void PrintReceipt_Click(object sender, RoutedEventArgs e)
@@ -630,7 +639,7 @@ namespace OptikLentera.Win7
             var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
             var payment = documentPaymentBox == null ? null : documentPaymentBox.SelectedItem as Payment;
             if (order == null || payment == null) { documentStatus.Text = "Pilih pembayaran untuk mencetak kuitansi."; return; }
-            PrintDocumentVisual(MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment), "Kuitansi OPTIK LENTERA");
+            PrintDocumentVisual(MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment, true), "Kuitansi OPTIK LENTERA");
         }
 
         private void PrintExamination_Click(object sender, RoutedEventArgs e)
