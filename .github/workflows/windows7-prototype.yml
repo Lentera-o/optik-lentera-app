@@ -9,7 +9,7 @@ on:
       - 'windows7-prototype/**'
       - '.github/workflows/windows7-prototype.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   build-wpf:
     runs-on: windows-latest
@@ -40,6 +40,13 @@ jobs:
           & $compiler "windows7-prototype/installer/OPTIK-LENTERA.iss"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
           if (!(Test-Path "windows7-prototype/installer-output/OPTIK-LENTERA-Setup-Windows7.exe")) { throw "Installer output missing." }
+      - name: Publish direct EXE download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "win7-build-${{ github.run_number }}"
+          gh release create $tag "windows7-prototype/installer-output/OPTIK-LENTERA-Setup-Windows7.exe" --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "OPTIK LENTERA Windows 7 Installer" --notes "Installer Windows 7. Unduh file EXE pada bagian Assets."
       - name: Upload Windows installer and portable ZIP
         uses: actions/upload-artifact@v4
         with:
