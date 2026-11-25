@@ -7,10 +7,10 @@
  Background="#F7F3EA" FontFamily="Segoe UI">
  <Window.Resources>
   <Style x:Key="NavButton" TargetType="Button">
-   <Setter Property="Height" Value="46"/><Setter Property="Margin" Value="0,3,0,3"/>
+   <Setter Property="Height" Value="48"/><Setter Property="Margin" Value="0,3,0,3"/>
    <Setter Property="Padding" Value="16,0"/><Setter Property="HorizontalContentAlignment" Value="Left"/>
    <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#D9D3C7"/>
-   <Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="14"/>
+   <Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="13"/><Setter Property="FontWeight" Value="SemiBold"/>
    <Setter Property="Cursor" Value="Hand"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
     <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="9" Padding="{TemplateBinding Padding}">
@@ -99,12 +99,22 @@
    </Grid>
    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
     <StackPanel x:Name="DashboardContent">
-     <Border Background="#20211F" CornerRadius="16" Padding="26" Margin="0,0,0,20">
-      <Grid><StackPanel>
-       <TextBlock Text="JELAS LIHATNYA, JELAS REJEKINYA" Foreground="#E6C982" FontSize="19" FontWeight="Bold"/>
-       <TextBlock Text="Kelola pelayanan optik dengan lebih rapi, nyaman, dan profesional." Foreground="#E7E2D8" FontSize="13" Margin="0,9,0,0"/>
-       <TextBlock Text="Ini adalah prototipe offline. Belum terhubung ke data pelanggan atau sistem Android." Foreground="#B9B2A5" FontSize="11" Margin="0,16,0,0"/>
-      </StackPanel></Grid>
+     <Border Background="#20211F" CornerRadius="18" Padding="28" Margin="0,0,0,20" BorderBrush="#B99550" BorderThickness="1">
+      <Grid>
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="190"/></Grid.ColumnDefinitions>
+       <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
+        <Border Background="#393326" CornerRadius="12" Padding="10,5" HorizontalAlignment="Left" Margin="0,0,0,14">
+         <TextBlock Text="WORKSPACE OPTIK • WINDOWS" Foreground="#E6C982" FontSize="9" FontWeight="Bold" />
+        </Border>
+        <TextBlock Text="JELAS LIHATNYA," Foreground="#F7F3EA" FontSize="25" FontWeight="Bold"/>
+        <TextBlock Text="JELAS REJEKINYA." Foreground="#E6C982" FontSize="25" FontWeight="Bold" Margin="0,-2,0,0"/>
+        <TextBlock Text="Kelola pelayanan optik dengan lebih rapi, nyaman, dan profesional." Foreground="#E7E2D8" FontSize="13" Margin="0,12,0,0" TextWrapping="Wrap"/>
+        <TextBlock Text="Mode desktop offline • Data tersimpan di komputer ini" Foreground="#B9B2A5" FontSize="10" Margin="0,18,0,0"/>
+       </StackPanel>
+       <Border Grid.Column="1" Background="#292923" CornerRadius="16" Padding="14" VerticalAlignment="Center">
+        <Image Source="/Assets/optik_lentera_launcher_emblem.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0.96"/>
+       </Border>
+      </Grid>
      </Border>
      <primitives:UniformGrid Columns="3" Margin="0,0,0,20">
       <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="PELANGGAN" Foreground="#8A847A" FontSize="10" FontWeight="Bold"/><TextBlock Text="--" Foreground="#24231F" FontSize="30" FontWeight="Bold" Margin="0,8,0,2"/><TextBlock Text="Data belum dihubungkan" Foreground="#9A948A" FontSize="11"/></StackPanel></Border>
