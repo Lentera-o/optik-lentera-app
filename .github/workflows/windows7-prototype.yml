@@ -1,5 +1,5 @@
 name: Build OPTIK LENTERA Windows 7 Prototype
-run-name: Build OPTIK LENTERA Windows modules - ${{ github.sha }}
+run-name: Build OPTIK LENTERA Invoice Reports - ${{ github.sha }}
 on:
   workflow_dispatch:
   push:
