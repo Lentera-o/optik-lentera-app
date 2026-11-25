@@ -869,11 +869,19 @@ namespace OptikLentera.Win7
                 var dialog = new PrintDialog();
                 if (dialog.ShowDialog() != true) return;
 
-                // Fit the complete document into one printable page.
+                // Force a standard A4 portrait sheet so dot-matrix tractor feed
+                // does not inherit an oversized continuous-form page length.
+                var ticket = dialog.PrintTicket ?? new System.Printing.PrintTicket();
+                ticket.PageMediaSize = new System.Printing.PageMediaSize(
+                    System.Printing.PageMediaSizeName.ISOA4);
+                ticket.PageOrientation = System.Printing.PageOrientation.Portrait;
+                dialog.PrintTicket = ticket;
+
+                // Fit all document content inside the printable area of one sheet.
                 var printable = new Border
                 {
                     Background = Brushes.White,
-                    Padding = new Thickness(24),
+                    Padding = new Thickness(16),
                     Width = 720,
                     Child = content
                 };
@@ -881,8 +889,11 @@ namespace OptikLentera.Win7
                 var measuredHeight = Math.Max(1, printable.DesiredSize.Height);
                 printable.Arrange(new Rect(0, 0, 720, measuredHeight));
 
-                var pageWidth = dialog.PrintableAreaWidth > 0 ? dialog.PrintableAreaWidth : 720;
-                var pageHeight = dialog.PrintableAreaHeight > 0 ? dialog.PrintableAreaHeight : 900;
+                // A4 dimensions in WPF device-independent units (1/96 inch).
+                // Use conservative printable bounds; never let a long driver
+                // default enlarge the visual beyond one physical A4 page.
+                var pageWidth = 760.0;
+                var pageHeight = 1040.0;
                 var onePage = new Viewbox
                 {
                     Width = pageWidth,
@@ -897,7 +908,7 @@ namespace OptikLentera.Win7
 
                 dialog.PrintVisual(onePage, title);
                 if (documentStatus != null)
-                    documentStatus.Text = "Dokumen dikirim ke printer dalam satu halaman.";
+                    documentStatus.Text = "Dokumen dikirim dengan ukuran A4 portrait (1 lembar).";
             }
             catch (Exception ex)
             {
