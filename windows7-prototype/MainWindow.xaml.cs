@@ -516,18 +516,42 @@ namespace OptikLentera.Win7
             if (documentPaymentBox.Items.Count > 0) documentPaymentBox.SelectedIndex = documentPaymentBox.Items.Count - 1;
         }
 
-        private StackPanel MakeDocumentContent(string heading, Order order, Payment payment, bool printMode)
+        private Border MakeLetterhead(bool printMode)
         {
-            var c = new StackPanel();
+            var header = new Grid { Margin = new Thickness(0,0,0,12) };
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(112) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var logo = new Image
             {
                 Source = printMode ? CreatePrintLogoSource() : new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute)),
-                Width = 150, Height = 76, Stretch = Stretch.Uniform,
-                HorizontalAlignment = HorizontalAlignment.Center
+                Width = 100, Height = 78, Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
             };
             RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
-            c.Children.Add(new Border { Background = Brushes.White, Padding = new Thickness(2), HorizontalAlignment = HorizontalAlignment.Center, Child = logo });
-            c.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA", FontSize = 9, Foreground = printMode ? Brushes.Black : Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,14) });
+            var logoBox = new Border { Background = Brushes.White, Padding = new Thickness(2), Child = logo, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(logoBox, 0);
+            header.Children.Add(logoBox);
+
+            var details = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8,0,0,0) };
+            details.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 19, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#98752A"), Margin = new Thickness(0,0,0,2) });
+            details.Children.Add(new TextBlock { Text = "Jelas Melihat, Cerah Masa Depan", FontSize = 10, FontStyle = FontStyles.Italic, Foreground = printMode ? Brushes.Black : Brush("#51484A"), Margin = new Thickness(0,0,0,4) });
+            details.Children.Add(new TextBlock { Text = "Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang", FontSize = 9, Foreground = printMode ? Brushes.Black : Brush("#51484A"), TextWrapping = TextWrapping.Wrap });
+            details.Children.Add(new TextBlock { Text = "Telp/WA: 0858 9312 8257", FontSize = 9, Foreground = printMode ? Brushes.Black : Brush("#51484A"), Margin = new Thickness(0,2,0,0) });
+            Grid.SetColumn(details, 1);
+            header.Children.Add(details);
+            return new Border
+            {
+                BorderBrush = printMode ? Brushes.Black : Brush("#98752A"),
+                BorderThickness = new Thickness(0,0,0,2),
+                Padding = new Thickness(0,0,0,8),
+                Child = header
+            };
+        }
+
+        private StackPanel MakeDocumentContent(string heading, Order order, Payment payment, bool printMode)
+        {
+            var c = new StackPanel();
+            c.Children.Add(MakeLetterhead(printMode));
             c.Children.Add(new TextBlock { Text = heading, FontSize = 19, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,18) });
             c.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold });
             c.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 11, Foreground = Brush("#69645B"), Margin = new Thickness(0,4,0,12) });
@@ -712,16 +736,8 @@ namespace OptikLentera.Win7
         private StackPanel MakePrescriptionContent(Examination exam)
         {
             var root = new StackPanel();
-            var logo = new Image
-            {
-                Source = CreatePrintLogoSource(),
-                Width = 150, Height = 76, Stretch = System.Windows.Media.Stretch.Uniform,
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-            RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
-            root.Children.Add(new Border { Background = Brushes.White, Padding = new Thickness(2), HorizontalAlignment = HorizontalAlignment.Center, Child = logo });
-            root.Children.Add(new TextBlock { Text = "RESEP KACAMATA", FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brush("#20211F"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,8,0,3) });
-            root.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brush("#A7833F"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,0,0,16) });
+            root.Children.Add(MakeLetterhead(true));
+            root.Children.Add(new TextBlock { Text = "RESEP KACAMATA", FontSize = 19, FontWeight = FontWeights.Bold, Foreground = Brushes.Black, TextAlignment = TextAlignment.Center, Margin = new Thickness(0,8,0,16) });
             var identity = new Grid { Margin = new Thickness(0,0,0,14) };
             identity.ColumnDefinitions.Add(new ColumnDefinition());
             identity.ColumnDefinitions.Add(new ColumnDefinition());
