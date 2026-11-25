@@ -26,7 +26,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package | Out-Null
-          Copy-Item windows7-prototype/bin/Release/OPTIK-LENTERA.exe package/
+          Copy-Item windows7-prototype/bin/Release/* package/ -Recurse -Force
+          if (!(Test-Path "package/QRCoder.dll")) { throw "QRCoder.dll missing from release output; QR preview and printing would fail." }
           Compress-Archive -Path package/* -DestinationPath OPTIK-LENTERA-Win7-Prototipe.zip -Force
       - name: Install Inno Setup
         shell: pwsh
