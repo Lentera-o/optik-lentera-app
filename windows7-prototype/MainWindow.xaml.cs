@@ -447,8 +447,7 @@ namespace OptikLentera.Win7
             header.Children.Add(paymentCount);
             paymentSearchBox = new TextBox { Height = 32, Padding = new Thickness(9,5,9,5), FontSize = 12, ToolTip = "Cari nomor kuitansi atau pelanggan" };
             paymentSearchBox.TextChanged += SearchPayments_Changed;
-            Grid.SetColumn(paymentSearchBox, 1);
-            header.Children.Add(paymentSearchBox);
+            Grid.SetColumn(paymentSearchBox, 1);            header.Children.Add(paymentSearchBox);
             listStack.Children.Add(header);
 
             paymentGrid = new DataGrid { AutoGenerateColumns = false, IsReadOnly = true, CanUserAddRows = false, HeadersVisibility = DataGridHeadersVisibility.Column, RowHeaderWidth = 0, Height = 260, Margin = new Thickness(0,14,0,0), Background = Brushes.White, BorderBrush = Brush("#ECE6DA"), BorderThickness = new Thickness(1), ItemsSource = payments };
@@ -866,32 +865,12 @@ namespace OptikLentera.Win7
         {
             try
             {
-                var dialog = new PrintDialog();
-                if (dialog.ShowDialog() != true) return;
-
-                // Keep the paper size and feed length selected in the printer
-                // driver. This supports continuous tractor-feed forms; never
-                // force A4 or silently replace the user's custom form.
-                var ticket = dialog.PrintTicket ?? new System.Printing.PrintTicket();
-                // 14 x 24 cm custom continuous form (WPF print units are 1/96 inch).
+                // Prepare exactly one 14 x 24 cm page and show it to the user
+                // before opening the printer dialog. This avoids silent direct
+                // printing to legacy tractor-feed dot-matrix printers.
                 const double formWidth = 14.0 * 96.0 / 2.54;
                 const double formHeight = 24.0 * 96.0 / 2.54;
-                ticket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
-                ticket.PageOrientation = System.Printing.PageOrientation.Portrait;
-                dialog.PrintTicket = ticket;
 
-                var pageWidth = formWidth;
-                var pageHeight = formHeight;
-                if (pageWidth <= 0 || pageHeight <= 0)
-                {
-                    MessageBox.Show("Ukuran area cetak tidak terbaca. Periksa ukuran kertas di pengaturan printer.",
-                        "OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                // Lay out the report at a stable design width, then scale it
-                // down to the printer's actual printable area, as reported by
-                // the selected driver paper/form. No artificial A4 page size.
                 var printable = new Border
                 {
                     Background = Brushes.White,
@@ -904,25 +883,88 @@ namespace OptikLentera.Win7
                 printable.Arrange(new Rect(0, 0, 720, measuredHeight));
                 printable.UpdateLayout();
 
-                var onePage = new Viewbox
+                var page = new Viewbox
                 {
-                    Width = pageWidth,
-                    Height = pageHeight,
+                    Width = formWidth,
+                    Height = formHeight,
                     Stretch = Stretch.Uniform,
                     StretchDirection = StretchDirection.DownOnly,
                     Child = printable
                 };
-                onePage.Measure(new Size(pageWidth, pageHeight));
-                onePage.Arrange(new Rect(0, 0, pageWidth, pageHeight));
-                onePage.UpdateLayout();
+                page.Measure(new Size(formWidth, formHeight));
+                page.Arrange(new Rect(0, 0, formWidth, formHeight));
+                page.UpdateLayout();
 
-                dialog.PrintVisual(onePage, title);
+                var previewWindow = new Window
+                {
+                    Title = "Pratinjau Cetak - " + title,
+                    Width = 650,
+                    Height = 820,
+                    MinWidth = 520,
+                    MinHeight = 650,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    Owner = this,
+                    Background = Brush("#F1EEE8"),
+                    ResizeMode = ResizeMode.CanResize
+                };
+
+                bool continueToPrint = false;
+                var layout = new DockPanel { Margin = new Thickness(14) };
+                var toolbar = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Margin = new Thickness(0, 0, 0, 12)
+                };
+                var cancelButton = MakeActionButton("Batal");
+                cancelButton.Margin = new Thickness(0, 0, 8, 0);
+                cancelButton.Click += (s, e) => previewWindow.Close();
+                var printButton = MakeActionButton("Lanjut ke Printer");
+                printButton.Click += (s, e) { continueToPrint = true; previewWindow.Close(); };
+                toolbar.Children.Add(cancelButton);
+                toolbar.Children.Add(printButton);
+                DockPanel.SetDock(toolbar, Dock.Top);
+                layout.Children.Add(toolbar);
+
+                var pageFrame = new Border
+                {
+                    Background = Brushes.White,
+                    BorderBrush = Brush("#B9AD98"),
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(10),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Child = page
+                };
+                var scroll = new ScrollViewer
+                {
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    Content = pageFrame
+                };
+                layout.Children.Add(scroll);
+                previewWindow.Content = layout;
+                previewWindow.ShowDialog();
+
+                if (!continueToPrint) return;
+
+                // Detach the page from the preview window before handing it
+                // to the WPF print pipeline.
+                pageFrame.Child = null;
+                var dialog = new PrintDialog();
+                if (dialog.ShowDialog() != true) return;
+
+                var ticket = dialog.PrintTicket ?? new System.Printing.PrintTicket();
+                ticket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
+                ticket.PageOrientation = System.Printing.PageOrientation.Portrait;
+                dialog.PrintTicket = ticket;
+
+                dialog.PrintVisual(page, title);
                 if (documentStatus != null)
-                    documentStatus.Text = "Dokumen dikirim mengikuti ukuran kertas printer.";
+                    documentStatus.Text = "Dokumen dikirim ke printer setelah pratinjau.";
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Dokumen gagal dicetak: " + ex.Message, "OPTIK LENTERA",
+                MessageBox.Show("Pratinjau atau pencetakan gagal: " + ex.Message, "OPTIK LENTERA",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
