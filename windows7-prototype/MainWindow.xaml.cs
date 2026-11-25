@@ -319,7 +319,7 @@ namespace OptikLentera.Win7
             orderNotesBox = AddField(otherGrid, "Catatan pesanan (opsional)", 0, 2);
             formStack.Children.Add(otherGrid);
 
-            var footer = new Grid { Margin = new Thickness(0,6,0,0) };
+            var footer = new Grid { Margin = new Thickness(0,12,0,0) };
             footer.ColumnDefinitions.Add(new ColumnDefinition());
             footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -877,11 +877,13 @@ namespace OptikLentera.Win7
                     ClipToBounds = true,
                     Child = content
                 };
+                content.Measure(new Size(formWidth - 24, double.PositiveInfinity));
+                double contentHeight = content.DesiredSize.Height;
                 printable.Measure(new Size(formWidth, formHeight));
                 printable.Arrange(new Rect(0, 0, formWidth, formHeight));
                 printable.UpdateLayout();
 
-                if (content.DesiredSize.Height > formHeight - 24)
+                if (contentHeight > formHeight - 24)
                 {
                     MessageBox.Show("Isi dokumen masih melebihi batas kertas 14 × 24 cm. Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
