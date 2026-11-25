@@ -38,7 +38,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Windows\
-    v$(MSBuildToolsVersion)\Microsoft.WinFX.targets" Condition="false" />
+
   <Import Project="$(MSBuildToolsPath)\Microsoft.WinFX.targets" />
 </Project>
