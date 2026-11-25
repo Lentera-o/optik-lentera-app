@@ -25,6 +25,37 @@
    <Setter Property="Padding" Value="20"/><Setter Property="Margin" Value="0,0,14,0"/>
    <Setter Property="BorderBrush" Value="#ECE6DA"/><Setter Property="BorderThickness" Value="1"/>
   </Style>
+  <Style TargetType="TextBox">
+   <Setter Property="Height" Value="35"/>
+   <Setter Property="Padding" Value="10,7"/>
+   <Setter Property="FontSize" Value="12"/>
+   <Setter Property="Foreground" Value="#292823"/>
+   <Setter Property="Background" Value="#FFFEFC"/>
+   <Setter Property="BorderBrush" Value="#DED6C8"/>
+   <Setter Property="BorderThickness" Value="1"/>
+   <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style TargetType="DataGrid">
+   <Setter Property="FontSize" Value="12"/>
+   <Setter Property="Foreground" Value="#302E29"/>
+   <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+   <Setter Property="HorizontalGridLinesBrush" Value="#EEE8DD"/>
+   <Setter Property="AlternatingRowBackground" Value="#FAF8F3"/>
+   <Setter Property="RowBackground" Value="White"/>
+   <Setter Property="CanUserResizeRows" Value="False"/>
+   <Setter Property="HeadersVisibility" Value="Column"/>
+   <Setter Property="ColumnHeaderHeight" Value="36"/>
+   <Setter Property="RowHeight" Value="34"/>
+   <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style TargetType="DataGridColumnHeader">
+   <Setter Property="Background" Value="#F2EBDD"/>
+   <Setter Property="Foreground" Value="#67583C"/>
+   <Setter Property="FontWeight" Value="SemiBold"/>
+   <Setter Property="Padding" Value="9,6"/>
+   <Setter Property="BorderBrush" Value="#E4DCCF"/>
+   <Setter Property="BorderThickness" Value="0,0,0,1"/>
+  </Style>
  </Window.Resources>
  <Grid>
   <Grid.ColumnDefinitions><ColumnDefinition Width="244"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
