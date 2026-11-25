@@ -669,11 +669,43 @@ namespace OptikLentera.Win7
 
         private void PrintDocumentVisual(StackPanel content, string title)
         {
-            var printable = new Border { Background = Brushes.White, Padding = new Thickness(35), Width = 720, Child = content };
-            printable.Measure(new Size(720, 1000));
-            printable.Arrange(new Rect(0, 0, 720, Math.Max(900, printable.DesiredSize.Height)));
-            var dialog = new PrintDialog();
-            if (dialog.ShowDialog() == true) { dialog.PrintVisual(printable, title); if (documentStatus != null) documentStatus.Text = "Dokumen dikirim ke printer."; }
+            try
+            {
+                var printable = new Border { Background = Brushes.White, Padding = new Thickness(35), Width = 720, Child = content };
+                printable.Measure(new Size(720, 1000));
+                double pageHeight = Math.Max(900, printable.DesiredSize.Height);
+                printable.Arrange(new Rect(0, 0, 720, pageHeight));
+
+                // Print through a FixedDocument paginator instead of PrintVisual.
+                // This avoids handing a live WPF visual directly to older Windows 7
+                // printer drivers, which can terminate the process during printing.
+                var fixedPage = new FixedPage { Width = 720, Height = pageHeight };
+                fixedPage.Children.Add(printable);
+                FixedPage.SetLeft(printable, 0);
+                FixedPage.SetTop(printable, 0);
+                fixedPage.Measure(new Size(720, pageHeight));
+                fixedPage.Arrange(new Rect(0, 0, 720, pageHeight));
+                fixedPage.UpdateLayout();
+
+                var pageContent = new PageContent();
+                ((IAddChild)pageContent).AddChild(fixedPage);
+                var fixedDocument = new FixedDocument();
+                fixedDocument.Pages.Add(pageContent);
+
+                var dialog = new PrintDialog();
+                if (dialog.ShowDialog() == true)
+                {
+                    dialog.PrintDocument(fixedDocument.DocumentPaginator, title);
+                    if (documentStatus != null) documentStatus.Text = "Dokumen dikirim ke printer.";
+                }
+            }
+            catch (Exception ex)
+            {
+                if (documentStatus != null)
+                    documentStatus.Text = "Gagal mengirim dokumen ke printer: " + ex.Message;
+                MessageBox.Show("Dokumen belum berhasil dicetak. Periksa printer dan driver, lalu coba lagi.\\n\\n" + ex.Message,
+                    "Cetak OPTIK LENTERA", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void BuildReportPage()
