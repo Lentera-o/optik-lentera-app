@@ -17,3 +17,6 @@ A successful CI build proves compilation only. Actual Windows 7 SP1 x64 compatib
 Build automation uses the Visual Studio MSBuild locator on a Windows runner.
 
 Workflow revision: use the Visual Studio MSBuild locator for current hosted Windows runners.
+
+
+QR invoice/kuitansi dibuat secara lokal di aplikasi; QR berisi ringkasan teks dokumen dan tidak mewakili status pembayaran gateway.
