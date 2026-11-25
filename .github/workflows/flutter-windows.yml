@@ -1,0 +1,55 @@
+name: Build OPTIK LENTERA Desktop (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - desktop-foundation
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+      - 'windows/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/flutter-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart source
+        run: flutter analyze
+
+      - name: Build Windows release
+        run: flutter build windows --release --dart-define=OL_API_TOKEN=${{ secrets.OL_API_TOKEN }}
+
+      - name: Package Windows application
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath OPTIK-LENTERA-Windows.zip -Force
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: OPTIK-LENTERA-Windows
+          path: OPTIK-LENTERA-Windows.zip
+          if-no-files-found: error
+          retention-days: 14
