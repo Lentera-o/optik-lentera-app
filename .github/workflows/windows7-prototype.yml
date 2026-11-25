@@ -18,6 +18,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Locate MSBuild
         uses: microsoft/setup-msbuild@v2
+      - name: Restore NuGet packages
+        run: nuget restore windows7-prototype/packages.config -PackagesDirectory packages
       - name: Build WPF application
         run: msbuild windows7-prototype/OptikLentera.Win7.csproj /p:Configuration=Release /p:Platform=AnyCPU /m
       - name: Package portable prototype
