@@ -13,3 +13,5 @@ Open `OptikLentera.Win7.csproj` in Visual Studio with the .NET Framework 4.8 Dev
 
 ## Important
 A successful CI build proves compilation only. Actual Windows 7 SP1 x64 compatibility must still be verified on a real Windows 7 machine. .NET Framework 4.8 and Windows 7 prerequisites/updates may be required.
+
+Build automation uses the Visual Studio MSBuild locator on a Windows runner.
