@@ -21,7 +21,6 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesInstallIn64BitMode=x64
 
 [Languages]
-Name: "indonesian"; MessagesFile: "compiler:Languages\Indonesian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
