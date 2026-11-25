@@ -671,33 +671,67 @@ namespace OptikLentera.Win7
         {
             try
             {
-                var printable = new Border { Background = Brushes.White, Padding = new Thickness(35), Width = 720, Child = content };
-                printable.Measure(new Size(720, 1000));
+                // Render the existing WPF invoice/receipt once to a PNG, then send
+                // that raster page through the classic GDI+ printing pipeline.
+                // This avoids WPF PrintVisual/FixedDocument printer-driver paths.
+                var printable = new Border
+                {
+                    Background = Brushes.White,
+                    Padding = new Thickness(35),
+                    Width = 720,
+                    Child = content
+                };
+
+                printable.Measure(new Size(720, 12000));
                 double pageHeight = Math.Max(900, printable.DesiredSize.Height);
                 printable.Arrange(new Rect(0, 0, 720, pageHeight));
+                printable.UpdateLayout();
 
-                // Print through a FixedDocument paginator instead of PrintVisual.
-                // This avoids handing a live WPF visual directly to older Windows 7
-                // printer drivers, which can terminate the process during printing.
-                var fixedPage = new FixedPage { Width = 720, Height = pageHeight };
-                fixedPage.Children.Add(printable);
-                FixedPage.SetLeft(printable, 0);
-                FixedPage.SetTop(printable, 0);
-                fixedPage.Measure(new Size(720, pageHeight));
-                fixedPage.Arrange(new Rect(0, 0, 720, pageHeight));
-                fixedPage.UpdateLayout();
+                int pixelWidth = 1440;
+                int pixelHeight = Math.Max(1, (int)Math.Ceiling(pageHeight * 2.0));
+                var rendered = new RenderTargetBitmap(pixelWidth, pixelHeight, 192, 192, PixelFormats.Pbgra32);
+                rendered.Render(printable);
 
-                var pageContent = new PageContent();
-                ((IAddChild)pageContent).AddChild(fixedPage);
-                var fixedDocument = new FixedDocument();
-                fixedDocument.Pages.Add(pageContent);
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(rendered));
+                var pngStream = new MemoryStream();
+                encoder.Save(pngStream);
+                pngStream.Position = 0;
 
-                var dialog = new PrintDialog();
-                if (dialog.ShowDialog() == true)
+                using (var image = System.Drawing.Image.FromStream(pngStream))
+                using (var printDocument = new System.Drawing.Printing.PrintDocument())
+                using (var printDialog = new System.Windows.Forms.PrintDialog())
                 {
-                    dialog.PrintDocument(fixedDocument.DocumentPaginator, title);
-                    if (documentStatus != null) documentStatus.Text = "Dokumen dikirim ke printer.";
+                    printDocument.DocumentName = title;
+                    printDialog.Document = printDocument;
+                    printDialog.AllowSomePages = false;
+                    printDialog.AllowSelection = false;
+                    printDialog.UseEXDialog = true;
+
+                    printDocument.PrintPage += delegate(object sender, System.Drawing.Printing.PrintPageEventArgs args)
+                    {
+                        // Keep the full document visible and preserve its proportions
+                        // inside the page area selected in the printer driver.
+                        var bounds = args.MarginBounds;
+                        if (bounds.Width <= 0 || bounds.Height <= 0)
+                            bounds = args.PageBounds;
+
+                        double scale = Math.Min((double)bounds.Width / image.Width, (double)bounds.Height / image.Height);
+                        int drawWidth = Math.Max(1, (int)Math.Round(image.Width * scale));
+                        int drawHeight = Math.Max(1, (int)Math.Round(image.Height * scale));
+                        int x = bounds.Left + Math.Max(0, (bounds.Width - drawWidth) / 2);
+                        int y = bounds.Top;
+                        args.Graphics.DrawImage(image, new System.Drawing.Rectangle(x, y, drawWidth, drawHeight));
+                        args.HasMorePages = false;
+                    };
+
+                    if (printDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    {
+                        printDocument.Print();
+                        if (documentStatus != null) documentStatus.Text = "Dokumen dikirim ke printer.";
+                    }
                 }
+                pngStream.Dispose();
             }
             catch (Exception ex)
             {
