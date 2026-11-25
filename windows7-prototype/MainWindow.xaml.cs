@@ -551,10 +551,12 @@ namespace OptikLentera.Win7
             return c;
         }
 
-        private BitmapImage CreateQrImage(string payload)
+        private BitmapSource CreateQrImage(string payload)
         {
-            // PngByteQRCode avoids the GDI+ bitmap renderer, which can crash on some
-            // Windows 7 machines when the invoice preview is first opened.
+            // Decode the QR PNG fully, then convert it to opaque 24-bit RGB.
+            // Some legacy Windows 7 printer drivers crash on indexed/alpha PNG
+            // surfaces passed through WPF PrintVisual; the original document
+            // layout and PrintVisual route remain unchanged.
             using (var generator = new QRCodeGenerator())
             using (var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M))
             {
@@ -562,13 +564,16 @@ namespace OptikLentera.Win7
                 byte[] png = qr.GetGraphic(5);
                 using (var stream = new MemoryStream(png))
                 {
-                    var image = new BitmapImage();
-                    image.BeginInit();
-                    image.CacheOption = BitmapCacheOption.OnLoad;
-                    image.StreamSource = stream;
-                    image.EndInit();
-                    image.Freeze();
-                    return image;
+                    var decoded = new BitmapImage();
+                    decoded.BeginInit();
+                    decoded.CacheOption = BitmapCacheOption.OnLoad;
+                    decoded.StreamSource = stream;
+                    decoded.EndInit();
+                    decoded.Freeze();
+
+                    var printerSafeImage = new FormatConvertedBitmap(decoded, PixelFormats.Bgr24, null, 0);
+                    printerSafeImage.Freeze();
+                    return printerSafeImage;
                 }
             }
         }
