@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'models/optik_models.dart';
 import 'screens/operational_screens.dart';
+import 'screens/document_notifications_screen.dart';
 import 'assets/optik_brand_assets.dart';
 
 
@@ -302,7 +303,10 @@ class _MainScreenState extends State<MainScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            tooltip: 'Notifikasi dokumen',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DocumentNotificationsScreen()),
+            ),
             icon: const Icon(Icons.notifications_none),
             color: darkGold,
           ),

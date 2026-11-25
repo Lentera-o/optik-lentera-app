@@ -77,6 +77,50 @@ class ApiService {
     return _readResponse(response);
   }
 
+
+  /// Membaca tabel operasional melalui action readTable pada Apps Script.
+  /// Menggunakan kontrak app-key API yang sudah ada; tidak mengubah alur transaksi.
+  static Future<List<Map<String, dynamic>>> readTable(String sheetName) async {
+    if (!AppConfig.apiConfigured) {
+      throw StateError('Token API belum dikonfigurasi.');
+    }
+    final uri = Uri.parse(AppConfig.appsScriptUrl);
+    final request = await _client.postUrl(uri).timeout(AppConfig.apiTimeout);
+    request.headers.contentType = ContentType.json;
+    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+    request.followRedirects = false;
+    request.write(jsonEncode({
+      'action': 'readTable',
+      'apiKey': AppConfig.apiToken,
+      'data': {'sheetName': sheetName},
+    }));
+    var response = await request.close().timeout(AppConfig.apiTimeout);
+    if (response.isRedirect) {
+      final location = response.headers.value(HttpHeaders.locationHeader);
+      await response.drain();
+      if (location == null || location.isEmpty) {
+        throw StateError('Backend mengirim redirect tanpa alamat tujuan.');
+      }
+      final redirected = await _client.getUrl(uri.resolve(location))
+          .timeout(AppConfig.apiTimeout);
+      redirected.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      response = await redirected.close().timeout(AppConfig.apiTimeout);
+    }
+    final result = await _readResponse(response);
+    if (!result.isSuccessful || result.data is! Map || result.data['ok'] != true) {
+      final message = result.data is Map
+          ? result.data['error']?.toString() ?? 'Gagal membaca data Google Sheets.'
+          : 'Respons pembacaan data bukan JSON yang dikenali.';
+      throw StateError(message);
+    }
+    final rows = result.data['rows'];
+    if (rows is! List) return <Map<String, dynamic>>[];
+    return rows
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
+  }
+
   static Future<Map<String, dynamic>> createOrder(OptikOrder order) async {
     final response = await post({
       'action': 'createOrder',
