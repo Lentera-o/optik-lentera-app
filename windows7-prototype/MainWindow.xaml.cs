@@ -44,7 +44,7 @@ namespace OptikLentera.Win7
         private TextBox paymentDateBox, paymentAmountBox, paymentNotesBox, paymentSearchBox;
         private TextBlock paymentTotalText, paymentPaidText, paymentRemainingText, paymentStatus, paymentCount;
         private DataGrid paymentGrid;
-        private ComboBox documentOrderBox, documentPaymentBox;
+        private ComboBox documentOrderBox, documentPaymentBox, documentExamBox;
         private Border documentPreview;
         private TextBlock documentStatus;
 
@@ -378,6 +378,7 @@ namespace OptikLentera.Win7
         {
             LoadOrders();
             LoadPayments();
+            LoadExaminations();
             var root = new StackPanel();
             var form = MakePanel();
             var stack = new StackPanel();
@@ -492,10 +493,17 @@ namespace OptikLentera.Win7
             Grid.SetColumn(pw, 1);
             selectors.Children.Add(pw);
             stack.Children.Add(selectors);
+            var examWrap = new StackPanel { Margin = new Thickness(0,4,0,8) };
+            examWrap.Children.Add(new TextBlock { Text = "Pilih hasil pemeriksaan untuk mencetak resep", FontSize = 11, Foreground = Brush("#777168"), Margin = new Thickness(0,0,0,5) });
+            documentExamBox = new ComboBox { Height = 34, DisplayMemberPath = "ExamLabel", ItemsSource = examinations };
+            if (examinations.Count > 0) documentExamBox.SelectedIndex = examinations.Count - 1;
+            examWrap.Children.Add(documentExamBox);
+            stack.Children.Add(examWrap);
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0,8,0,12) };
             var ib = MakeActionButton("Cetak Invoice"); ib.Click += PrintInvoice_Click; actions.Children.Add(ib);
             var rb = MakeActionButton("Cetak Kuitansi"); rb.Margin = new Thickness(10,0,0,0); rb.Click += PrintReceipt_Click; actions.Children.Add(rb);
-            documentStatus = new TextBlock { Text = "Pilih pesanan untuk melihat invoice.", FontSize = 11, Foreground = Brush("#777168"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12,0,0,0) };
+            var eb = MakeActionButton("Cetak Resep"); eb.Margin = new Thickness(10,0,0,0); eb.Click += PrintSelectedExamination_Click; actions.Children.Add(eb);
+            documentStatus = new TextBlock { Text = "Pilih pesanan atau pemeriksaan untuk mencetak dokumen.", FontSize = 11, Foreground = Brush("#777168"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12,0,0,0) };
             actions.Children.Add(documentStatus);
             stack.Children.Add(actions);
             panel.Child = stack; root.Children.Add(panel);
@@ -610,17 +618,21 @@ namespace OptikLentera.Win7
                 byte green = pixels[i + 1];
                 byte red = pixels[i + 2];
                 byte alpha = pixels[i + 3];
-                if (alpha == 0) continue;
                 int luminance = (red * 299 + green * 587 + blue * 114) / 1000;
-                if (luminance < 48)
+                // Opaque white paper background with black logo artwork.
+                if (alpha == 0 || luminance < 48)
                 {
-                    pixels[i + 3] = 0;
+                    pixels[i] = 255;
+                    pixels[i + 1] = 255;
+                    pixels[i + 2] = 255;
+                    pixels[i + 3] = 255;
                 }
                 else
                 {
                     pixels[i] = 0;
                     pixels[i + 1] = 0;
                     pixels[i + 2] = 0;
+                    pixels[i + 3] = 255;
                 }
             }
             var result = BitmapSource.Create(converted.PixelWidth, converted.PixelHeight, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
@@ -713,8 +725,20 @@ namespace OptikLentera.Win7
         private void PrintExamination_Click(object sender, RoutedEventArgs e)
         {
             var exam = examGrid == null ? null : examGrid.SelectedItem as Examination;
+            PrintSelectedExamination(exam);
+        }
+
+        private void PrintSelectedExamination_Click(object sender, RoutedEventArgs e)
+        {
+            var exam = documentExamBox == null ? null : documentExamBox.SelectedItem as Examination;
+            PrintSelectedExamination(exam);
+        }
+
+        private void PrintSelectedExamination(Examination exam)
+        {
             if (exam == null)
             {
+                if (documentStatus != null) documentStatus.Text = "Pilih hasil pemeriksaan terlebih dahulu.";
                 if (examStatus != null) examStatus.Text = "Pilih satu riwayat pemeriksaan terlebih dahulu.";
                 return;
             }
@@ -842,25 +866,39 @@ namespace OptikLentera.Win7
         {
             try
             {
-                // Restore the original WPF print route that was confirmed working
-                // on the user's Windows 7 + Epson LQ-300+ setup before QR changes.
+                var dialog = new PrintDialog();
+                if (dialog.ShowDialog() != true) return;
+
+                // Fit the complete document into one printable page.
                 var printable = new Border
                 {
                     Background = Brushes.White,
-                    Padding = new Thickness(35),
+                    Padding = new Thickness(24),
                     Width = 720,
                     Child = content
                 };
-                printable.Measure(new Size(720, 1000));
-                printable.Arrange(new Rect(0, 0, 720, Math.Max(900, printable.DesiredSize.Height)));
+                printable.Measure(new Size(720, double.PositiveInfinity));
+                var measuredHeight = Math.Max(1, printable.DesiredSize.Height);
+                printable.Arrange(new Rect(0, 0, 720, measuredHeight));
 
-                var dialog = new PrintDialog();
-                if (dialog.ShowDialog() == true)
+                var pageWidth = dialog.PrintableAreaWidth > 0 ? dialog.PrintableAreaWidth : 720;
+                var pageHeight = dialog.PrintableAreaHeight > 0 ? dialog.PrintableAreaHeight : 900;
+                var onePage = new Viewbox
                 {
-                    dialog.PrintVisual(printable, title);
-                    if (documentStatus != null)
-                        documentStatus.Text = "Dokumen dikirim ke printer.";
-                }
+                    Width = pageWidth,
+                    Height = pageHeight,
+                    Stretch = Stretch.Uniform,
+                    StretchDirection = StretchDirection.DownOnly,
+                    Child = printable,
+                    Background = Brushes.White
+                };
+                onePage.Measure(new Size(pageWidth, pageHeight));
+                onePage.Arrange(new Rect(0, 0, pageWidth, pageHeight));
+                onePage.UpdateLayout();
+
+                dialog.PrintVisual(onePage, title);
+                if (documentStatus != null)
+                    documentStatus.Text = "Dokumen dikirim ke printer dalam satu halaman.";
             }
             catch (Exception ex)
             {
