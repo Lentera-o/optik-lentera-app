@@ -281,7 +281,10 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isDesktop = constraints.maxWidth >= 900;
+        return Scaffold(
       appBar: AppBar(
         backgroundColor: cream,
         elevation: 0,
@@ -317,23 +320,34 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
       body: SafeArea(
-        child: _loadingLocalData
-            ? const Center(child: CircularProgressIndicator(color: darkGold))
-            : switch (selectedIndex) {
-          0 => DashboardContent(
-            onOpenModule: (index) => setState(() => selectedIndex = index),
-            orderCount: orders.length,
-            paymentTotal: payments.fold<int>(0, (sum, item) => sum + item.amount),
-          ),
-          1 => TransactionScreen(customers: customers, orders: orders, onAdd: _addOrder),
-          2 => CustomerScreen(customers: customers, onAdd: _addCustomer),
-          3 => WhatsAppCenterScreen(customers: customers, orders: orders, payments: payments),
-          4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
-          5 => InvoiceReceiptScreen(orders: orders, payments: payments),
-          _ => OtherContent(title: navigation[selectedIndex]),
-        },
+        child: Row(
+          children: [
+            if (isDesktop)
+              _DesktopSidebar(
+                selectedIndex: selectedIndex,
+                onSelected: (index) => setState(() => selectedIndex = index),
+              ),
+            Expanded(
+              child: _loadingLocalData
+                  ? const Center(child: CircularProgressIndicator(color: darkGold))
+                  : switch (selectedIndex) {
+                0 => DashboardContent(
+                  onOpenModule: (index) => setState(() => selectedIndex = index),
+                  orderCount: orders.length,
+                  paymentTotal: payments.fold<int>(0, (sum, item) => sum + item.amount),
+                ),
+                1 => TransactionScreen(customers: customers, orders: orders, onAdd: _addOrder),
+                2 => CustomerScreen(customers: customers, onAdd: _addCustomer),
+                3 => WhatsAppCenterScreen(customers: customers, orders: orders, payments: payments),
+                4 => PaymentEntryScreen(payments: payments, orders: orders, onAdd: _addPayment),
+                5 => InvoiceReceiptScreen(orders: orders, payments: payments),
+                _ => OtherContent(title: navigation[selectedIndex]),
+              },
+            ),
+          ],
+        ),
       ),
-      bottomNavigationBar: DecoratedBox(
+      bottomNavigationBar: isDesktop ? null : DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xFFFFFCF8),
           border: Border(top: BorderSide(color: gold.withValues(alpha: .16))),
@@ -379,6 +393,151 @@ class _MainScreenState extends State<MainScreen> {
               label: 'Lainnya',
             ),
           ],
+        ),
+      ),
+        );
+      },
+    );
+  }
+}
+
+class _DesktopSidebar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  const _DesktopSidebar({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  static const _items = <({String title, IconData icon})>[
+    (title: 'Beranda', icon: Icons.home_rounded),
+    (title: 'Transaksi', icon: Icons.receipt_long_rounded),
+    (title: 'Pelanggan', icon: Icons.people_alt_rounded),
+    (title: 'WhatsApp', icon: Icons.chat_bubble_rounded),
+    (title: 'Pembayaran', icon: Icons.payments_rounded),
+    (title: 'Invoice & Dokumen', icon: Icons.description_rounded),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 238,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFCF8),
+        border: Border(right: BorderSide(color: gold.withValues(alpha: .18))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 16, 22),
+            child: Row(
+              children: [
+                const _OptikLogo(size: 46),
+                const SizedBox(width: 11),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('OPTIK LENTERA', style: TextStyle(color: darkGold, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: .7)),
+                      SizedBox(height: 3),
+                      Text('MANAJEMEN OPTIK', style: TextStyle(color: Colors.black45, fontSize: 9, letterSpacing: 1)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 16, 10),
+            child: Text('MENU UTAMA', style: TextStyle(color: darkGold.withValues(alpha: .75), fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1.4)),
+          ),
+          for (var i = 0; i < _items.length; i++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+              child: _DesktopNavItem(
+                title: _items[i].title,
+                icon: _items[i].icon,
+                selected: selectedIndex == i,
+                onTap: () => onSelected(i),
+              ),
+            ),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF80612F), Color(0xFFB99555)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.visibility_outlined, color: Colors.white, size: 22),
+                  SizedBox(height: 9),
+                  Text('Jelas lihatnya, jelas rejekinya.', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, height: 1.35)),
+                  SizedBox(height: 5),
+                  Text('Melayani dengan hati.', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopNavItem extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DesktopNavItem({
+    required this.title,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? pink.withValues(alpha: .38) : Colors.transparent,
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+          child: Row(
+            children: [
+              Icon(icon, size: 19, color: selected ? darkGold : const Color(0xFF8A8177)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: selected ? darkGold : ink,
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (selected) Container(
+                width: 5,
+                height: 5,
+                decoration: const BoxDecoration(color: darkGold, shape: BoxShape.circle),
+              ),
+            ],
+          ),
         ),
       ),
     );
