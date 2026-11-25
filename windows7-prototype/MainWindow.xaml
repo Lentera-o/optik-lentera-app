@@ -1,6 +1,7 @@
 <Window x:Class="OptikLentera.Win7.MainWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
  Title="OPTIK LENTERA | Desktop" Height="790" Width="1280"
  MinHeight="650" MinWidth="1000" WindowStartupLocation="CenterScreen"
  Background="#F7F3EA" FontFamily="Segoe UI">
@@ -34,7 +35,7 @@
       <TextBlock Text="L" Foreground="#171717" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
      </Border>
      <TextBlock Text="OPTIK LENTERA" Foreground="#F7F3EA" FontSize="18" FontWeight="Bold" Margin="0,13,0,2"/>
-     <TextBlock Text="DESKTOP WORKSPACE" Foreground="#C8A45D" FontSize="10" FontWeight="SemiBold" LetterSpacing="2"/>
+     <TextBlock Text="DESKTOP WORKSPACE" Foreground="#C8A45D" FontSize="10" FontWeight="SemiBold"/>
     </StackPanel>
     <StackPanel>
      <TextBlock Text="MENU UTAMA" Foreground="#77736B" FontSize="10" FontWeight="Bold" Margin="10,0,0,8"/>
@@ -74,11 +75,11 @@
        <TextBlock Text="Ini adalah prototipe offline. Belum terhubung ke data pelanggan atau sistem Android." Foreground="#B9B2A5" FontSize="11" Margin="0,16,0,0"/>
       </StackPanel></Grid>
      </Border>
-     <UniformGrid Columns="3" Margin="0,0,0,20">
+     <primitives:UniformGrid Columns="3" Margin="0,0,0,20">
       <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="PELANGGAN" Foreground="#8A847A" FontSize="10" FontWeight="Bold"/><TextBlock Text="--" Foreground="#24231F" FontSize="30" FontWeight="Bold" Margin="0,8,0,2"/><TextBlock Text="Data belum dihubungkan" Foreground="#9A948A" FontSize="11"/></StackPanel></Border>
       <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="PESANAN AKTIF" Foreground="#8A847A" FontSize="10" FontWeight="Bold"/><TextBlock Text="--" Foreground="#24231F" FontSize="30" FontWeight="Bold" Margin="0,8,0,2"/><TextBlock Text="Data belum dihubungkan" Foreground="#9A948A" FontSize="11"/></StackPanel></Border>
       <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="PEMBAYARAN" Foreground="#8A847A" FontSize="10" FontWeight="Bold"/><TextBlock Text="--" Foreground="#24231F" FontSize="30" FontWeight="Bold" Margin="0,8,0,2"/><TextBlock Text="Data belum dihubungkan" Foreground="#9A948A" FontSize="11"/></StackPanel></Border>
-     </UniformGrid>
+     </primitives:UniformGrid>
      <Border Background="White" BorderBrush="#ECE6DA" BorderThickness="1" CornerRadius="13" Padding="22">
       <StackPanel><TextBlock Text="PERSIAPAN UJI COBA" Foreground="#292823" FontSize="15" FontWeight="Bold" Margin="0,0,0,12"/>
        <TextBlock Text="✓  Aplikasi desktop Windows mandiri" Foreground="#5D665D" FontSize="12" Margin="0,4"/>
