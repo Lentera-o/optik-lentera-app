@@ -532,7 +532,7 @@ namespace OptikLentera.Win7
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var logo = new Image
             {
-                Source = printMode ? CreatePrintLogoSource() : new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute)),
+                Source = CreatePrintLogoSource(),
                 Width = 100, Height = 78, Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
             };
@@ -603,8 +603,8 @@ namespace OptikLentera.Win7
 
         private ImageSource CreatePrintLogoSource()
         {
-            // Remove the dark artwork background and convert the colored mark to solid black
-            // so the logo prints clearly on white paper with a dot-matrix printer.
+            // Use a clean white background while preserving the original logo colors.
+            // Dark background pixels are replaced with white; gold/white logo details remain.
             var source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute));
             var converted = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
             converted.Freeze();
@@ -618,8 +618,7 @@ namespace OptikLentera.Win7
                 byte red = pixels[i + 2];
                 byte alpha = pixels[i + 3];
                 int luminance = (red * 299 + green * 587 + blue * 114) / 1000;
-                // Opaque white paper background with black logo artwork.
-                if (alpha == 0 || luminance < 48)
+                if (alpha == 0 || luminance < 42)
                 {
                     pixels[i] = 255;
                     pixels[i + 1] = 255;
@@ -628,9 +627,6 @@ namespace OptikLentera.Win7
                 }
                 else
                 {
-                    pixels[i] = 0;
-                    pixels[i + 1] = 0;
-                    pixels[i + 2] = 0;
                     pixels[i + 3] = 255;
                 }
             }
