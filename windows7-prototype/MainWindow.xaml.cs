@@ -576,28 +576,15 @@ namespace OptikLentera.Win7
             var qrImage = new Image { Source = CreateQrImage(qrPayload), Width = qrSize, Height = qrSize, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,4,0,0), SnapsToDevicePixels = true };
             if (printMode)
             {
-                // Leave a clean white area beside the QR for the user's wet stamp.
-                var validationRow = new Grid { Margin = new Thickness(0,12,0,0), HorizontalAlignment = HorizontalAlignment.Stretch };
-                validationRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                validationRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                var stampArea = new Border
-                {
-                    Width = 150, Height = 104, Margin = new Thickness(0,0,14,0),
-                    BorderBrush = Brushes.Black, BorderThickness = new Thickness(1),
-                    Background = Brushes.White, Padding = new Thickness(6),
-                    Child = new TextBlock { Text = "AREA STEMPEL BASAH", FontSize = 8, Foreground = Brushes.Black, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom }
-                };
-                validationRow.Children.Add(stampArea);
-                var qrStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right };
+                // Keep the QR code clean and unobstructed; any wet stamp is optional.
+                var qrStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,12,0,0) };
                 qrStack.Children.Add(qrImage);
                 qrStack.Children.Add(new TextBlock { Text = "Pindai ringkasan dokumen", FontSize = 8, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,0) });
-                Grid.SetColumn(qrStack,1);
-                validationRow.Children.Add(qrStack);
-                c.Children.Add(validationRow);
+                c.Children.Add(qrStack);
             }
             else
             {
-                qrImage.HorizontalAlignment = HorizontalAlignment.Right;
+nt = HorizontalAlignment.Right;
                 c.Children.Add(qrImage);
                 c.Children.Add(new TextBlock { Text = "Pindai untuk membaca ringkasan dokumen", FontSize = 8, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,2,0,8) });
             }
