@@ -9,6 +9,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Web.Script.Serialization;
+using QRCoder;
 
 namespace OptikLentera.Win7
 {
@@ -539,8 +540,35 @@ namespace OptikLentera.Win7
                 c.Children.Add(new TextBlock { Text = "Total sudah dibayar: Rp " + paid.ToString("N0"), FontSize = 12, Margin = new Thickness(0,3,0,3) });
                 c.Children.Add(new TextBlock { Text = "Sisa tagihan: Rp " + Math.Max(0,order.Total-paid).ToString("N0"), FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0,3,0,3) });
             }
-            c.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 10, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,24,0,0), HorizontalAlignment = HorizontalAlignment.Center });
+            var documentNumber = payment == null ? "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : payment.ReceiptNumber;
+            var qrPayload = payment == null
+                ? "OPTIK LENTERA | INVOICE | " + documentNumber + " | TANGGAL " + order.Date + " | PELANGGAN " + order.CustomerName + " | TOTAL " + order.Total.ToString("0") + " IDR"
+                : "OPTIK LENTERA | KUITANSI | " + documentNumber + " | INVOICE " + "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() + " | TANGGAL " + payment.Date + " | DIBAYAR " + payment.Amount.ToString("0") + " IDR | SISA " + Math.Max(0,order.Total-PaidForOrder(order)).ToString("0") + " IDR";
+            var qrImage = new Image { Source = CreateQrImage(qrPayload), Width = 92, Height = 92, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,12,0,0) };
+            c.Children.Add(qrImage);
+            c.Children.Add(new TextBlock { Text = "Pindai untuk membaca ringkasan dokumen", FontSize = 8, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,2,0,8) });
+            c.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 10, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,8,0,0), HorizontalAlignment = HorizontalAlignment.Center });
             return c;
+        }
+
+        private BitmapImage CreateQrImage(string payload)
+        {
+            using (var generator = new QRCodeGenerator())
+            using (var data = generator.CreateQrCode(payload, QRCodeGenerator.ECCLevel.M))
+            using (var qr = new QRCode(data))
+            using (var bitmap = qr.GetGraphic(5))
+            using (var stream = new MemoryStream())
+            {
+                bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                stream.Position = 0;
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.StreamSource = stream;
+                image.EndInit();
+                image.Freeze();
+                return image;
+            }
         }
 
         private void UpdateDocumentPreview()
