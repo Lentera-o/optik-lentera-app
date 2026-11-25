@@ -872,8 +872,16 @@ namespace OptikLentera.Win7
                 // Keep the paper size and feed length selected in the printer
                 // driver. This supports continuous tractor-feed forms; never
                 // force A4 or silently replace the user's custom form.
-                var pageWidth = dialog.PrintableAreaWidth;
-                var pageHeight = dialog.PrintableAreaHeight;
+                var ticket = dialog.PrintTicket ?? new System.Printing.PrintTicket();
+                // 14 x 24 cm custom continuous form (WPF print units are 1/96 inch).
+                const double formWidth = 14.0 * 96.0 / 2.54;
+                const double formHeight = 24.0 * 96.0 / 2.54;
+                ticket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
+                ticket.PageOrientation = System.Printing.PageOrientation.Portrait;
+                dialog.PrintTicket = ticket;
+
+                var pageWidth = formWidth;
+                var pageHeight = formHeight;
                 if (pageWidth <= 0 || pageHeight <= 0)
                 {
                     MessageBox.Show("Ukuran area cetak tidak terbaca. Periksa ukuran kertas di pengaturan printer.",
