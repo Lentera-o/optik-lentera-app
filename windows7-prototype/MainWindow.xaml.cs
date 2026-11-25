@@ -920,7 +920,7 @@ namespace OptikLentera.Win7
                 cancelButton.Margin = new Thickness(0, 0, 8, 0);
                 cancelButton.Click += (s, e) => previewWindow.Close();
                 var printButton = MakeActionButton("Lanjut ke Printer");
-                printButton.Click += (s, e) { continueToPrint = true; previewWindow.Close(); };
+                printButton.Click += (s, e) => { continueToPrint = true; previewWindow.Close(); };
                 toolbar.Children.Add(cancelButton);
                 toolbar.Children.Add(printButton);
                 DockPanel.SetDock(toolbar, Dock.Top);
