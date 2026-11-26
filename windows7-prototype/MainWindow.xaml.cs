@@ -1270,6 +1270,43 @@ namespace OptikLentera.Win7
                     return;
                 }
 
+                // Epson LQ-300 can accept a custom form size while still exposing
+                // a smaller imageable (actually printable) rectangle. Check that
+                // rectangle before sending a job, otherwise the driver can clip the
+                // right/bottom edges even though PageMediaSize was accepted.
+                var capabilities = dialog.PrintQueue.GetPrintCapabilities(validatedTicket);
+                var imageable = capabilities == null ? null : capabilities.PageImageableArea;
+                if (imageable == null)
+                {
+                    MessageBox.Show(
+                        "Driver Epson LQ-300 tidak memberikan data area cetak. " +
+                        "Pencetakan dihentikan agar kertas 2-ply tidak terbuang.",
+                        "Area cetak tidak dapat diverifikasi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                double safeWidth = formWidth - (printMargin * 2);
+                double safeHeight = formHeight - (printMargin * 2);
+                double imageableWidth = imageable.ExtentWidth;
+                double imageableHeight = imageable.ExtentHeight;
+                bool imageableFits =
+                    (imageableWidth >= safeWidth && imageableHeight >= safeHeight) ||
+                    (imageableWidth >= safeHeight && imageableHeight >= safeWidth);
+                if (!imageableFits)
+                {
+                    double printableMmWide = imageableWidth * 25.4 / 96.0;
+                    double printableMmHigh = imageableHeight * 25.4 / 96.0;
+                    MessageBox.Show(
+                        "Epson LQ-300 menerima ukuran form 22 × 14 cm, tetapi area cetak yang dilaporkan driver hanya " +
+                        printableMmWide.ToString("0.0") + " × " + printableMmHigh.ToString("0.0") +
+                        " mm. Dokumen membutuhkan area isi minimal " +
+                        (safeWidth * 25.4 / 96.0).ToString("0.0") + " × " +
+                        (safeHeight * 25.4 / 96.0).ToString("0.0") +
+                        " mm. Pencetakan dibatalkan supaya tepi invoice/kuitansi tidak terpotong dan kertas 2-ply tidak terbuang.",
+                        "Area cetak Epson LQ-300 tidak cukup", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 dialog.PrintTicket = validatedTicket;
                 dialog.PrintVisual(printable, title);
                 if (documentStatus != null)
