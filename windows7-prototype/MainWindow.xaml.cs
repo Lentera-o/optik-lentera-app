@@ -1192,10 +1192,35 @@ namespace OptikLentera.Win7
 
                 var dialog = new PrintDialog();
                 if (dialog.ShowDialog() != true) return;
-                var ticket = dialog.PrintTicket ?? new System.Printing.PrintTicket();
-                ticket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
-                ticket.PageOrientation = System.Printing.PageOrientation.Landscape;
-                dialog.PrintTicket = ticket;
+                if (dialog.PrintQueue == null)
+                    throw new InvalidOperationException("Printer belum dipilih.");
+
+                // Ask the selected driver to validate the exact physical form.
+                // Do not silently fall back to A4/Letter or let the driver shrink
+                // the 22 x 14 cm document onto a different media size.
+                var requestedTicket = new System.Printing.PrintTicket();
+                requestedTicket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
+                requestedTicket.PageOrientation = System.Printing.PageOrientation.Landscape;
+                var validation = dialog.PrintQueue.MergeAndValidatePrintTicket(
+                    dialog.PrintQueue.UserPrintTicket, requestedTicket);
+                var validatedTicket = validation.ValidatedPrintTicket;
+                var media = validatedTicket == null ? null : validatedTicket.PageMediaSize;
+                double acceptedWidth = media == null || !media.Width.HasValue ? 0 : media.Width.Value;
+                double acceptedHeight = media == null || !media.Height.HasValue ? 0 : media.Height.Value;
+                bool exactMediaAccepted =
+                    Math.Abs(acceptedWidth - formWidth) <= 1.0 &&
+                    Math.Abs(acceptedHeight - formHeight) <= 1.0;
+                if (!exactMediaAccepted)
+                {
+                    MessageBox.Show(
+                        "Driver printer tidak menerima ukuran kertas khusus 22 × 14 cm. " +
+                        "Pencetakan dihentikan agar dokumen tidak mengecil atau berubah bentuk. " +
+                        "Atur ukuran kertas khusus 22 cm (lebar) × 14 cm (tinggi) pada pengaturan driver printer, lalu coba lagi.",
+                        "Ukuran kertas tidak cocok", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                dialog.PrintTicket = validatedTicket;
                 dialog.PrintVisual(printable, title);
                 if (documentStatus != null)
                     documentStatus.Text = "Dokumen dikirim ke printer setelah pratinjau.";
