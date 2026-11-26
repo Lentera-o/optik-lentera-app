@@ -1144,25 +1144,31 @@ namespace OptikLentera.Win7
                 double formWidth = 22.0 * 96.0 / 2.54;
                 double formHeight = 14.0 * 96.0 / 2.54;
 
-                // Design directly at the physical form size. Never shrink an oversized
-                // document to hide a layout error: preview and print use this same page.
-                const double printMargin = 8.0;
+                // Epson LQ-300 continuous-form printable limits: keep at least
+                // 13 mm clear on left/right and 9 mm clear at top/bottom.
+                // The physical form remains 220 x 140 mm; only the content area is inset.
+                const double horizontalMarginMm = 13.0;
+                const double verticalMarginMm = 9.0;
+                double horizontalMargin = horizontalMarginMm * 96.0 / 25.4;
+                double verticalMargin = verticalMarginMm * 96.0 / 25.4;
+                double safeWidth = formWidth - (horizontalMargin * 2);
+                double safeHeight = formHeight - (verticalMargin * 2);
                 var printable = new Border
                 {
                     Background = Brushes.White,
-                    Padding = new Thickness(printMargin),
+                    Padding = new Thickness(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin),
                     Width = formWidth,
                     Height = formHeight,
                     ClipToBounds = true,
                     Child = content
                 };
-                content.Measure(new Size(formWidth - (printMargin * 2), double.PositiveInfinity));
+                content.Measure(new Size(safeWidth, double.PositiveInfinity));
                 double contentHeight = content.DesiredSize.Height;
                 printable.Measure(new Size(formWidth, formHeight));
                 printable.Arrange(new Rect(0, 0, formWidth, formHeight));
                 printable.UpdateLayout();
 
-                if (contentHeight > formHeight - (printMargin * 2))
+                if (contentHeight > safeHeight)
                 {
                     MessageBox.Show("Isi dokumen masih melebihi batas kertas landscape 22 × 14 cm. Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -1285,8 +1291,8 @@ namespace OptikLentera.Win7
                     return;
                 }
 
-                double safeWidth = formWidth - (printMargin * 2);
-                double safeHeight = formHeight - (printMargin * 2);
+                // Compare the driver's imageable rectangle with the actual content
+                // rectangle, not with almost the entire physical form.
                 double imageableWidth = imageable.ExtentWidth;
                 double imageableHeight = imageable.ExtentHeight;
                 bool imageableFits =
@@ -1299,10 +1305,10 @@ namespace OptikLentera.Win7
                     MessageBox.Show(
                         "Epson LQ-300 menerima ukuran form 22 × 14 cm, tetapi area cetak yang dilaporkan driver hanya " +
                         printableMmWide.ToString("0.0") + " × " + printableMmHigh.ToString("0.0") +
-                        " mm. Dokumen membutuhkan area isi minimal " +
+                        " mm. Dengan margin aman Epson, area isi yang dibutuhkan sekitar " +
                         (safeWidth * 25.4 / 96.0).ToString("0.0") + " × " +
                         (safeHeight * 25.4 / 96.0).ToString("0.0") +
-                        " mm. Pencetakan dibatalkan supaya tepi invoice/kuitansi tidak terpotong dan kertas 2-ply tidak terbuang.",
+                        " mm. Pencetakan dibatalkan supaya tepi invoice/kuitansi tidak terpotong.",
                         "Area cetak Epson LQ-300 tidak cukup", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
