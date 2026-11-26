@@ -114,7 +114,7 @@
         <TextBlock Text="Mode desktop offline • Data tersimpan di komputer ini" Foreground="#B9B2A5" FontSize="10" Margin="0,18,0,0"/>
        </StackPanel>
        <Border Grid.Column="1" Background="#292923" CornerRadius="16" Padding="14" VerticalAlignment="Center">
-        <Image Source="/Assets/optik_lentera_launcher_emblem.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0.96"/>
+        <Image Source="/Assets/optik_lentera_app_logo.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Opacity="1"/>
        </Border>
       </Grid>
      </Border>
