@@ -752,9 +752,11 @@ namespace OptikLentera.Win7
 
             var left = new StackPanel { Margin = new Thickness(0,0,12,0) };
             string invoiceNo = "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant();
-            left.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: " + invoiceNo : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 11, FontWeight = FontWeights.Bold });
-            left.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 10, Foreground = Brush("#69645B"), Margin = new Thickness(0,2,0,4) });
-            left.Children.Add(new TextBlock { Text = "Pelanggan: " + order.CustomerName + "    |    WA: " + order.CustomerPhone, FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,5) });
+            left.Children.Add(new TextBlock { Text = payment == null ? "NO. INVOICE  " + invoiceNo : "NO. KUITANSI  " + payment.ReceiptNumber, FontSize = 11, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#6F5428") });
+            if (payment != null)
+                left.Children.Add(new TextBlock { Text = "No. Invoice terkait: " + invoiceNo, FontSize = 9, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0,2,0,0) });
+            left.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 9, Foreground = Brush("#69645B"), Margin = new Thickness(0,2,0,4) });
+            left.Children.Add(new TextBlock { Text = "Pelanggan: " + order.CustomerName + "    |    WA: " + order.CustomerPhone, FontSize = 9, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,5) });
 
             var itemTable = new Grid { Margin = new Thickness(0,0,0,5) };
             itemTable.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -784,9 +786,24 @@ namespace OptikLentera.Win7
             if (payment != null)
             {
                 decimal paid = PaidForOrder(order);
-                right.Children.Add(new TextBlock { Text = "Pembayaran ini: Rp " + payment.Amount.ToString("N0") + " (" + payment.Method + ")", FontSize = 9, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,2,0,2) });
-                right.Children.Add(new TextBlock { Text = "Total dibayar: Rp " + paid.ToString("N0"), FontSize = 9, Margin = new Thickness(0,2,0,2) });
-                right.Children.Add(new TextBlock { Text = "Sisa: Rp " + Math.Max(0m,order.Total-paid).ToString("N0"), FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0,2,0,4) });
+                decimal remaining = Math.Max(0m, order.Total - paid);
+                var paidBox = new Border
+                {
+                    Background = printMode ? Brushes.White : Brush("#F8F0DE"),
+                    BorderBrush = printMode ? Brushes.Black : Brush("#D9C18D"),
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(7,5,7,5),
+                    Margin = new Thickness(0,2,0,4)
+                };
+                var paidStack = new StackPanel();
+                paidStack.Children.Add(new TextBlock { Text = "DITERIMA SAAT INI", FontSize = 8, FontWeight = FontWeights.Bold });
+                paidStack.Children.Add(new TextBlock { Text = "Rp " + payment.Amount.ToString("N0"), FontSize = 13, FontWeight = FontWeights.Bold, Margin = new Thickness(0,1,0,0) });
+                paidStack.Children.Add(new TextBlock { Text = "Metode: " + payment.Method, FontSize = 8, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,1,0,0) });
+                paidBox.Child = paidStack;
+                right.Children.Add(paidBox);
+                right.Children.Add(new TextBlock { Text = "Total dibayar: Rp " + paid.ToString("N0"), FontSize = 8, Margin = new Thickness(0,1,0,1) });
+                right.Children.Add(new TextBlock { Text = "Sisa tagihan: Rp " + remaining.ToString("N0"), FontSize = 9, FontWeight = FontWeights.Bold, Margin = new Thickness(0,1,0,2) });
+                right.Children.Add(new TextBlock { Text = remaining == 0 ? "STATUS: LUNAS" : "STATUS: DP / ANGSURAN", FontSize = 8, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#7A5C27"), Margin = new Thickness(0,1,0,0) });
             }
             string docNumber = payment == null ? invoiceNo : payment.ReceiptNumber;
             string qrPayload = payment == null
@@ -798,7 +815,22 @@ namespace OptikLentera.Win7
             right.Children.Add(new TextBlock { Text = "Pindai ringkasan dokumen", FontSize = 7, Foreground = printMode ? Brushes.Black : Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,1,0,0) });
             Grid.SetColumn(right,1); body.Children.Add(right);
             root.Children.Add(body);
-            root.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 8, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,5,0,0) });
+
+            var footer = new Grid { Margin = new Thickness(0,6,0,0) };
+            footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.35, GridUnitType.Star) });
+            footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var thanks = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0,0,8,0) };
+            thanks.Children.Add(new TextBlock { Text = "Terima kasih atas kepercayaan Anda.", FontSize = 8, FontWeight = FontWeights.SemiBold, Foreground = printMode ? Brushes.Black : Brush("#5E574B"), TextWrapping = TextWrapping.Wrap });
+            thanks.Children.Add(new TextBlock { Text = "OPTIK LENTERA • Jelas lihatnya, jelas rejekinya.", FontSize = 7, Foreground = printMode ? Brushes.Black : Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,2,0,0) });
+            footer.Children.Add(thanks);
+
+            var sign = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(6,0,0,0) };
+            sign.Children.Add(new TextBlock { Text = payment == null ? "Hormat kami, OPTIK LENTERA" : "Penerima pembayaran", FontSize = 8, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center });
+            sign.Children.Add(new Border { Height = 21, BorderBrush = printMode ? Brushes.Black : Brush("#BDA56F"), BorderThickness = new Thickness(0,0,0,0.8), Margin = new Thickness(0,0,0,1) });
+            sign.Children.Add(new TextBlock { Text = "Tanda tangan / cap", FontSize = 7, Foreground = printMode ? Brushes.Black : Brush("#777168"), TextAlignment = TextAlignment.Center });
+            Grid.SetColumn(sign,1);
+            footer.Children.Add(sign);
+            root.Children.Add(footer);
             return root;
         }
 
