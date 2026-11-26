@@ -1121,22 +1121,23 @@ namespace OptikLentera.Win7
 
                 // Design directly at the physical form size. Never shrink an oversized
                 // document to hide a layout error: preview and print use this same page.
+                const double printMargin = 8.0;
                 var printable = new Border
                 {
                     Background = Brushes.White,
-                    Padding = new Thickness(12),
+                    Padding = new Thickness(printMargin),
                     Width = formWidth,
                     Height = formHeight,
                     ClipToBounds = true,
                     Child = content
                 };
-                content.Measure(new Size(formWidth - 24, double.PositiveInfinity));
+                content.Measure(new Size(formWidth - (printMargin * 2), double.PositiveInfinity));
                 double contentHeight = content.DesiredSize.Height;
                 printable.Measure(new Size(formWidth, formHeight));
                 printable.Arrange(new Rect(0, 0, formWidth, formHeight));
                 printable.UpdateLayout();
 
-                if (contentHeight > formHeight - 24)
+                if (contentHeight > formHeight - (printMargin * 2))
                 {
                     MessageBox.Show("Isi dokumen masih melebihi batas kertas landscape 22 × 14 cm. Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -1226,9 +1227,14 @@ namespace OptikLentera.Win7
                 var media = validatedTicket == null ? null : validatedTicket.PageMediaSize;
                 double acceptedWidth = media == null || !media.Width.HasValue ? 0 : media.Width.Value;
                 double acceptedHeight = media == null || !media.Height.HasValue ? 0 : media.Height.Value;
+                // Some printer drivers report custom landscape media with the
+                // dimensions transposed. Both representations describe the same
+                // physical 22 cm (width) x 14 cm (height) sheet.
                 bool exactMediaAccepted =
-                    Math.Abs(acceptedWidth - formWidth) <= 1.0 &&
-                    Math.Abs(acceptedHeight - formHeight) <= 1.0;
+                    (Math.Abs(acceptedWidth - formWidth) <= 1.0 &&
+                     Math.Abs(acceptedHeight - formHeight) <= 1.0) ||
+                    (Math.Abs(acceptedWidth - formHeight) <= 1.0 &&
+                     Math.Abs(acceptedHeight - formWidth) <= 1.0);
                 if (!exactMediaAccepted)
                 {
                     MessageBox.Show(
