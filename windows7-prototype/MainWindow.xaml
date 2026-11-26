@@ -62,9 +62,6 @@
   <Border Grid.Column="0" Background="#181917">
    <DockPanel Margin="20,18">
     <StackPanel DockPanel.Dock="Top" Margin="0,7,0,24">
-     <Border Width="196" Height="104" Background="Transparent" HorizontalAlignment="Center" Margin="0,0,0,8">
-      <Image Source="/Assets/optik_lentera_app_logo.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
-     </Border>
      <TextBlock Text="OPTIK LENTERA" Foreground="#F7F3EA" FontSize="19" FontWeight="Bold" Margin="0,13,0,2"/>
      <TextBlock Text="DESKTOP WORKSPACE" Foreground="#C8A45D" FontSize="10" FontWeight="SemiBold"/>
     </StackPanel>
