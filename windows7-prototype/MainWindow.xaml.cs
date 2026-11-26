@@ -705,31 +705,55 @@ namespace OptikLentera.Win7
 
         private Border MakeLetterhead(bool printMode)
         {
-            var header = new Grid { Margin = new Thickness(0,0,0,7) };
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(138) });
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            // Compact centered letterhead for the physical 22 cm wide x 14 cm high form.
+            // Keep the source logo aspect ratio; never stretch it to fill the header.
+            var header = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0,0,0,5)
+            };
             var logo = new Image
             {
                 Source = CreatePrintLogoSource(),
-                Width = 124, Height = 78, Stretch = Stretch.Uniform,
-                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
+                Width = 92, Height = 48, Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
             };
             RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
-            var logoBox = new Border { Background = Brushes.White, Padding = new Thickness(2), Child = logo, VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetColumn(logoBox, 0);
-            header.Children.Add(logoBox);
+            header.Children.Add(new Border
+            {
+                Background = Brushes.White,
+                Padding = new Thickness(1),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Child = logo
+            });
 
-            var details = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8,0,0,0) };
-            details.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 23, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#98752A"), Margin = new Thickness(0,0,0,2) });
-            details.Children.Add(new TextBlock { Text = "Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang", FontSize = 11, Foreground = printMode ? Brushes.Black : Brush("#51484A"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,2,0,0) });
-            details.Children.Add(new TextBlock { Text = "Telp/WA: 0858 9312 8257", FontSize = 10, Foreground = printMode ? Brushes.Black : Brush("#51484A"), Margin = new Thickness(0,2,0,0) });
-            Grid.SetColumn(details, 1);
-            header.Children.Add(details);
+            header.Children.Add(new TextBlock
+            {
+                Text = "OPTIK LENTERA", FontSize = 19, FontWeight = FontWeights.Bold,
+                Foreground = printMode ? Brushes.Black : Brush("#98752A"),
+                TextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0,1,0,0)
+            });
+            header.Children.Add(new TextBlock
+            {
+                Text = "Jl. Cibarengkok RT.03 RW.01 Peusar, Kec. Panongan, Kab. Tangerang",
+                FontSize = 9, Foreground = printMode ? Brushes.Black : Brush("#51484A"),
+                TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0,1,0,0)
+            });
+            header.Children.Add(new TextBlock
+            {
+                Text = "Telp/WA: 0858 9312 8257", FontSize = 9,
+                Foreground = printMode ? Brushes.Black : Brush("#51484A"),
+                TextAlignment = TextAlignment.Center, Margin = new Thickness(0,1,0,0)
+            });
             return new Border
             {
                 BorderBrush = printMode ? Brushes.Black : Brush("#98752A"),
-                BorderThickness = new Thickness(0,0,0,2),
-                Padding = new Thickness(0,0,0,5),
+                BorderThickness = new Thickness(0,0,0,1.5),
+                Padding = new Thickness(0,0,0,4),
                 Child = header
             };
         }
