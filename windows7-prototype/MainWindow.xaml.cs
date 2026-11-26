@@ -1132,7 +1132,7 @@ namespace OptikLentera.Win7
 
                 var previewWindow = new Window
                 {
-                    Title = "Pratinjau Cetak - " + title,
+                    Title = "Pratinjau 22 x 14 cm - " + title,
                     Width = 900, Height = 620, MinWidth = 720, MinHeight = 520,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     Owner = this, Background = Brush("#F1EEE8"),
@@ -1147,11 +1147,15 @@ namespace OptikLentera.Win7
                     HorizontalAlignment = HorizontalAlignment.Right,
                     Margin = new Thickness(0, 0, 0, 12)
                 };
-                var cancelButton = MakeActionButton("Batal");
+                var saveButton = MakeActionButton("Simpan Pratinjau PNG");
+                saveButton.Margin = new Thickness(0, 0, 8, 0);
+                saveButton.Click += (sender, args) => SaveDocumentPreviewPng(previewBitmap, title);
+                var cancelButton = MakeActionButton("Tutup");
                 cancelButton.Margin = new Thickness(0, 0, 8, 0);
                 cancelButton.Click += (sender, args) => previewWindow.Close();
-                var printButton = MakeActionButton("Lanjut ke Printer");
+                var printButton = MakeActionButton("Cetak Setelah Dicek");
                 printButton.Click += (sender, args) => { continueToPrint = true; previewWindow.Close(); };
+                toolbar.Children.Add(saveButton);
                 toolbar.Children.Add(cancelButton);
                 toolbar.Children.Add(printButton);
                 DockPanel.SetDock(toolbar, Dock.Top);
@@ -1199,6 +1203,31 @@ namespace OptikLentera.Win7
             catch (Exception ex)
             {
                 MessageBox.Show("Pratinjau atau pencetakan gagal: " + ex.Message, "OPTIK LENTERA",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void SaveDocumentPreviewPng(BitmapSource previewBitmap, string title)
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Simpan bukti pratinjau dokumen 22 x 14 cm",
+                FileName = (title ?? "Dokumen").Replace(" ", "-") + "-Preview-22x14cm.png",
+                DefaultExt = ".png",
+                Filter = "PNG Image (*.png)|*.png"
+            };
+            if (dialog.ShowDialog(this) != true) return;
+            try
+            {
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(previewBitmap));
+                using (var stream = File.Create(dialog.FileName)) encoder.Save(stream);
+                MessageBox.Show("Pratinjau digital berhasil disimpan. Periksa file PNG ini terlebih dahulu; tidak ada kertas atau tinta yang digunakan.", "OPTIK LENTERA",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal menyimpan pratinjau: " + ex.Message, "OPTIK LENTERA",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
