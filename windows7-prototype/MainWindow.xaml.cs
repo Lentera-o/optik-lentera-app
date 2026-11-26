@@ -651,7 +651,8 @@ namespace OptikLentera.Win7
             var root = new StackPanel();
             var panel = MakePanel();
             var stack = new StackPanel();
-            stack.Children.Add(new TextBlock { Text = "DOKUMEN TRANSAKSI", FontSize = 16, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,0,0,12) });
+            stack.Children.Add(new TextBlock { Text = "DOKUMEN TRANSAKSI", FontSize = 16, FontWeight = FontWeights.Bold, Foreground = Brush("#292823"), Margin = new Thickness(0,0,0,5) });
+            stack.Children.Add(new TextBlock { Text = "Invoice berasal dari pesanan. Setiap pembayaran DP atau pelunasan dapat dicetak sebagai kuitansi tersendiri dengan nomor invoice terkait, QR, jumlah diterima, total dibayar, dan sisa tagihan.", FontSize = 11, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,12) });
             var selectors = new Grid();
             selectors.ColumnDefinitions.Add(new ColumnDefinition());
             selectors.ColumnDefinitions.Add(new ColumnDefinition());
