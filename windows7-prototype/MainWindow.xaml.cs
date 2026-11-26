@@ -140,12 +140,37 @@ namespace OptikLentera.Win7
             var hero = new Border { Background = Brush("#20211F"), BorderBrush = Brush("#B99550"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(17), Padding = new Thickness(24), Margin = new Thickness(0,0,0,17) };
             var heroGrid = new Grid();
             heroGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            heroGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(172) });
             var heroText = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Stretch };
             heroText.Children.Add(new TextBlock { Text = "SELAMAT DATANG DI OPTIK LENTERA", Foreground = Brush("#E6C982"), FontSize = 10, FontWeight = FontWeights.Bold });
             heroText.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA.", Foreground = Brush("#FFFDF7"), FontSize = 23, FontWeight = FontWeights.Bold, Margin = new Thickness(0,8,0,5), TextWrapping = TextWrapping.Wrap });
             heroText.Children.Add(new TextBlock { Text = "Pantau usaha, layani pelanggan, dan tambah wawasan optik dalam satu ruang kerja.", Foreground = Brush("#D8D1C4"), FontSize = 12, TextWrapping = TextWrapping.Wrap });
             heroText.Children.Add(new TextBlock { Text = today.ToString("dddd, dd MMMM yyyy", new System.Globalization.CultureInfo("id-ID")), Foreground = Brush("#C8A45D"), FontSize = 11, Margin = new Thickness(0,13,0,0) });
             heroGrid.Children.Add(heroText);
+
+            // Logo depan ditampilkan utuh di atas bidang putih agar latar logo tidak menyatu dengan hero gelap.
+            var logoCard = new Border
+            {
+                Background = Brushes.White,
+                BorderBrush = Brush("#E8DFC9"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(13),
+                Padding = new Thickness(12),
+                Width = 150,
+                Height = 112,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var frontLogo = new Image
+            {
+                Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_app_logo.png", UriKind.Absolute)),
+                Stretch = Stretch.Uniform,
+                SnapsToDevicePixels = true
+            };
+            RenderOptions.SetBitmapScalingMode(frontLogo, BitmapScalingMode.HighQuality);
+            logoCard.Child = frontLogo;
+            Grid.SetColumn(logoCard, 1);
+            heroGrid.Children.Add(logoCard);
             hero.Child = heroGrid;
             root.Children.Add(hero);
 
