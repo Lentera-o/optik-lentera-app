@@ -783,10 +783,10 @@ namespace OptikLentera.Win7
             right.Children.Add(new TextBlock { Text = "Rp " + order.Total.ToString("N0"), FontSize = 15, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#A78342"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,0,0,5) });
             if (payment != null)
             {
-                double paid = PaidForOrder(order);
+                decimal paid = PaidForOrder(order);
                 right.Children.Add(new TextBlock { Text = "Pembayaran ini: Rp " + payment.Amount.ToString("N0") + " (" + payment.Method + ")", FontSize = 9, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,2,0,2) });
                 right.Children.Add(new TextBlock { Text = "Total dibayar: Rp " + paid.ToString("N0"), FontSize = 9, Margin = new Thickness(0,2,0,2) });
-                right.Children.Add(new TextBlock { Text = "Sisa: Rp " + Math.Max(0,order.Total-paid).ToString("N0"), FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0,2,0,4) });
+                right.Children.Add(new TextBlock { Text = "Sisa: Rp " + Math.Max(0m,order.Total-paid).ToString("N0"), FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0,2,0,4) });
             }
             string docNumber = payment == null ? invoiceNo : payment.ReceiptNumber;
             string qrPayload = payment == null
