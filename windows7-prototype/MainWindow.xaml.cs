@@ -735,47 +735,71 @@ namespace OptikLentera.Win7
 
         private StackPanel MakeDocumentContent(string heading, Order order, Payment payment, bool printMode)
         {
-            var c = new StackPanel();
-            c.Children.Add(MakeLetterhead(printMode));
-            c.Children.Add(new TextBlock { Text = heading, FontSize = 17, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#25241F"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,0,0,5) });
-            c.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold });
-            c.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 11, Foreground = Brush("#69645B"), Margin = new Thickness(0,3,0,7) });
-            c.Children.Add(new TextBlock { Text = "Pelanggan: " + order.CustomerName + "   |   WhatsApp: " + order.CustomerPhone, FontSize = 12, Margin = new Thickness(0,0,0,7) });
-            c.Children.Add(new Border { Height = 1, Background = printMode ? Brushes.Black : Brush("#D8CBAE"), Margin = new Thickness(0,0,0,10) });
-            c.Children.Add(new TextBlock { Text = "Frame: " + order.FrameDescription + "    Rp " + order.FramePrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
-            c.Children.Add(new TextBlock { Text = "Lensa: " + order.LensDescription + "    Rp " + order.LensPrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
-            if (order.OtherPrice > 0 || !string.IsNullOrWhiteSpace(order.OtherItem)) c.Children.Add(new TextBlock { Text = "Tambahan: " + order.OtherItem + "    Rp " + order.OtherPrice.ToString("N0"), FontSize = 11, Margin = new Thickness(0,3,0,3) });
-            c.Children.Add(new Border { Height = 1, Background = printMode ? Brushes.Black : Brush("#D8CBAE"), Margin = new Thickness(0,10,0,10) });
-            c.Children.Add(new TextBlock { Text = "TOTAL PESANAN: Rp " + order.Total.ToString("N0"), FontSize = 15, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#A78342"), HorizontalAlignment = HorizontalAlignment.Right });
+            // Wide, two-column document layout designed for the physical 22 x 14 cm form.
+            var root = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch };
+            root.Children.Add(MakeLetterhead(printMode));
+            root.Children.Add(new TextBlock
+            {
+                Text = heading, FontSize = 15, FontWeight = FontWeights.Bold,
+                Foreground = printMode ? Brushes.Black : Brush("#25241F"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0,0,0,5)
+            });
+
+            var body = new Grid { HorizontalAlignment = HorizontalAlignment.Stretch };
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2.15, GridUnitType.Star) });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var left = new StackPanel { Margin = new Thickness(0,0,12,0) };
+            string invoiceNo = "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant();
+            left.Children.Add(new TextBlock { Text = payment == null ? "No. Invoice: " + invoiceNo : "No. Kuitansi: " + payment.ReceiptNumber, FontSize = 11, FontWeight = FontWeights.Bold });
+            left.Children.Add(new TextBlock { Text = "Tanggal: " + (payment == null ? order.Date : payment.Date), FontSize = 10, Foreground = Brush("#69645B"), Margin = new Thickness(0,2,0,4) });
+            left.Children.Add(new TextBlock { Text = "Pelanggan: " + order.CustomerName + "    |    WA: " + order.CustomerPhone, FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,0,0,5) });
+
+            var itemTable = new Grid { Margin = new Thickness(0,0,0,5) };
+            itemTable.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            itemTable.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(105) });
+            string[][] itemRows = new string[][] {
+                new string[] { "FRAME  " + order.FrameDescription, "Rp " + order.FramePrice.ToString("N0") },
+                new string[] { "LENSA  " + order.LensDescription, "Rp " + order.LensPrice.ToString("N0") }
+            };
+            if (order.OtherPrice > 0 || !string.IsNullOrWhiteSpace(order.OtherItem))
+                itemRows = itemRows.Concat(new string[][] { new string[] { "TAMBAHAN  " + order.OtherItem, "Rp " + order.OtherPrice.ToString("N0") } }).ToArray();
+            for (int i = 0; i < itemRows.Length; i++)
+            {
+                itemTable.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                var name = new TextBlock { Text = itemRows[i][0], FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4,4,4,4) };
+                var price = new TextBlock { Text = itemRows[i][1], FontSize = 10, TextAlignment = TextAlignment.Right, Margin = new Thickness(4,4,4,4) };
+                Grid.SetRow(name,i); Grid.SetColumn(name,0); itemTable.Children.Add(name);
+                Grid.SetRow(price,i); Grid.SetColumn(price,1); itemTable.Children.Add(price);
+                var line = new Border { Height = 0.7, Background = printMode ? Brushes.Black : Brush("#D8CBAE"), VerticalAlignment = VerticalAlignment.Bottom };
+                Grid.SetRow(line,i); Grid.SetColumnSpan(line,2); itemTable.Children.Add(line);
+            }
+            left.Children.Add(itemTable);
+            Grid.SetColumn(left,0); body.Children.Add(left);
+
+            var right = new StackPanel { Margin = new Thickness(8,0,0,0), HorizontalAlignment = HorizontalAlignment.Stretch };
+            right.Children.Add(new TextBlock { Text = "TOTAL PESANAN", FontSize = 9, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Right });
+            right.Children.Add(new TextBlock { Text = "Rp " + order.Total.ToString("N0"), FontSize = 15, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#A78342"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,0,0,5) });
             if (payment != null)
             {
-                var paid = PaidForOrder(order);
-                c.Children.Add(new TextBlock { Text = "Pembayaran ini: Rp " + payment.Amount.ToString("N0") + " (" + payment.Method + ")", FontSize = 12, Margin = new Thickness(0,10,0,3) });
-                c.Children.Add(new TextBlock { Text = "Total sudah dibayar: Rp " + paid.ToString("N0"), FontSize = 12, Margin = new Thickness(0,3,0,3) });
-                c.Children.Add(new TextBlock { Text = "Sisa tagihan: Rp " + Math.Max(0,order.Total-paid).ToString("N0"), FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0,3,0,3) });
+                double paid = PaidForOrder(order);
+                right.Children.Add(new TextBlock { Text = "Pembayaran ini: Rp " + payment.Amount.ToString("N0") + " (" + payment.Method + ")", FontSize = 9, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,2,0,2) });
+                right.Children.Add(new TextBlock { Text = "Total dibayar: Rp " + paid.ToString("N0"), FontSize = 9, Margin = new Thickness(0,2,0,2) });
+                right.Children.Add(new TextBlock { Text = "Sisa: Rp " + Math.Max(0,order.Total-paid).ToString("N0"), FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0,2,0,4) });
             }
-            var documentNumber = payment == null ? "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() : payment.ReceiptNumber;
-            var qrPayload = payment == null
-                ? "OPTIK LENTERA | INVOICE | " + documentNumber + " | TANGGAL " + order.Date + " | PELANGGAN " + order.CustomerName + " | TOTAL " + order.Total.ToString("0") + " IDR"
-                : "OPTIK LENTERA | KUITANSI | " + documentNumber + " | INVOICE " + "INV-" + order.Date.Replace("-","") + "-" + order.OrderKey.Substring(0,Math.Min(6,order.OrderKey.Length)).ToUpperInvariant() + " | TANGGAL " + payment.Date + " | DIBAYAR " + payment.Amount.ToString("0") + " IDR | SISA " + Math.Max(0,order.Total-PaidForOrder(order)).ToString("0") + " IDR";
-            var qrSize = printMode ? 92.0 : 112.0;
-            var qrImage = new Image { Source = CreateQrImage(qrPayload), Width = qrSize, Height = qrSize, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,4,0,0), SnapsToDevicePixels = true };
-            if (printMode)
-            {
-                // Keep the QR code clean and unobstructed; any wet stamp is optional.
-                var qrStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,12,0,0) };
-                qrStack.Children.Add(qrImage);
-                qrStack.Children.Add(new TextBlock { Text = "Pindai ringkasan dokumen", FontSize = 8, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,2,0,0) });
-                c.Children.Add(qrStack);
-            }
-            else
-            {
-                qrImage.HorizontalAlignment = HorizontalAlignment.Right;
-                c.Children.Add(qrImage);
-                c.Children.Add(new TextBlock { Text = "Pindai untuk membaca ringkasan dokumen", FontSize = 8, Foreground = Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,2,0,8) });
-            }
-            c.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 9, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0,5,0,0), HorizontalAlignment = HorizontalAlignment.Center });
-            return c;
+            string docNumber = payment == null ? invoiceNo : payment.ReceiptNumber;
+            string qrPayload = payment == null
+                ? "OPTIK LENTERA | INVOICE | " + docNumber + " | TANGGAL " + order.Date + " | PELANGGAN " + order.CustomerName + " | TOTAL " + order.Total.ToString("0") + " IDR"
+                : "OPTIK LENTERA | KUITANSI | " + docNumber + " | INVOICE " + invoiceNo + " | TANGGAL " + payment.Date + " | DIBAYAR " + payment.Amount.ToString("0") + " IDR | SISA " + Math.Max(0,order.Total-PaidForOrder(order)).ToString("0") + " IDR";
+            double qrSize = printMode ? 78.0 : 92.0;
+            var qr = new Image { Source = CreateQrImage(qrPayload), Width = qrSize, Height = qrSize, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,3,0,0) };
+            right.Children.Add(qr);
+            right.Children.Add(new TextBlock { Text = "Pindai ringkasan dokumen", FontSize = 7, Foreground = printMode ? Brushes.Black : Brush("#777168"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0,1,0,0) });
+            Grid.SetColumn(right,1); body.Children.Add(right);
+            root.Children.Add(body);
+            root.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 8, Foreground = Brush("#777168"), TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0,5,0,0) });
+            return root;
         }
 
         private ImageSource CreatePrintLogoSource()
@@ -1076,14 +1100,14 @@ namespace OptikLentera.Win7
                 var previewWindow = new Window
                 {
                     Title = "Pratinjau Cetak - " + title,
-                    Width = 650, Height = 820, MinWidth = 520, MinHeight = 650,
+                    Width = 900, Height = 620, MinWidth = 720, MinHeight = 520,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     Owner = this, Background = Brush("#F1EEE8"),
                     ResizeMode = ResizeMode.CanResize
                 };
 
                 bool continueToPrint = false;
-                var layout = new DockPanel { Margin = new Thickness(14) };
+                var layout = new DockPanel { Margin = new Thickness(12) };
                 var toolbar = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
