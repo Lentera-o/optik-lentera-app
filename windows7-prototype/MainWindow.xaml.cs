@@ -140,17 +140,12 @@ namespace OptikLentera.Win7
             var hero = new Border { Background = Brush("#20211F"), BorderBrush = Brush("#B99550"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(17), Padding = new Thickness(24), Margin = new Thickness(0,0,0,17) };
             var heroGrid = new Grid();
             heroGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            heroGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
-            var heroText = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            var heroText = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Stretch };
             heroText.Children.Add(new TextBlock { Text = "SELAMAT DATANG DI OPTIK LENTERA", Foreground = Brush("#E6C982"), FontSize = 10, FontWeight = FontWeights.Bold });
             heroText.Children.Add(new TextBlock { Text = "JELAS LIHATNYA, JELAS REJEKINYA.", Foreground = Brush("#FFFDF7"), FontSize = 23, FontWeight = FontWeights.Bold, Margin = new Thickness(0,8,0,5), TextWrapping = TextWrapping.Wrap });
-            heroText.Children.Add(new TextBlock { Text = "Pantau usaha, layani pelanggan, dan tambah wawasan optik dalam satu ruang kerja.", Foreground = Brush("#D8D1C4"), FontSize = 12, TextWrapping = TextWrapping.Wrap, MaxWidth = 620 });
+            heroText.Children.Add(new TextBlock { Text = "Pantau usaha, layani pelanggan, dan tambah wawasan optik dalam satu ruang kerja.", Foreground = Brush("#D8D1C4"), FontSize = 12, TextWrapping = TextWrapping.Wrap });
             heroText.Children.Add(new TextBlock { Text = today.ToString("dddd, dd MMMM yyyy", new System.Globalization.CultureInfo("id-ID")), Foreground = Brush("#C8A45D"), FontSize = 11, Margin = new Thickness(0,13,0,0) });
             heroGrid.Children.Add(heroText);
-            var emblem = new Border { Background = Brush("#292923"), CornerRadius = new CornerRadius(14), Padding = new Thickness(17), Margin = new Thickness(12,0,0,0) };
-            Grid.SetColumn(emblem, 1);
-            emblem.Child = new Image { Source = new BitmapImage(new Uri("pack://application:,,,/Assets/optik_lentera_launcher_emblem.png")), Stretch = Stretch.Uniform, Opacity = 0.96 };
-            heroGrid.Children.Add(emblem);
             hero.Child = heroGrid;
             root.Children.Add(hero);
 
