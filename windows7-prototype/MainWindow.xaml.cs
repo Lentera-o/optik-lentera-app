@@ -1499,9 +1499,18 @@ namespace OptikLentera.Win7
                 // keep the driver's physical left/top offsets unchanged.
                 if (landscape && imageableWidth < imageableHeight)
                 {
-                    double swap = imageableWidth;
-                    imageableWidth = imageableHeight;
-                    imageableHeight = swap;
+                    // Rotate the complete portrait-coordinate rectangle clockwise
+                    // into landscape page coordinates, including its origin.
+                    // For the reported Epson values this becomes:
+                    // left=2.8 mm, top=4.2 mm, extent=203.5 x 131.5 mm.
+                    double portraitLeft = imageableLeft;
+                    double portraitTop = imageableTop;
+                    double portraitWidth = imageableWidth;
+                    double portraitHeight = imageableHeight;
+                    imageableLeft = formWidth - (portraitTop + portraitHeight);
+                    imageableTop = portraitLeft;
+                    imageableWidth = portraitHeight;
+                    imageableHeight = portraitWidth;
                 }
 
                 double imageableRight = imageableLeft + imageableWidth;
