@@ -780,10 +780,13 @@ namespace OptikLentera.Win7
 
         private StackPanel MakeDocumentContent(string heading, Order order, Payment payment, bool printMode)
         {
-            // Fixed landscape composition for the 220 x 140 mm continuous form.
-            // 733 x 461 DIP is the complete physical page at 96 DPI.
-            const double pageWidth = 733.0;
-            const double pageHeight = 461.0;
+            // Enlarge invoice/receipt artwork to use the Epson LQ-300+II
+            // imageable area for the 220 x 140 mm continuous form.
+            // Maximum safe area: 203.2 x 131.5 mm = 768 x 497 DIP at 96 DPI.
+            // The physical form remains 220 x 140 mm; nothing is printed outside
+            // the driver-reported imageable rectangle.
+            const double pageWidth = 768.0;
+            const double pageHeight = 497.0;
             var root = new StackPanel
             {
                 Width = pageWidth,
