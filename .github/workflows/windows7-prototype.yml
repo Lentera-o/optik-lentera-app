@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - windows7-prototype
+      - win7-print-engine-rebuild
     paths:
       - 'windows7-prototype/**'
       - '.github/workflows/windows7-prototype.yml'
