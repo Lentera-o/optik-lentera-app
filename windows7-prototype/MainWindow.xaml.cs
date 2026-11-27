@@ -799,7 +799,7 @@ namespace OptikLentera.Win7
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(93) });
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(116) });
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(72) });
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(86) });
 
             var header = MakeLetterhead(printMode);
             Grid.SetRow(header, 0);
@@ -910,10 +910,10 @@ namespace OptikLentera.Win7
 
             string docNumber = payment == null ? invoiceNo : payment.ReceiptNumber;
             string qrPayload = payment == null
-                ? "OPTIK LENTERA | INVOICE | " + docNumber + " | TANGGAL " + order.Date + " | PELANGGAN " + order.CustomerName + " | TOTAL " + order.Total.ToString("0") + " IDR"
-                : "OPTIK LENTERA | KUITANSI | " + docNumber + " | INVOICE " + invoiceNo + " | TANGGAL " + payment.Date + " | DIBAYAR " + payment.Amount.ToString("0") + " IDR | SISA " + Math.Max(0, order.Total - PaidForOrder(order)).ToString("0") + " IDR";
+                ? "OL|INV|" + docNumber + "|" + order.CustomerName + "|" + order.Total.ToString("0")
+                : "OL|KW|" + docNumber + "|" + invoiceNo + "|" + payment.Date + "|" + payment.Amount.ToString("0") + "|" + Math.Max(0, order.Total - PaidForOrder(order)).ToString("0");
             var qrStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            qrStack.Children.Add(new Image { Source = CreateQrImage(qrPayload), Width = 54, Height = 54, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center });
+            qrStack.Children.Add(new Image { Source = CreateQrImage(qrPayload), Width = 70, Height = 70, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center });
             qrStack.Children.Add(new TextBlock { Text = "QR DOKUMEN", FontSize = 7, TextAlignment = TextAlignment.Center });
             Grid.SetColumn(qrStack, 1);
             footer.Children.Add(qrStack);
