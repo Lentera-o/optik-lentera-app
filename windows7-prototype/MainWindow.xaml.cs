@@ -1072,7 +1072,15 @@ namespace OptikLentera.Win7
 
         private StackPanel MakePrescriptionContent(Examination exam)
         {
-            var root = new StackPanel();
+            var root = new StackPanel
+            {
+                Width = 733,
+                Height = 461,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                ClipToBounds = true,
+                Background = Brushes.White
+            };
             root.Children.Add(MakeLetterhead(true));
             root.Children.Add(new TextBlock { Text = "RESEP KACAMATA", FontSize = 18, FontWeight = FontWeights.Bold, Foreground = Brushes.Black, TextAlignment = TextAlignment.Center, Margin = new Thickness(0,4,0,8) });
             var identity = new Grid { Margin = new Thickness(0,0,0,7) };
