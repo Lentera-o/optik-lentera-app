@@ -1237,9 +1237,14 @@ namespace OptikLentera.Win7
                     return;
                 }
 
+                // Keep the preview independent from printer output, but render it at
+                // 300 DPI so small text, table rules, and QR modules can be inspected
+                // on screen or in the saved PNG before any paper is used.
+                const double previewDpi = 300.0;
                 var previewBitmap = new RenderTargetBitmap(
-                    (int)Math.Ceiling(formWidth), (int)Math.Ceiling(formHeight),
-                    96, 96, PixelFormats.Pbgra32);
+                    (int)Math.Ceiling(formWidth * previewDpi / 96.0),
+                    (int)Math.Ceiling(formHeight * previewDpi / 96.0),
+                    previewDpi, previewDpi, PixelFormats.Pbgra32);
                 previewBitmap.Render(printable);
                 previewBitmap.Freeze();
 
