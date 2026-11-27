@@ -1198,6 +1198,111 @@ namespace OptikLentera.Win7
             };
         }
 
+        // Automated, printer-free layout proof used by GitHub Actions.
+        // Generates exact-size 300 DPI PNGs for invoice, receipt and prescription.
+        public static int RunPrintLayoutSmoke(string outputDirectory)
+        {
+            try
+            {
+                Directory.CreateDirectory(outputDirectory);
+                var window = new MainWindow();
+                var order = new Order
+                {
+                    OrderId = "SMOKE-20261127-001", Date = "27-11-2026",
+                    CustomerName = "CONTOH PELANGGAN", CustomerPhone = "081234567890",
+                    FrameBrand = "LENTERA", FrameModel = "CLASSIC 01", FrameColor = "HITAM",
+                    FramePrice = 350000m, LensType = "BLUECUT", LensSize = "1.56",
+                    LensCoating = "ANTI REFLEKSI", LensPrice = 450000m,
+                    OtherItem = "KAIN PEMBERSIH", OtherPrice = 15000m
+                };
+                var payment = new Payment
+                {
+                    ReceiptNumber = "KW-2026-0001", OrderKey = order.OrderKey,
+                    Date = "27-11-2026", Amount = 400000m, Method = "TRANSFER"
+                };
+                var exam = new Examination
+                {
+                    CustomerName = order.CustomerName, Date = order.Date,
+                    ODSPH = "-1.25", ODCYL = "-0.50", ODAXIS = "90", ODADD = "0.00", ODPD = "32",
+                    OSSPH = "-1.00", OSCYL = "-0.25", OSAXIS = "85", OSADD = "0.00", OSPD = "31",
+                    Notes = "Contoh pemeriksaan untuk validasi tata letak digital."
+                };
+
+                window.RenderSmokeDocument(window.MakeDocumentContent("INVOICE PESANAN", order, null, true), Path.Combine(outputDirectory, "01-invoice.png"));
+                window.RenderSmokeDocument(window.MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment, true), Path.Combine(outputDirectory, "02-kuitansi.png"));
+
+                var prescription = window.MakePrescriptionContent(exam);
+                double usedHeight = 0;
+                foreach (UIElement child in prescription.Children)
+                {
+                    var element = child as FrameworkElement;
+                    if (element == null) continue;
+                    element.Measure(new Size(733, double.PositiveInfinity));
+                    usedHeight += element.DesiredSize.Height;
+                }
+                if (usedHeight > 461.0)
+                    throw new InvalidOperationException("Resep melebihi tinggi formulir: " + usedHeight.ToString("0.0") + " / 461 DIP.");
+                window.RenderSmokeDocument(prescription, Path.Combine(outputDirectory, "03-resep.png"));
+                File.WriteAllText(Path.Combine(outputDirectory, "VALIDATION.txt"),
+                    "PASS\r\nCanvas: 220 x 140 mm landscape\r\nRaster: 2599 x 1654 px at 300 DPI\r\nInvoice, kuitansi, resep: rendered without printer access.\r\nPrescription content height: " + usedHeight.ToString("0.0") + " / 461 DIP.\r\n");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Directory.CreateDirectory(outputDirectory);
+                File.WriteAllText(Path.Combine(outputDirectory, "VALIDATION-FAILED.txt"), ex.ToString());
+                return 1;
+            }
+        }
+
+        private void RenderSmokeDocument(StackPanel content, string filePath)
+        {
+            const double formWidth = 22.0 * 96.0 / 2.54;
+            const double formHeight = 14.0 * 96.0 / 2.54;
+            const double horizontalMargin = 13.0 * 96.0 / 25.4;
+            const double verticalMargin = 9.0 * 96.0 / 25.4;
+            double safeWidth = formWidth - horizontalMargin * 2;
+            double safeHeight = formHeight - verticalMargin * 2;
+
+            content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            if (content.DesiredSize.Width <= 0 || content.DesiredSize.Height <= 0 ||
+                content.DesiredSize.Width > formWidth + 1 || content.DesiredSize.Height > formHeight + 1)
+                throw new InvalidOperationException("Ukuran konten di luar kanvas 22 x 14 cm: " + content.DesiredSize);
+
+            var fitted = new Viewbox
+            {
+                Width = safeWidth, Height = safeHeight,
+                Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly,
+                Child = content
+            };
+            var page = new Border
+            {
+                Background = Brushes.White,
+                Padding = new Thickness(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin),
+                Width = formWidth, Height = formHeight, ClipToBounds = true, Child = fitted
+            };
+            page.Measure(new Size(formWidth, formHeight));
+            page.Arrange(new Rect(0, 0, formWidth, formHeight));
+            page.UpdateLayout();
+
+            const double dpi = 300.0;
+            var bitmap = new RenderTargetBitmap(2599, 1654, dpi, dpi, PixelFormats.Pbgra32);
+            bitmap.Render(page);
+            bitmap.Freeze();
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using (var stream = File.Create(filePath)) encoder.Save(stream);
+
+            int stride = bitmap.PixelWidth * 4;
+            byte[] pixels = new byte[stride * bitmap.PixelHeight];
+            bitmap.CopyPixels(pixels, stride, 0);
+            long darkPixels = 0;
+            for (int i = 0; i < pixels.Length; i += 4)
+                if (pixels[i + 3] > 0 && (pixels[i] < 235 || pixels[i + 1] < 235 || pixels[i + 2] < 235)) darkPixels++;
+            if (darkPixels < 1000)
+                throw new InvalidOperationException("Hasil render kosong atau hampir kosong: " + Path.GetFileName(filePath));
+        }
+
         private void PrintDocumentVisual(StackPanel content, string title, bool landscape)
         {
             try
