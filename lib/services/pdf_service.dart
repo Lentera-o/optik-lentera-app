@@ -11,6 +11,18 @@ class OptikPdfService {
   static const paper = PdfColor.fromInt(0xFFFFF8F7);
   static const line = PdfColor.fromInt(0xFFDDCBA8);
   static const ink = PdfColor.fromInt(0xFF51484A);
+
+  // Epson LQ-300+II continuous form: physical paper 220 x 140 mm.
+  // Driver imageable rectangle in landscape: 203.2 x 131.5 mm.
+  // Landscape offsets: left 3.1, top 4.2, right 13.7, bottom 4.3 mm.
+  static const double _mm = PdfPageFormat.mm;
+  static final PdfPageFormat epsonForm = PdfPageFormat(220 * _mm, 140 * _mm);
+  static const pw.EdgeInsets epsonMargins = pw.EdgeInsets.fromLTRB(
+    3.1 * PdfPageFormat.mm,
+    4.2 * PdfPageFormat.mm,
+    13.7 * PdfPageFormat.mm,
+    4.3 * PdfPageFormat.mm,
+  );
   static pw.MemoryImage get logo => pw.MemoryImage(base64Decode(optikLogoBase64));
   static pw.Widget qr(String value) => pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: value, width: 92, height: 92, drawText: false);
 
@@ -70,7 +82,7 @@ class OptikPdfService {
 
   static Future<void> invoice(OptikOrder o, {required int paid, required int remaining}) async {
     final pdf = pw.Document();
-    pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4, margin: const pw.EdgeInsets.all(28), build: (_) => pw.Container(
+    pdf.addPage(pw.Page(pageFormat: epsonForm, margin: epsonMargins, build: (_) => pw.Container(
       color: paper,
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
         brand(), pw.Center(child: heading('INVOICE', 'DOKUMEN PRATINJAU • BELUM TERSINKRONISASI')),
@@ -94,7 +106,7 @@ class OptikPdfService {
         pw.SizedBox(height: 7), pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
       ]),
     )));
-    pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4, margin: const pw.EdgeInsets.all(32), build: (_) => pw.Container(
+    pdf.addPage(pw.Page(pageFormat: epsonForm, margin: epsonMargins, build: (_) => pw.Container(
       color: paper,
       child: pw.Column(children: [
         brand(), pw.SizedBox(height: 30), pw.Text('KODE QR INVOICE', style: pw.TextStyle(fontSize: 16, font: pw.Font.helveticaBold(), color: gold)),
@@ -107,12 +119,12 @@ class OptikPdfService {
         pw.Spacer(), pw.Text('Pindai QR untuk membaca nomor invoice: ' + o.invoiceNumber, style: const pw.TextStyle(fontSize: 8, color: ink)),
       ]),
     )));
-    await Printing.layoutPdf(name: 'Invoice_' + o.invoiceNumber + '.pdf', onLayout: (_) async => pdf.save());
+    await Printing.layoutPdf(name: 'Invoice_' + o.invoiceNumber + '.pdf', format: epsonForm, onLayout: (_) async => pdf.save());
   }
 
   static Future<void> receipt(OptikOrder o, OptikPayment p, {required String receiptNumber, required int paid, required int remaining}) async {
     final pdf = pw.Document();
-    pdf.addPage(pw.Page(pageFormat: PdfPageFormat.a4.landscape, margin: const pw.EdgeInsets.all(26), build: (_) => pw.Container(
+    pdf.addPage(pw.Page(pageFormat: epsonForm, margin: epsonMargins, build: (_) => pw.Container(
       color: paper,
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
         brand(), pw.Center(child: heading('KUITANSI', 'DOKUMEN PRATINJAU • BELUM TERSINKRONISASI')),
@@ -136,6 +148,6 @@ class OptikPdfService {
         pw.SizedBox(height: 5), pw.Center(child: pw.Text('OPTIK LENTERA • 0858 9312 8257', style: const pw.TextStyle(fontSize: 7, color: ink))),
       ]),
     )));
-    await Printing.layoutPdf(name: 'Kuitansi_' + receiptNumber + '.pdf', onLayout: (_) async => pdf.save());
+    await Printing.layoutPdf(name: 'Kuitansi_' + receiptNumber + '.pdf', format: epsonForm, onLayout: (_) async => pdf.save());
   }
 }
