@@ -795,11 +795,14 @@ namespace OptikLentera.Win7
             };
 
             var page = new Grid { Width = pageWidth, Height = pageHeight, Background = Brushes.White };
-            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(137) });
-            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(93) });
-            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(116) });
+            // Allocate the limited 140 mm page height deliberately. The previous
+            // fixed rows left only ~29 DIP for FRAME/LENSA, clipping their details.
+            // Keep the centered letterhead readable and give the product row real space.
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(115) });
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(88) });
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(86) });
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(78) });
 
             var header = MakeLetterhead(printMode);
             Grid.SetRow(header, 0);
