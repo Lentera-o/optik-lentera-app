@@ -26,10 +26,11 @@ jobs:
       - name: Render and validate invoice, receipt, and prescription without a printer
         shell: pwsh
         run: |
-          $output = "print-layout-proof"
+          $output = Join-Path $PWD "print-layout-proof"
           New-Item -ItemType Directory -Force -Path $output | Out-Null
-          & "windows7-prototype/bin/Release/OPTIK-LENTERA.exe" --print-layout-smoke $output
-          if ($LASTEXITCODE -ne 0) { if (Test-Path "$output/VALIDATION-FAILED.txt") { Get-Content "$output/VALIDATION-FAILED.txt" } ; throw "Digital print-layout validation failed." }
+          $process = Start-Process -FilePath (Join-Path $PWD "windows7-prototype/bin/Release/OPTIK-LENTERA.exe") -ArgumentList @("--print-layout-smoke", $output) -Wait -PassThru
+          Get-ChildItem -Force $output | ForEach-Object { Write-Host ("OUTPUT: " + $_.Name); if ($_.Extension -eq ".txt") { Get-Content $_.FullName } }
+          if ($process.ExitCode -ne 0) { throw ("Digital print-layout validation failed. Exit code: " + $process.ExitCode) }
           if (!(Test-Path "$output/01-invoice.png") -or !(Test-Path "$output/02-kuitansi.png") -or !(Test-Path "$output/03-resep.png")) { throw "One or more digital document previews were not generated." }
       - name: Package portable prototype
         shell: pwsh
