@@ -778,6 +778,92 @@ namespace OptikLentera.Win7
             };
         }
 
+        // Dedicated landscape receipt: payment information is arranged in wide columns,
+        // not reusing the vertically stacked invoice layout.
+        private StackPanel MakeReceiptContent(Order order, Payment payment, bool printMode)
+        {
+            const double pageWidth = 768.0;
+            const double pageHeight = 497.0;
+            var root = new StackPanel
+            {
+                Width = pageWidth, Height = pageHeight, ClipToBounds = true,
+                Background = Brushes.White, Orientation = Orientation.Vertical
+            };
+            var page = new Grid { Width = pageWidth, Height = pageHeight, Background = Brushes.White };
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(104) });
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(54) });
+
+            var top = new Grid { Margin = new Thickness(12, 4, 12, 8) };
+            top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
+            top.Children.Add(MakeLetterhead(printMode));
+            var titlePanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+            titlePanel.Children.Add(new TextBlock { Text = "KUITANSI PEMBAYARAN", FontSize = 22, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#725526"), TextAlignment = TextAlignment.Right });
+            titlePanel.Children.Add(new TextBlock { Text = "NO. " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 5, 0, 0), TextAlignment = TextAlignment.Right });
+            titlePanel.Children.Add(new TextBlock { Text = "Tanggal: " + payment.Date, FontSize = 11, Margin = new Thickness(0, 2, 0, 0), TextAlignment = TextAlignment.Right });
+            Grid.SetColumn(titlePanel, 1);
+            top.Children.Add(titlePanel);
+            Grid.SetRow(top, 0);
+            page.Children.Add(top);
+
+            var body = new Grid { Margin = new Thickness(12, 0, 12, 8) };
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.05, GridUnitType.Star) });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.25, GridUnitType.Star) });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0.78, GridUnitType.Star) });
+
+            var customer = new Border { BorderBrush = printMode ? Brushes.Black : Brush("#D8CBAE"), BorderThickness = new Thickness(1), Padding = new Thickness(14), Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Stretch };
+            var customerStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            customerStack.Children.Add(new TextBlock { Text = "DITERIMA DARI", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#8A6B32"), Margin = new Thickness(0, 0, 0, 10) });
+            customerStack.Children.Add(new TextBlock { Text = order.CustomerName, FontSize = 17, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap });
+            customerStack.Children.Add(new TextBlock { Text = "WhatsApp: " + order.CustomerPhone, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap });
+            customerStack.Children.Add(new TextBlock { Text = "No. Invoice: " + InvoiceNumberForReceipt(order), FontSize = 10, Margin = new Thickness(0, 12, 0, 0), TextWrapping = TextWrapping.Wrap });
+            customer.Child = customerStack;
+            body.Children.Add(customer);
+
+            decimal paidTotal = PaidForOrder(order);
+            decimal remaining = Math.Max(0m, order.Total - paidTotal);
+            var paymentCard = new Border { BorderBrush = printMode ? Brushes.Black : Brush("#D8CBAE"), BorderThickness = new Thickness(1), Padding = new Thickness(15), Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Stretch };
+            var paymentStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            paymentStack.Children.Add(new TextBlock { Text = "JUMLAH DITERIMA", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#8A6B32") });
+            paymentStack.Children.Add(new TextBlock { Text = "Rp " + payment.Amount.ToString("N0"), FontSize = 27, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 5, 0, 12) });
+            paymentStack.Children.Add(new TextBlock { Text = "Metode pembayaran: " + payment.Method, FontSize = 11, Margin = new Thickness(0, 2, 0, 0) });
+            paymentStack.Children.Add(new TextBlock { Text = "Total pesanan: Rp " + order.Total.ToString("N0"), FontSize = 11, Margin = new Thickness(0, 5, 0, 0) });
+            paymentStack.Children.Add(new TextBlock { Text = "Total telah dibayar: Rp " + paidTotal.ToString("N0"), FontSize = 11, Margin = new Thickness(0, 3, 0, 0) });
+            paymentStack.Children.Add(new TextBlock { Text = "SISA TAGIHAN: Rp " + remaining.ToString("N0"), FontSize = 13, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 8, 0, 0) });
+            paymentStack.Children.Add(new TextBlock { Text = remaining == 0 ? "STATUS: LUNAS" : "STATUS: DP / ANGSURAN", FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 4, 0, 0) });
+            paymentCard.Child = paymentStack;
+            Grid.SetColumn(paymentCard, 1);
+            body.Children.Add(paymentCard);
+
+            var right = new Border { BorderBrush = printMode ? Brushes.Black : Brush("#D8CBAE"), BorderThickness = new Thickness(1), Padding = new Thickness(8), VerticalAlignment = VerticalAlignment.Stretch };
+            var rightStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+            string qrPayload = "OL|KW|" + payment.ReceiptNumber + "|" + InvoiceNumberForReceipt(order) + "|" + payment.Date + "|" + payment.Amount.ToString("0") + "|" + remaining.ToString("0");
+            rightStack.Children.Add(new Image { Source = CreateQrImage(qrPayload), Width = 104, Height = 104, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center });
+            rightStack.Children.Add(new TextBlock { Text = "SCAN QR KUITANSI", FontSize = 8, FontWeight = FontWeights.Bold, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 3, 0, 8) });
+            rightStack.Children.Add(new TextBlock { Text = "Penerima pembayaran", FontSize = 9, TextAlignment = TextAlignment.Center });
+            rightStack.Children.Add(new Border { Width = 128, Height = 28, BorderBrush = printMode ? Brushes.Black : Brush("#BDA56F"), BorderThickness = new Thickness(0, 0, 0, 0.8), Margin = new Thickness(0, 0, 0, 2) });
+            rightStack.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 9, FontWeight = FontWeights.Bold, TextAlignment = TextAlignment.Center });
+            right.Child = rightStack;
+            Grid.SetColumn(right, 2);
+            body.Children.Add(right);
+            Grid.SetRow(body, 1);
+            page.Children.Add(body);
+
+            var footer = new Border { BorderBrush = printMode ? Brushes.Black : Brush("#D8CBAE"), BorderThickness = new Thickness(0, 1, 0, 0), Margin = new Thickness(12, 0, 12, 4), Padding = new Thickness(4, 8, 4, 0) };
+            footer.Child = new TextBlock { Text = "Terima kasih atas kepercayaan Anda • OPTIK LENTERA • Jelas lihatnya, jelas rejekinya.", FontSize = 10, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetRow(footer, 2);
+            page.Children.Add(footer);
+            root.Children.Add(page);
+            return root;
+        }
+
+        private string InvoiceNumberForReceipt(Order order)
+        {
+            string suffix = new string((order.OrderKey ?? order.OrderId ?? "ORDER").Where(char.IsLetterOrDigit).Take(6).ToArray()).ToUpperInvariant();
+            return "INV-" + (order.Date ?? "").Replace("-", "") + "-" + suffix;
+        }
+
         private StackPanel MakeDocumentContent(string heading, Order order, Payment payment, bool printMode)
         {
             // Enlarge invoice/receipt artwork to use the Epson LQ-300+II
@@ -1027,7 +1113,7 @@ namespace OptikLentera.Win7
             }
             try
             {
-                documentPreview.Child = MakeDocumentContent(payment == null ? "INVOICE PESANAN" : "KUITANSI PEMBAYARAN", order, payment, false);
+                documentPreview.Child = payment == null ? MakeDocumentContent("INVOICE PESANAN", order, null, false) : MakeReceiptContent(order, payment, false);
                 if (documentStatus != null) documentStatus.Text = payment == null ? "Pratinjau invoice." : "Pratinjau kuitansi " + payment.ReceiptNumber + ".";
             }
             catch (Exception ex)
@@ -1050,7 +1136,7 @@ namespace OptikLentera.Win7
             var order = documentOrderBox == null ? null : documentOrderBox.SelectedItem as Order;
             var payment = documentPaymentBox == null ? null : documentPaymentBox.SelectedItem as Payment;
             if (order == null || payment == null) { documentStatus.Text = "Pilih pembayaran untuk mencetak kuitansi."; return; }
-            PrintDocumentVisual(MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment, true), "Kuitansi OPTIK LENTERA", true);
+            PrintDocumentVisual(MakeReceiptContent(order, payment, true), "Kuitansi OPTIK LENTERA", true);
         }
 
         private void PrintExamination_Click(object sender, RoutedEventArgs e)
@@ -1233,7 +1319,7 @@ namespace OptikLentera.Win7
                 };
 
                 window.RenderSmokeDocument(window.MakeDocumentContent("INVOICE PESANAN", order, null, true), Path.Combine(outputDirectory, "01-invoice.png"));
-                window.RenderSmokeDocument(window.MakeDocumentContent("KUITANSI PEMBAYARAN", order, payment, true), Path.Combine(outputDirectory, "02-kuitansi.png"));
+                window.RenderSmokeDocument(window.MakeReceiptContent(order, payment, true), Path.Combine(outputDirectory, "02-kuitansi.png"));
 
                 var prescription = window.MakePrescriptionContent(exam);
                 double usedHeight = 0;
