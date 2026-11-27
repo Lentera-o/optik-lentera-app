@@ -1488,8 +1488,24 @@ namespace OptikLentera.Win7
                 // A size-only check can pass even when the whole printable area is shifted.
                 double imageableLeft = imageable.OriginWidth;
                 double imageableTop = imageable.OriginHeight;
-                double imageableRight = imageableLeft + imageable.ExtentWidth;
-                double imageableBottom = imageableTop + imageable.ExtentHeight;
+                double imageableWidth = imageable.ExtentWidth;
+                double imageableHeight = imageable.ExtentHeight;
+
+                // Some Epson LQ-300+II ESC/P2 drivers expose the imageable
+                // rectangle in portrait-axis order even after accepting a
+                // landscape custom form. The reported 131.5 x 203.5 mm with
+                // 4.2 mm left / 13.7 mm top is this transposed capability.
+                // Normalize the extents for landscape before checking bounds;
+                // keep the driver's physical left/top offsets unchanged.
+                if (landscape && imageableWidth < imageableHeight)
+                {
+                    double swap = imageableWidth;
+                    imageableWidth = imageableHeight;
+                    imageableHeight = swap;
+                }
+
+                double imageableRight = imageableLeft + imageableWidth;
+                double imageableBottom = imageableTop + imageableHeight;
                 double contentLeft = horizontalMargin;
                 double contentTop = verticalMargin;
                 double contentRight = contentLeft + safeWidth;
