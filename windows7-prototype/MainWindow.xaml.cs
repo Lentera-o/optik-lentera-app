@@ -1141,8 +1141,10 @@ namespace OptikLentera.Win7
             {
                 // All three documents use the continuous form: landscape 22 cm wide x 14 cm high.
                 // Preview is a detached bitmap only. Printer APIs are not touched until approval.
-                double formWidth = 22.0 * 96.0 / 2.54;
-                double formHeight = 14.0 * 96.0 / 2.54;
+                // The paper is 22 cm wide x 14 cm high in landscape.
+                // Respect the caller's orientation instead of silently ignoring it.
+                double formWidth = (landscape ? 22.0 : 14.0) * 96.0 / 2.54;
+                double formHeight = (landscape ? 14.0 : 22.0) * 96.0 / 2.54;
 
                 // Epson LQ-300 continuous-form printable limits: keep at least
                 // 13 mm clear on left/right and 9 mm clear at top/bottom.
@@ -1251,7 +1253,9 @@ namespace OptikLentera.Win7
                 // the 22 x 14 cm document onto a different media size.
                 var requestedTicket = new System.Printing.PrintTicket();
                 requestedTicket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
-                requestedTicket.PageOrientation = System.Printing.PageOrientation.Landscape;
+                requestedTicket.PageOrientation = landscape
+                    ? System.Printing.PageOrientation.Landscape
+                    : System.Printing.PageOrientation.Portrait;
                 var validation = dialog.PrintQueue.MergeAndValidatePrintTicket(
                     dialog.PrintQueue.UserPrintTicket, requestedTicket);
                 var validatedTicket = validation.ValidatedPrintTicket;
@@ -1314,9 +1318,28 @@ namespace OptikLentera.Win7
                 }
 
                 dialog.PrintTicket = validatedTicket;
-                dialog.PrintVisual(printable, title);
+
+                // PrintVisual lets some legacy Epson drivers map the visual to
+                // their default portrait page, causing the 22 x 14 cm layout to
+                // be rotated/clipped or printed across multiple form sections.
+                // Use a one-page FixedDocument with an explicit landscape page
+                // size so the visual is laid out once, across the paper width.
+                var fixedDocument = new FixedDocument();
+                fixedDocument.DocumentPaginator.PageSize = new Size(formWidth, formHeight);
+                var fixedPage = new FixedPage
+                {
+                    Width = formWidth,
+                    Height = formHeight
+                };
+                FixedPage.SetLeft(printable, 0);
+                FixedPage.SetTop(printable, 0);
+                fixedPage.Children.Add(printable);
+                var pageContent = new PageContent();
+                ((System.Windows.Markup.IAddChild)pageContent).AddChild(fixedPage);
+                fixedDocument.Pages.Add(pageContent);
+                dialog.PrintDocument(fixedDocument.DocumentPaginator, title);
                 if (documentStatus != null)
-                    documentStatus.Text = "Dokumen dikirim ke printer setelah pratinjau.";
+                    documentStatus.Text = "Dokumen landscape 22 x 14 cm dikirim ke printer setelah pratinjau.";
             }
             catch (Exception ex)
             {
