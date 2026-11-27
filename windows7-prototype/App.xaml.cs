@@ -11,7 +11,7 @@ namespace OptikLentera.Win7
             if (e.Args.Length > 0 && string.Equals(e.Args[0], "--print-layout-smoke", StringComparison.OrdinalIgnoreCase))
             {
                 string output = e.Args.Length > 1 ? e.Args[1] : "print-layout-proof";
-                Environment.ExitCode = MainWindow.RunPrintLayoutSmoke(output);
+                Environment.ExitCode = OptikLentera.Win7.MainWindow.RunPrintLayoutSmoke(output);
                 Shutdown();
                 return;
             }
