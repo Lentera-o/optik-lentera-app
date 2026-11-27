@@ -1218,6 +1218,28 @@ namespace OptikLentera.Win7
                 double verticalMargin = verticalMarginMm * 96.0 / 25.4;
                 double safeWidth = formWidth - (horizontalMargin * 2);
                 double safeHeight = formHeight - (verticalMargin * 2);
+                // The document artwork is designed on a full 220 x 140 mm canvas.
+                // The Epson-safe printable rectangle is smaller, so fit the complete
+                // artwork uniformly inside it instead of clipping the fixed-size page.
+                content.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double contentWidth = content.DesiredSize.Width;
+                double contentHeight = content.DesiredSize.Height;
+                if (contentWidth <= 0 || contentHeight <= 0 ||
+                    contentWidth > formWidth + 1.0 || contentHeight > formHeight + 1.0)
+                {
+                    MessageBox.Show("Ukuran isi dokumen tidak valid untuk kertas 22 × 14 cm. Pencetakan dibatalkan agar tidak memotong dokumen.", "OPTIK LENTERA",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var fittedContent = new Viewbox
+                {
+                    Width = safeWidth,
+                    Height = safeHeight,
+                    Stretch = Stretch.Uniform,
+                    StretchDirection = StretchDirection.DownOnly,
+                    Child = content
+                };
                 var printable = new Border
                 {
                     Background = Brushes.White,
@@ -1225,20 +1247,11 @@ namespace OptikLentera.Win7
                     Width = formWidth,
                     Height = formHeight,
                     ClipToBounds = true,
-                    Child = content
+                    Child = fittedContent
                 };
-                content.Measure(new Size(safeWidth, double.PositiveInfinity));
-                double contentHeight = content.DesiredSize.Height;
                 printable.Measure(new Size(formWidth, formHeight));
                 printable.Arrange(new Rect(0, 0, formWidth, formHeight));
                 printable.UpdateLayout();
-
-                if (contentHeight > safeHeight)
-                {
-                    MessageBox.Show("Isi dokumen masih melebihi batas kertas landscape 22 × 14 cm. Pencetakan dibatalkan agar tidak menarik halaman tambahan.", "OPTIK LENTERA",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
 
                 // Keep the preview independent from printer output, but render it at
                 // 300 DPI so small text, table rules, and QR modules can be inspected
