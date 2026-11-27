@@ -1316,15 +1316,18 @@ namespace OptikLentera.Win7
                 double formWidth = (landscape ? 22.0 : 14.0) * 96.0 / 2.54;
                 double formHeight = (landscape ? 14.0 : 22.0) * 96.0 / 2.54;
 
-                // Epson LQ-300 continuous-form printable limits: keep at least
-                // 13 mm clear on left/right and 9 mm clear at top/bottom.
-                // The physical form remains 220 x 140 mm; only the content area is inset.
-                const double horizontalMarginMm = 13.0;
-                const double verticalMarginMm = 9.0;
-                double horizontalMargin = horizontalMarginMm * 96.0 / 25.4;
-                double verticalMargin = verticalMarginMm * 96.0 / 25.4;
-                double safeWidth = formWidth - (horizontalMargin * 2);
-                double safeHeight = formHeight - (verticalMargin * 2);
+                // Epson LQ-300+II driver-reported printable rectangle for this
+                // 220 x 140 mm continuous form: 203.5 x 131.5 mm.
+                // Its landscape origin is left=2.8 mm, top=4.2 mm (right=13.7,
+                // bottom=4.3 mm). Fit the artwork to this exact printable rectangle.
+                const double printableWidthMm = 203.5;
+                const double printableHeightMm = 131.5;
+                const double printableLeftMm = 2.8;
+                const double printableTopMm = 4.2;
+                double horizontalMargin = printableLeftMm * 96.0 / 25.4;
+                double verticalMargin = printableTopMm * 96.0 / 25.4;
+                double safeWidth = printableWidthMm * 96.0 / 25.4;
+                double safeHeight = printableHeightMm * 96.0 / 25.4;
                 // The document artwork is designed on a full 220 x 140 mm canvas.
                 // The Epson-safe printable rectangle is smaller, so fit the complete
                 // artwork uniformly inside it instead of clipping the fixed-size page.
@@ -1483,20 +1486,17 @@ namespace OptikLentera.Win7
                     return;
                 }
 
-                // The driver reports the actual printable rectangle in page coordinates.
-                // Validate both its origin and extent against the content rectangle.
-                // A size-only check can pass even when the whole printable area is shifted.
+                // The driver reports its imageable rectangle. The document canvas
+                // above is deliberately sized to the reported Epson 203.5 x 131.5 mm
+                // printable area, not the former arbitrary 194 x 122 mm safe box.
                 double imageableLeft = imageable.OriginWidth;
                 double imageableTop = imageable.OriginHeight;
                 double imageableWidth = imageable.ExtentWidth;
                 double imageableHeight = imageable.ExtentHeight;
 
                 // Some Epson LQ-300+II ESC/P2 drivers expose the imageable
-                // rectangle in portrait-axis order even after accepting a
-                // landscape custom form. The reported 131.5 x 203.5 mm with
-                // 4.2 mm left / 13.7 mm top is this transposed capability.
-                // Normalize the extents for landscape before checking bounds;
-                // keep the driver's physical left/top offsets unchanged.
+                // rectangle in portrait-axis order even after accepting landscape.
+                // Rotate the complete rectangle including its origin to landscape.
                 if (landscape && imageableWidth < imageableHeight)
                 {
                     // Rotate the complete portrait-coordinate rectangle clockwise
