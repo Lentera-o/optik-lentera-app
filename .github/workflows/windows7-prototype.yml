@@ -29,7 +29,7 @@ jobs:
           $output = "print-layout-proof"
           New-Item -ItemType Directory -Force -Path $output | Out-Null
           & "windows7-prototype/bin/Release/OPTIK-LENTERA.exe" --print-layout-smoke $output
-          if ($LASTEXITCODE -ne 0) { throw "Digital print-layout validation failed. See validation report." }
+          if ($LASTEXITCODE -ne 0) { if (Test-Path "$output/VALIDATION-FAILED.txt") { Get-Content "$output/VALIDATION-FAILED.txt" } ; throw "Digital print-layout validation failed." }
           if (!(Test-Path "$output/01-invoice.png") -or !(Test-Path "$output/02-kuitansi.png") -or !(Test-Path "$output/03-resep.png")) { throw "One or more digital document previews were not generated." }
       - name: Package portable prototype
         shell: pwsh
