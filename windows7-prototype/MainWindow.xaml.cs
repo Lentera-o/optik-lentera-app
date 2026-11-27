@@ -736,7 +736,7 @@ namespace OptikLentera.Win7
             var logo = new Image
             {
                 Source = CreatePrintLogoSource(),
-                Width = 92, Height = 48, Stretch = Stretch.Uniform,
+                Width = 92, Height = 44, Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -1085,14 +1085,14 @@ namespace OptikLentera.Win7
                 Background = Brushes.White
             };
             root.Children.Add(MakeLetterhead(true));
-            root.Children.Add(new TextBlock { Text = "RESEP KACAMATA", FontSize = 18, FontWeight = FontWeights.Bold, Foreground = Brushes.Black, TextAlignment = TextAlignment.Center, Margin = new Thickness(0,4,0,8) });
-            var identity = new Grid { Margin = new Thickness(0,0,0,7) };
+            root.Children.Add(new TextBlock { Text = "RESEP KACAMATA", FontSize = 18, FontWeight = FontWeights.Bold, Foreground = Brushes.Black, TextAlignment = TextAlignment.Center, Margin = new Thickness(0,4,0,4) });
+            var identity = new Grid { Margin = new Thickness(0,0,0,4) };
             identity.ColumnDefinitions.Add(new ColumnDefinition());
             identity.ColumnDefinitions.Add(new ColumnDefinition());
             identity.Children.Add(new TextBlock { Text = "Nama: " + exam.CustomerName, FontSize = 12, Foreground = Brush("#292823") });
             var date = new TextBlock { Text = "Tanggal: " + exam.Date, FontSize = 12, Foreground = Brush("#292823"), TextAlignment = TextAlignment.Right };
             Grid.SetColumn(date,1); identity.Children.Add(date); root.Children.Add(identity);
-            root.Children.Add(new TextBlock { Text = "HASIL PEMERIKSAAN", FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brush("#A7833F"), Margin = new Thickness(0,0,0,7) });
+            root.Children.Add(new TextBlock { Text = "HASIL PEMERIKSAAN", FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brush("#A7833F"), Margin = new Thickness(0,0,0,4) });
             root.Children.Add(BuildCylinderAxisDiagram(exam.ODAXIS, exam.OSAXIS));
             var table = new Grid { Margin = new Thickness(0,0,0,6) };
             for (int i=0;i<6;i++) table.ColumnDefinitions.Add(new ColumnDefinition());
@@ -1104,17 +1104,17 @@ namespace OptikLentera.Win7
             };
             for (int r=0;r<3;r++) for (int col=0;col<6;col++)
             {
-                var cell = new Border { BorderBrush = Brush("#D8D0C2"), BorderThickness = new Thickness(0,0,1,1), Padding = new Thickness(5,3,5,3), Background = r==0 ? Brush("#F2EBDD") : Brushes.White };
+                var cell = new Border { BorderBrush = Brush("#D8D0C2"), BorderThickness = new Thickness(0,0,1,1), Padding = new Thickness(5,2,5,2), Background = r==0 ? Brush("#F2EBDD") : Brushes.White };
                 cell.Child = new TextBlock { Text = values[r][col] ?? "", FontSize = 10, FontWeight = r==0 ? FontWeights.Bold : FontWeights.Normal, Foreground = Brush("#292823"), TextAlignment = col==0 ? TextAlignment.Left : TextAlignment.Center };
                 Grid.SetRow(cell,r); Grid.SetColumn(cell,col); table.Children.Add(cell);
             }
             root.Children.Add(table);
             if (!string.IsNullOrWhiteSpace(exam.Notes))
             {
-                root.Children.Add(new TextBlock { Text = "CATATAN", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = Brush("#A7833F"), Margin = new Thickness(0,3,0,4) });
-                root.Children.Add(new TextBlock { Text = exam.Notes, FontSize = 10, Foreground = Brush("#292823"), TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxHeight = 30, Margin = new Thickness(0,0,0,5) });
+                root.Children.Add(new TextBlock { Text = "CATATAN", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = Brush("#A7833F"), Margin = new Thickness(0,2,0,3) });
+                root.Children.Add(new TextBlock { Text = exam.Notes, FontSize = 10, Foreground = Brush("#292823"), TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, MaxHeight = 24, Margin = new Thickness(0,0,0,5) });
             }
-            root.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 9, Foreground = Brush("#777168"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,8,0,0) });
+            root.Children.Add(new TextBlock { Text = "Terima kasih telah mempercayakan kebutuhan penglihatan Anda kepada OPTIK LENTERA.", FontSize = 9, Foreground = Brush("#777168"), TextAlignment = TextAlignment.Center, Margin = new Thickness(0,4,0,0) });
             return root;
         }
 
@@ -1135,7 +1135,7 @@ namespace OptikLentera.Win7
             return new Border
             {
                 BorderBrush = Brushes.Black, BorderThickness = new Thickness(1),
-                Padding = new Thickness(6), Margin = new Thickness(0, 0, 0, 8),
+                Padding = new Thickness(6), Margin = new Thickness(0, 0, 0, 4),
                 Child = outer
             };
         }
@@ -1144,7 +1144,7 @@ namespace OptikLentera.Win7
         {
             double axis;
             bool hasAxis = double.TryParse(axisText, out axis);
-            var canvas = new Canvas { Width = 104, Height = 88, Background = Brushes.White };
+            var canvas = new Canvas { Width = 104, Height = 84, Background = Brushes.White };
             const double cx = 52, cy = 42, radius = 33;
             canvas.Children.Add(new Ellipse
             {
