@@ -784,80 +784,83 @@ namespace OptikLentera.Win7
         {
             const double pageWidth = 768.0;
             const double pageHeight = 497.0;
-            var root = new StackPanel
-            {
-                Width = pageWidth, Height = pageHeight, ClipToBounds = true,
-                Background = Brushes.White, Orientation = Orientation.Vertical
-            };
-            var page = new Grid { Width = pageWidth, Height = pageHeight, Background = Brushes.White };
-            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(104) });
+            Brush ink = Brushes.Black;
+            Brush accent = printMode ? Brushes.Black : Brush("#98752A");
+            Brush line = printMode ? Brushes.Black : Brush("#D8CBAE");
+            var page = new Grid { Width = pageWidth, Height = pageHeight, Background = Brushes.White, ClipToBounds = true };
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(96) });
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(54) });
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(42) });
 
-            var top = new Grid { Margin = new Thickness(12, 4, 12, 8) };
-            top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
-            top.Children.Add(MakeLetterhead(printMode));
-            var titlePanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
-            titlePanel.Children.Add(new TextBlock { Text = "KUITANSI PEMBAYARAN", FontSize = 22, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#725526"), TextAlignment = TextAlignment.Right });
-            titlePanel.Children.Add(new TextBlock { Text = "NO. " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 5, 0, 0), TextAlignment = TextAlignment.Right });
-            titlePanel.Children.Add(new TextBlock { Text = "Tanggal: " + payment.Date, FontSize = 11, Margin = new Thickness(0, 2, 0, 0), TextAlignment = TextAlignment.Right });
-            Grid.SetColumn(titlePanel, 1);
-            top.Children.Add(titlePanel);
-            Grid.SetRow(top, 0);
-            page.Children.Add(top);
-
-            var body = new Grid { Margin = new Thickness(12, 0, 12, 8) };
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.05, GridUnitType.Star) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.25, GridUnitType.Star) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0.78, GridUnitType.Star) });
-
-            var customer = new Border { BorderBrush = printMode ? Brushes.Black : Brush("#D8CBAE"), BorderThickness = new Thickness(1), Padding = new Thickness(14), Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Stretch };
-            var customerStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            customerStack.Children.Add(new TextBlock { Text = "DITERIMA DARI", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#8A6B32"), Margin = new Thickness(0, 0, 0, 10) });
-            customerStack.Children.Add(new TextBlock { Text = order.CustomerName, FontSize = 17, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap });
-            customerStack.Children.Add(new TextBlock { Text = "WhatsApp: " + order.CustomerPhone, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap });
-            customerStack.Children.Add(new TextBlock { Text = "No. Invoice: " + InvoiceNumberForReceipt(order), FontSize = 10, Margin = new Thickness(0, 12, 0, 0), TextWrapping = TextWrapping.Wrap });
-            customer.Child = customerStack;
-            body.Children.Add(customer);
+            // Header: brand and receipt identity share one horizontal band.
+            var header = new Grid { Margin = new Thickness(18, 8, 18, 8) };
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.15, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var brand = MakeLetterhead(printMode);
+            brand.VerticalAlignment = VerticalAlignment.Center;
+            header.Children.Add(brand);
+            var title = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+            title.Children.Add(new TextBlock { Text = "KUITANSI PEMBAYARAN", FontSize = 21, FontWeight = FontWeights.Bold, Foreground = accent, TextAlignment = TextAlignment.Right });
+            title.Children.Add(new TextBlock { Text = "NO. " + payment.ReceiptNumber, FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 5, 0, 0), TextAlignment = TextAlignment.Right });
+            title.Children.Add(new TextBlock { Text = "Tanggal: " + payment.Date, FontSize = 11, Margin = new Thickness(0, 2, 0, 0), TextAlignment = TextAlignment.Right });
+            Grid.SetColumn(title, 1);
+            header.Children.Add(title);
+            Grid.SetRow(header, 0);
+            page.Children.Add(header);
 
             decimal paidTotal = PaidForOrder(order);
             decimal remaining = Math.Max(0m, order.Total - paidTotal);
-            var paymentCard = new Border { BorderBrush = printMode ? Brushes.Black : Brush("#D8CBAE"), BorderThickness = new Thickness(1), Padding = new Thickness(15), Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Stretch };
-            var paymentStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            paymentStack.Children.Add(new TextBlock { Text = "JUMLAH DITERIMA", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = printMode ? Brushes.Black : Brush("#8A6B32") });
-            paymentStack.Children.Add(new TextBlock { Text = "Rp " + payment.Amount.ToString("N0"), FontSize = 27, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 5, 0, 12) });
-            paymentStack.Children.Add(new TextBlock { Text = "Metode pembayaran: " + payment.Method, FontSize = 11, Margin = new Thickness(0, 2, 0, 0) });
-            paymentStack.Children.Add(new TextBlock { Text = "Total pesanan: Rp " + order.Total.ToString("N0"), FontSize = 11, Margin = new Thickness(0, 5, 0, 0) });
-            paymentStack.Children.Add(new TextBlock { Text = "Total telah dibayar: Rp " + paidTotal.ToString("N0"), FontSize = 11, Margin = new Thickness(0, 3, 0, 0) });
-            paymentStack.Children.Add(new TextBlock { Text = "SISA TAGIHAN: Rp " + remaining.ToString("N0"), FontSize = 13, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 8, 0, 0) });
-            paymentStack.Children.Add(new TextBlock { Text = remaining == 0 ? "STATUS: LUNAS" : "STATUS: DP / ANGSURAN", FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 4, 0, 0) });
-            paymentCard.Child = paymentStack;
+            var body = new Grid { Margin = new Thickness(18, 4, 18, 4), VerticalAlignment = VerticalAlignment.Top };
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.02, GridUnitType.Star) });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.22, GridUnitType.Star) });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0.78, GridUnitType.Star) });
+
+            // Left: payer and invoice reference. Keep the content top-aligned;
+            // do not stretch a few lines across an unnecessarily tall empty box.
+            var customerStack = new StackPanel();
+            customerStack.Children.Add(new TextBlock { Text = "DITERIMA DARI", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = accent, Margin = new Thickness(0, 0, 0, 7) });
+            customerStack.Children.Add(new TextBlock { Text = order.CustomerName, FontSize = 16, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap });
+            customerStack.Children.Add(new TextBlock { Text = "WhatsApp: " + order.CustomerPhone, FontSize = 10, Margin = new Thickness(0, 5, 0, 0), TextWrapping = TextWrapping.Wrap });
+            customerStack.Children.Add(new TextBlock { Text = "No. Invoice: " + InvoiceNumberForReceipt(order), FontSize = 10, Margin = new Thickness(0, 8, 0, 0), TextWrapping = TextWrapping.Wrap });
+            var customer = new Border { BorderBrush = line, BorderThickness = new Thickness(1), Padding = new Thickness(11), Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top, Child = customerStack };
+            body.Children.Add(customer);
+
+            // Center: the amount received is the visual priority, followed by a compact balance.
+            var paymentStack = new StackPanel();
+            paymentStack.Children.Add(new TextBlock { Text = "JUMLAH DITERIMA", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = accent });
+            paymentStack.Children.Add(new TextBlock { Text = "Rp " + payment.Amount.ToString("N0"), FontSize = 25, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 4, 0, 8) });
+            paymentStack.Children.Add(new TextBlock { Text = "Metode: " + payment.Method, FontSize = 10, Margin = new Thickness(0, 1, 0, 0) });
+            paymentStack.Children.Add(new TextBlock { Text = "Total pesanan: Rp " + order.Total.ToString("N0"), FontSize = 10, Margin = new Thickness(0, 4, 0, 0) });
+            paymentStack.Children.Add(new TextBlock { Text = "Total dibayar: Rp " + paidTotal.ToString("N0"), FontSize = 10, Margin = new Thickness(0, 3, 0, 0) });
+            paymentStack.Children.Add(new TextBlock { Text = "SISA TAGIHAN: Rp " + remaining.ToString("N0"), FontSize = 12, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 7, 0, 0) });
+            paymentStack.Children.Add(new TextBlock { Text = remaining == 0 ? "STATUS: LUNAS" : "STATUS: DP / ANGSURAN", FontSize = 9, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 3, 0, 0) });
+            var paymentCard = new Border { BorderBrush = line, BorderThickness = new Thickness(1), Padding = new Thickness(11), Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top, Child = paymentStack };
             Grid.SetColumn(paymentCard, 1);
             body.Children.Add(paymentCard);
 
-            var right = new Border { BorderBrush = printMode ? Brushes.Black : Brush("#D8CBAE"), BorderThickness = new Thickness(1), Padding = new Thickness(8), VerticalAlignment = VerticalAlignment.Stretch };
-            var rightStack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+            // Right: QR verification and a real signing area in one compact column.
             string qrPayload = "OL|KW|" + payment.ReceiptNumber + "|" + InvoiceNumberForReceipt(order) + "|" + payment.Date + "|" + payment.Amount.ToString("0") + "|" + remaining.ToString("0");
-            rightStack.Children.Add(new Image { Source = CreateQrImage(qrPayload), Width = 104, Height = 104, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center });
-            rightStack.Children.Add(new TextBlock { Text = "SCAN QR KUITANSI", FontSize = 8, FontWeight = FontWeights.Bold, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 3, 0, 8) });
-            rightStack.Children.Add(new TextBlock { Text = "Penerima pembayaran", FontSize = 9, TextAlignment = TextAlignment.Center });
-            rightStack.Children.Add(new Border { Width = 128, Height = 28, BorderBrush = printMode ? Brushes.Black : Brush("#BDA56F"), BorderThickness = new Thickness(0, 0, 0, 0.8), Margin = new Thickness(0, 0, 0, 2) });
-            rightStack.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 9, FontWeight = FontWeights.Bold, TextAlignment = TextAlignment.Center });
-            right.Child = rightStack;
+            var rightStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+            rightStack.Children.Add(new Image { Source = CreateQrImage(qrPayload), Width = 92, Height = 92, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center });
+            rightStack.Children.Add(new TextBlock { Text = "SCAN QR KUITANSI", FontSize = 8, FontWeight = FontWeights.Bold, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 2, 0, 5) });
+            rightStack.Children.Add(new TextBlock { Text = "Penerima pembayaran", FontSize = 8, TextAlignment = TextAlignment.Center });
+            rightStack.Children.Add(new Border { Width = 132, Height = 22, BorderBrush = line, BorderThickness = new Thickness(0, 0, 0, 0.8), Margin = new Thickness(0, 0, 0, 2) });
+            rightStack.Children.Add(new TextBlock { Text = "OPTIK LENTERA", FontSize = 8, FontWeight = FontWeights.Bold, TextAlignment = TextAlignment.Center });
+            var right = new Border { BorderBrush = line, BorderThickness = new Thickness(1), Padding = new Thickness(7), VerticalAlignment = VerticalAlignment.Top, Child = rightStack };
             Grid.SetColumn(right, 2);
             body.Children.Add(right);
+
             Grid.SetRow(body, 1);
             page.Children.Add(body);
-
-            var footer = new Border { BorderBrush = printMode ? Brushes.Black : Brush("#D8CBAE"), BorderThickness = new Thickness(0, 1, 0, 0), Margin = new Thickness(12, 0, 12, 4), Padding = new Thickness(4, 8, 4, 0) };
-            footer.Child = new TextBlock { Text = "Terima kasih atas kepercayaan Anda • OPTIK LENTERA • Jelas lihatnya, jelas rejekinya.", FontSize = 10, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            var footer = new Border { BorderBrush = line, BorderThickness = new Thickness(0, 1, 0, 0), Margin = new Thickness(18, 0, 18, 5), Padding = new Thickness(3, 6, 3, 0), VerticalAlignment = VerticalAlignment.Center };
+            footer.Child = new TextBlock { Text = "Terima kasih atas kepercayaan Anda  •  OPTIK LENTERA  •  Jelas lihatnya, jelas rejekinya.", FontSize = 9, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetRow(footer, 2);
             page.Children.Add(footer);
+
+            var root = new StackPanel { Width = pageWidth, Height = pageHeight, ClipToBounds = true, Background = Brushes.White };
             root.Children.Add(page);
             return root;
         }
-
         private string InvoiceNumberForReceipt(Order order)
         {
             string suffix = new string((order.OrderKey ?? order.OrderId ?? "ORDER").Where(char.IsLetterOrDigit).Take(6).ToArray()).ToUpperInvariant();
