@@ -1317,12 +1317,12 @@ namespace OptikLentera.Win7
                 double formHeight = (landscape ? 14.0 : 22.0) * 96.0 / 2.54;
 
                 // Epson LQ-300+II driver-reported printable rectangle for this
-                // 220 x 140 mm continuous form: 203.5 x 131.5 mm.
-                // Its landscape origin is left=2.8 mm, top=4.2 mm (right=13.7,
+                // 220 x 140 mm continuous form: 203.2 x 131.5 mm.
+                // Its landscape origin is left=3.1 mm, top=4.2 mm (right=13.7,
                 // bottom=4.3 mm). Fit the artwork to this exact printable rectangle.
-                const double printableWidthMm = 203.5;
+                const double printableWidthMm = 203.2;
                 const double printableHeightMm = 131.5;
-                const double printableLeftMm = 2.8;
+                const double printableLeftMm = 3.1;
                 const double printableTopMm = 4.2;
                 double horizontalMargin = printableLeftMm * 96.0 / 25.4;
                 double verticalMargin = printableTopMm * 96.0 / 25.4;
@@ -1502,7 +1502,7 @@ namespace OptikLentera.Win7
                     // Rotate the complete portrait-coordinate rectangle clockwise
                     // into landscape page coordinates, including its origin.
                     // For the reported Epson values this becomes:
-                    // left=2.8 mm, top=4.2 mm, extent=203.5 x 131.5 mm.
+                    // left=3.1 mm, top=4.2 mm, extent=203.2 x 131.5 mm.
                     double portraitLeft = imageableLeft;
                     double portraitTop = imageableTop;
                     double portraitWidth = imageableWidth;
