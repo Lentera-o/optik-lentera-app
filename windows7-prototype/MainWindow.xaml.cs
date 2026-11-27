@@ -1251,6 +1251,7 @@ namespace OptikLentera.Win7
             {
                 Directory.CreateDirectory(outputDirectory);
                 File.WriteAllText(Path.Combine(outputDirectory, "VALIDATION-FAILED.txt"), ex.ToString());
+                Console.Error.WriteLine(ex.ToString());
                 return 1;
             }
         }
