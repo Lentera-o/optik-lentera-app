@@ -23,6 +23,14 @@ jobs:
         run: nuget restore windows7-prototype/packages.config -PackagesDirectory packages
       - name: Build WPF application
         run: msbuild windows7-prototype/OptikLentera.Win7.csproj /p:Configuration=Release /p:Platform=AnyCPU /m
+      - name: Render and validate invoice, receipt, and prescription without a printer
+        shell: pwsh
+        run: |
+          $output = "print-layout-proof"
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          & "windows7-prototype/bin/Release/OPTIK-LENTERA.exe" --print-layout-smoke $output
+          if ($LASTEXITCODE -ne 0) { throw "Digital print-layout validation failed. See validation report." }
+          if (!(Test-Path "$output/01-invoice.png") -or !(Test-Path "$output/02-kuitansi.png") -or !(Test-Path "$output/03-resep.png")) { throw "One or more digital document previews were not generated." }
       - name: Package portable prototype
         shell: pwsh
         run: |
@@ -55,5 +63,6 @@ jobs:
           path: |
             windows7-prototype/installer-output/OPTIK-LENTERA-Setup-Windows7.exe
             OPTIK-LENTERA-Win7-Prototipe.zip
+            print-layout-proof/*
           if-no-files-found: error
           retention-days: 14
