@@ -1355,56 +1355,49 @@ namespace OptikLentera.Win7
                     return;
                 }
 
-                // Compare the driver's imageable rectangle with the actual content
-                // rectangle, not with almost the entire physical form.
-                double imageableWidth = imageable.ExtentWidth;
-                double imageableHeight = imageable.ExtentHeight;
+                // The driver reports the actual printable rectangle in page coordinates.
+                // Validate both its origin and extent against the content rectangle.
+                // A size-only check can pass even when the whole printable area is shifted.
+                double imageableLeft = imageable.OriginWidth;
+                double imageableTop = imageable.OriginHeight;
+                double imageableRight = imageableLeft + imageable.ExtentWidth;
+                double imageableBottom = imageableTop + imageable.ExtentHeight;
+                double contentLeft = horizontalMargin;
+                double contentTop = verticalMargin;
+                double contentRight = contentLeft + safeWidth;
+                double contentBottom = contentTop + safeHeight;
+                const double driverTolerance = 1.0;
                 bool imageableFits =
-                    (imageableWidth >= safeWidth && imageableHeight >= safeHeight) ||
-                    (imageableWidth >= safeHeight && imageableHeight >= safeWidth);
+                    imageableLeft <= contentLeft + driverTolerance &&
+                    imageableTop <= contentTop + driverTolerance &&
+                    imageableRight >= contentRight - driverTolerance &&
+                    imageableBottom >= contentBottom - driverTolerance;
                 if (!imageableFits)
                 {
-                    double printableMmWide = imageableWidth * 25.4 / 96.0;
-                    double printableMmHigh = imageableHeight * 25.4 / 96.0;
+                    double printableMmWide = imageable.ExtentWidth * 25.4 / 96.0;
+                    double printableMmHigh = imageable.ExtentHeight * 25.4 / 96.0;
+                    double offsetXmm = imageableLeft * 25.4 / 96.0;
+                    double offsetYmm = imageableTop * 25.4 / 96.0;
                     MessageBox.Show(
-                        "Epson LQ-300 menerima ukuran form 22 × 14 cm, tetapi area cetak yang dilaporkan driver hanya " +
-                        printableMmWide.ToString("0.0") + " × " + printableMmHigh.ToString("0.0") +
-                        " mm. Dengan margin aman Epson, area isi yang dibutuhkan sekitar " +
-                        (safeWidth * 25.4 / 96.0).ToString("0.0") + " × " +
-                        (safeHeight * 25.4 / 96.0).ToString("0.0") +
-                        " mm. Pencetakan dibatalkan supaya tepi invoice/kuitansi tidak terpotong.",
-                        "Area cetak Epson LQ-300 tidak cukup", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        "Area cetak yang dilaporkan driver Epson tidak mencakup seluruh area isi dokumen. " +
+                        "Area driver: " + printableMmWide.ToString("0.0") + " × " + printableMmHigh.ToString("0.0") +
+                        " mm, mulai dari kiri " + offsetXmm.ToString("0.0") + " mm dan atas " +
+                        offsetYmm.ToString("0.0") + " mm. " +
+                        "Dokumen memerlukan area isi " + (safeWidth * 25.4 / 96.0).ToString("0.0") +
+                        " × " + (safeHeight * 25.4 / 96.0).ToString("0.0") +
+                        " mm pada posisi yang sudah ditentukan. Pencetakan dihentikan agar hasil tidak bergeser atau terpotong.",
+                        "Area cetak Epson LQ-300 tidak cocok", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
                 dialog.PrintTicket = validatedTicket;
 
-                // Print the exact bitmap already shown in the approved preview.
-                // This prevents legacy WPF/Epson drivers from measuring and
-                // reflowing the original StackPanel differently during printing.
-                // One bitmap is placed edge-to-edge on one fixed landscape page.
-                var fixedDocument = new FixedDocument();
-                fixedDocument.DocumentPaginator.PageSize = new Size(formWidth, formHeight);
-                var fixedPage = new FixedPage
-                {
-                    Width = formWidth,
-                    Height = formHeight
-                };
-                var pageImage = new Image
-                {
-                    Source = previewBitmap,
-                    Width = formWidth,
-                    Height = formHeight,
-                    Stretch = Stretch.Fill,
-                    SnapsToDevicePixels = true
-                };
-                FixedPage.SetLeft(pageImage, 0);
-                FixedPage.SetTop(pageImage, 0);
-                fixedPage.Children.Add(pageImage);
-                var pageContent = new PageContent();
-                ((System.Windows.Markup.IAddChild)pageContent).AddChild(fixedPage);
-                fixedDocument.Pages.Add(pageContent);
-                dialog.PrintDocument(fixedDocument.DocumentPaginator, title);
+                // Print the arranged WPF visual directly. Do not rasterize the whole
+                // 22 x 14 cm page to a 96-DPI bitmap: that softens small text and thin
+                // table rules on a 9-pin dot-matrix printer. WPF sends text and vector
+                // geometry through its print pipeline; only the logo remains a bitmap.
+                // The same fixed-size visual used for the preview is sent to the driver.
+                dialog.PrintVisual(printable, title);
                 if (documentStatus != null)
                     documentStatus.Text = "Dokumen landscape 22 x 14 cm dikirim ke printer setelah pratinjau.";
             }
