@@ -1319,11 +1319,10 @@ namespace OptikLentera.Win7
 
                 dialog.PrintTicket = validatedTicket;
 
-                // PrintVisual lets some legacy Epson drivers map the visual to
-                // their default portrait page, causing the 22 x 14 cm layout to
-                // be rotated/clipped or printed across multiple form sections.
-                // Use a one-page FixedDocument with an explicit landscape page
-                // size so the visual is laid out once, across the paper width.
+                // Print the exact bitmap already shown in the approved preview.
+                // This prevents legacy WPF/Epson drivers from measuring and
+                // reflowing the original StackPanel differently during printing.
+                // One bitmap is placed edge-to-edge on one fixed landscape page.
                 var fixedDocument = new FixedDocument();
                 fixedDocument.DocumentPaginator.PageSize = new Size(formWidth, formHeight);
                 var fixedPage = new FixedPage
@@ -1331,9 +1330,17 @@ namespace OptikLentera.Win7
                     Width = formWidth,
                     Height = formHeight
                 };
-                FixedPage.SetLeft(printable, 0);
-                FixedPage.SetTop(printable, 0);
-                fixedPage.Children.Add(printable);
+                var pageImage = new Image
+                {
+                    Source = previewBitmap,
+                    Width = formWidth,
+                    Height = formHeight,
+                    Stretch = Stretch.Fill,
+                    SnapsToDevicePixels = true
+                };
+                FixedPage.SetLeft(pageImage, 0);
+                FixedPage.SetTop(pageImage, 0);
+                fixedPage.Children.Add(pageImage);
                 var pageContent = new PageContent();
                 ((System.Windows.Markup.IAddChild)pageContent).AddChild(fixedPage);
                 fixedDocument.Pages.Add(pageContent);
