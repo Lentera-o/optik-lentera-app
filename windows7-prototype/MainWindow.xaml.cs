@@ -800,7 +800,7 @@ namespace OptikLentera.Win7
             // Keep the centered letterhead readable and give the product row real space.
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(115) });
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(36) });
-            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(88) });
+            page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(payment == null ? 88 : 108) });
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
             page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(90) });
 
@@ -819,8 +819,8 @@ namespace OptikLentera.Win7
             Grid.SetRow(title, 1);
             page.Children.Add(title);
 
-            string invoiceNo = "INV-" + order.Date.Replace("-", "") + "-" +
-                order.OrderKey.Substring(0, Math.Min(6, order.OrderKey.Length)).ToUpperInvariant();
+            string invoiceSuffix = new string((order.OrderKey ?? order.OrderId ?? "ORDER").Where(char.IsLetterOrDigit).Take(6).ToArray()).ToUpperInvariant();
+            string invoiceNo = "INV-" + order.Date.Replace("-", "") + "-" + invoiceSuffix;
 
             var details = new Grid { Margin = new Thickness(12, 2, 12, 4) };
             details.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.55, GridUnitType.Star) });
@@ -1220,6 +1220,7 @@ namespace OptikLentera.Win7
                     ReceiptNumber = "KW-2026-0001", OrderKey = order.OrderKey,
                     Date = "27-11-2026", Amount = 400000m, Method = "TRANSFER"
                 };
+                window.payments.Add(payment);
                 var exam = new Examination
                 {
                     CustomerName = order.CustomerName, Date = order.Date,
