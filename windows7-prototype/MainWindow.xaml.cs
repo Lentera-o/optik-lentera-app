@@ -1450,8 +1450,12 @@ namespace OptikLentera.Win7
                 requestedTicket.PageOrientation = landscape
                     ? System.Printing.PageOrientation.Landscape
                     : System.Printing.PageOrientation.Portrait;
+                // Start from the ticket selected in the just-completed PrintDialog,
+                // not the queue's saved default ticket. The saved default can still be
+                // Portrait even when the user selected Landscape in the dialog.
+                var selectedTicket = dialog.PrintTicket ?? dialog.PrintQueue.UserPrintTicket;
                 var validation = dialog.PrintQueue.MergeAndValidatePrintTicket(
-                    dialog.PrintQueue.UserPrintTicket, requestedTicket);
+                    selectedTicket, requestedTicket);
                 var validatedTicket = validation.ValidatedPrintTicket;
                 if (validatedTicket == null)
                     throw new InvalidOperationException("Driver tidak menghasilkan pengaturan cetak yang valid.");
