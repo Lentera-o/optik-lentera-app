@@ -1453,7 +1453,19 @@ namespace OptikLentera.Win7
                 var validation = dialog.PrintQueue.MergeAndValidatePrintTicket(
                     dialog.PrintQueue.UserPrintTicket, requestedTicket);
                 var validatedTicket = validation.ValidatedPrintTicket;
-                var media = validatedTicket == null ? null : validatedTicket.PageMediaSize;
+                if (validatedTicket == null)
+                    throw new InvalidOperationException("Driver tidak menghasilkan pengaturan cetak yang valid.");
+
+                // Re-assert the requested orientation on the ticket that will
+                // actually be sent to PrintVisual. Some Epson ESC/P2 drivers
+                // return a valid custom form but silently reset orientation to
+                // Portrait during MergeAndValidatePrintTicket.
+                validatedTicket.PageOrientation = landscape
+                    ? System.Printing.PageOrientation.Landscape
+                    : System.Printing.PageOrientation.Portrait;
+                validatedTicket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
+
+                var media = validatedTicket.PageMediaSize;
                 double acceptedWidth = media == null || !media.Width.HasValue ? 0 : media.Width.Value;
                 double acceptedHeight = media == null || !media.Height.HasValue ? 0 : media.Height.Value;
                 // Some printer drivers report custom landscape media with the
