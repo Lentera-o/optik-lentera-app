@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/api_service.dart';
@@ -35,7 +34,7 @@ class OptikLenteraApp extends StatelessWidget {
           seedColor: gold,
           surface: cream,
         ),
-        textTheme: GoogleFonts.plusJakartaSansTextTheme(),
+        textTheme: ThemeData.light().textTheme,
         appBarTheme: const AppBarTheme(
           backgroundColor: cream,
           foregroundColor: darkGold,
@@ -526,7 +525,7 @@ class DashboardContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                                         Text('Jernih Melihat,\nNyaman Melangkah.',
-                      style: GoogleFonts.dmSerifDisplay(fontSize: 27, height: 1.16, color: Colors.white, letterSpacing: .1)),
+                      style: const TextStyle(fontFamily: 'serif', fontSize: 27, height: 1.16, color: Colors.white, letterSpacing: .1)),
                     const SizedBox(height: 18),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
