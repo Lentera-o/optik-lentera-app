@@ -1445,8 +1445,14 @@ namespace OptikLentera.Win7
                 // Ask the selected driver to validate the exact physical form.
                 // Do not silently fall back to A4/Letter or let the driver shrink
                 // the 22 x 14 cm document onto a different media size.
+                // PrintTicket media dimensions are expressed in the driver's
+                // unrotated (portrait) media axes. Landscape rotates that media.
+                // Supplying 220 x 140 mm AND Landscape double-rotates some Epson
+                // ESC/P2 drivers, producing a physically portrait output.
+                double ticketMediaWidth = landscape ? formHeight : formWidth;
+                double ticketMediaHeight = landscape ? formWidth : formHeight;
                 var requestedTicket = new System.Printing.PrintTicket();
-                requestedTicket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
+                requestedTicket.PageMediaSize = new System.Printing.PageMediaSize(ticketMediaWidth, ticketMediaHeight);
                 requestedTicket.PageOrientation = landscape
                     ? System.Printing.PageOrientation.Landscape
                     : System.Printing.PageOrientation.Portrait;
@@ -1467,7 +1473,7 @@ namespace OptikLentera.Win7
                 validatedTicket.PageOrientation = landscape
                     ? System.Printing.PageOrientation.Landscape
                     : System.Printing.PageOrientation.Portrait;
-                validatedTicket.PageMediaSize = new System.Printing.PageMediaSize(formWidth, formHeight);
+                validatedTicket.PageMediaSize = new System.Printing.PageMediaSize(ticketMediaWidth, ticketMediaHeight);
 
                 var media = validatedTicket.PageMediaSize;
                 double acceptedWidth = media == null || !media.Width.HasValue ? 0 : media.Width.Value;
