@@ -17,6 +17,14 @@ jobs:
     steps:
       - name: Checkout prototype branch
         uses: actions/checkout@v4
+      - name: Download and verify .NET Framework 4.8 offline runtime
+        shell: pwsh
+        run: |
+          $runtime = Join-Path $PWD "windows7-prototype/installer/NDP48-x86-x64-AllOS-ENU.exe"
+          Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/?LinkId=2088631" -OutFile $runtime
+          $signature = Get-AuthenticodeSignature $runtime
+          if ($signature.Status -ne "Valid" -or $signature.SignerCertificate.Subject -notmatch "Microsoft") { throw "Microsoft .NET Framework 4.8 installer signature validation failed." }
+          if ((Get-Item $runtime).Length -lt 50000000) { throw "Downloaded .NET Framework 4.8 installer is unexpectedly small." }
       - name: Locate MSBuild
         uses: microsoft/setup-msbuild@v2
       - name: Restore NuGet packages
