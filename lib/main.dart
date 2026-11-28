@@ -281,7 +281,7 @@ class _MainScreenState extends State<MainScreen> {
     return false;
   }
 
-  Future<void> _refreshDocumentNotificationCount() async {
+  Future<void> _refreshDocumentNotificationCount({bool forceRefresh = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (!(prefs.getBool('ol_document_notifications_enabled') ?? true)) {
@@ -289,8 +289,8 @@ class _MainScreenState extends State<MainScreen> {
         return;
       }
       final tables = await Future.wait([
-        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
-        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: forceRefresh),
+        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: forceRefresh),
       ]);
       final ids = <String>{};
       for (final row in tables[0]) {
@@ -404,12 +404,12 @@ class _MainScreenState extends State<MainScreen> {
 
   void _addOrder(OptikOrder value) {
     setState(() => orders.add(value));
-    _refreshDocumentNotificationCount();
+    _refreshDocumentNotificationCount(forceRefresh: true);
   }
 
   void _addPayment(OptikPayment value) {
     setState(() => payments.add(value));
-    _refreshDocumentNotificationCount();
+    _refreshDocumentNotificationCount(forceRefresh: true);
   }
 
   final List<String> navigation = [
@@ -765,8 +765,8 @@ class _DashboardContentState extends State<DashboardContent> {
     if (mounted) setState(() { _summaryLoading = true; _summaryError = null; });
     try {
       final tables = await Future.wait([
-        SheetsReadService.readTable('DATA_PESANAN', forceRefresh: true),
-        SheetsReadService.readTable('DATA_PEMBAYARAN', forceRefresh: true),
+        SheetsReadService.readTable('DATA_PESANAN'),
+        SheetsReadService.readTable('DATA_PEMBAYARAN'),
       ]);
       final officialOrders = tables[0].where((row) => _cell(row, [
         'No Invoice', 'Nomor Invoice', 'No. Invoice', 'Invoice',
